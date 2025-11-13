@@ -2,7 +2,14 @@ import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 import { Locale } from "@/lib/i18n/config";
 
-export default function Home({ params: { lang } }: { params: { lang: Locale } }) {
+interface LocalizedPageProps {
+  params: { lang: Locale };
+  searchParams: { [key: string]: string | string[] | undefined };
+}
+
+export default function Home({ params }: LocalizedPageProps) {
+  const { lang } = params;
+  
   return (
     <>
       <Header lang={lang} />
