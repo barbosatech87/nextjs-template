@@ -1,10 +1,10 @@
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { BlogPostsTable } from "@/components/admin/blog/blog-posts-table";
-import { LocalizedPageProps } from "@/types/next";
 import { use } from "react";
+import { Locale } from "@/lib/i18n/config";
 
-export default async function AdminBlogPage({ params }: LocalizedPageProps) {
-  const { lang } = use(params); // Desempacotando params com use()
+export default async function AdminBlogPage({ params }: { params: Promise<{ lang: Locale }> }) {
+  const { lang } = use(params);
   const supabase = createSupabaseServerClient();
   
   const { data: posts, error } = await supabase.rpc('get_admin_blog_posts');

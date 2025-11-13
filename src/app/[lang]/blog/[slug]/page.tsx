@@ -5,8 +5,8 @@ import { notFound } from "next/navigation";
 import { Calendar, User, Globe } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { LocalizedPageProps, NextLocalizedParams } from "@/types/next";
 import { use } from "react";
+import { Locale } from "@/lib/i18n/config";
 
 const texts = {
   pt: {
@@ -29,10 +29,8 @@ const texts = {
   },
 };
 
-export default async function BlogPostPage({ params }: LocalizedPageProps) {
-  const unwrappedParams = use(params); // Desempacotando params com use()
-  const { lang, slug } = unwrappedParams as NextLocalizedParams & { slug: string | string[] }; // Então, fazendo o cast
-
+export default async function BlogPostPage({ params }: { params: Promise<{ lang: Locale; slug: string | string[] }> }) {
+  const { lang, slug } = use(params);
   const t = texts[lang as keyof typeof texts] || texts.pt;
 
   if (Array.isArray(slug) || !slug) {
