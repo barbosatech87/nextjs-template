@@ -2,7 +2,6 @@ import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 import { Locale } from "@/lib/i18n/config";
 
-// Usamos 'any' para satisfazer o compilador Next.js em rotas dinâmicas
 export default function Home({ 
   params, 
   searchParams 

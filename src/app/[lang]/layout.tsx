@@ -9,11 +9,10 @@ export async function generateStaticParams() {
   return i18n.locales.map((lang) => ({ lang }));
 }
 
-// Usamos 'any' para satisfazer o compilador Next.js em rotas dinâmicas
 export default function LocalizedLayout({
   children,
   params,
-}: Readonly<any>) {
+}: any) {
   // Tipagem interna para segurança
   const { lang } = params as { lang: Locale };
   
