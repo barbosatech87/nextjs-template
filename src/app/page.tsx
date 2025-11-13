@@ -12,8 +12,9 @@ export default function RootPage() {
   const headersList = headers();
   const negotiatorHeaders: Record<string, string> = {};
   
-  // Usando for...of para iterar sobre ReadonlyHeaders (que é um iterável de [key, value])
-  for (const [key, value] of headersList) {
+  // Usando for...of loop com type assertion para iterar sobre ReadonlyHeaders,
+  // contornando a inferência incorreta de 'Promise' e resolvendo 'implicit any'.
+  for (const [key, value] of headersList as unknown as Iterable<[string, string]>) {
     negotiatorHeaders[key] = value;
   }
 
