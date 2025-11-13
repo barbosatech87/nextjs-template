@@ -40,7 +40,7 @@ export async function createPost(postData: NewPostData, lang: string) {
       author_id: user.id,
       language_code: lang, // Garante que o código do idioma seja salvo
     })
-    .select('id')
+    .select('id, title, summary, content') // Seleciona o conteúdo para a tradução
     .single();
 
   if (postError) {
@@ -66,7 +66,16 @@ export async function createPost(postData: NewPostData, lang: string) {
   }
 
   revalidatePath(`/${lang}/admin/blog`);
-  return { success: true, message: "Post criado com sucesso.", postId: newPost.id };
+  return { 
+    success: true, 
+    message: "Post criado com sucesso.", 
+    postId: newPost.id,
+    postContent: {
+      title: newPost.title,
+      summary: newPost.summary,
+      content: newPost.content,
+    }
+  };
 }
 
 export async function deletePost(postId: string, lang: string) {

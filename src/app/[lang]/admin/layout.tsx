@@ -2,16 +2,12 @@ import { ReactNode } from 'react';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
-import { Locale } from '@/lib/i18n/config';
+import { LocalizedLayoutProps } from '@/types/next';
 
 export default async function AdminLayout({
   children,
-  params: paramsPromise, // Renaming to indicate it's a promise
-}: {
-  children: ReactNode;
-  params: Promise<{ lang: Locale }>; // Explicitly type params as a Promise
-}) {
-  const params = await paramsPromise; // Await the promise to get the actual params object
+  params,
+}: LocalizedLayoutProps) {
   const { lang } = params;
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();

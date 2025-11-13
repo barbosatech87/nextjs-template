@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { ImageUpload } from './image-upload';
 import { useBlogCategories } from '@/hooks/use-blog-categories';
 import { Checkbox } from '@/components/ui/checkbox';
+import { TranslationDialog } from './translation-dialog'; // Importando o novo componente
 
 interface PostFormProps {
   lang: Locale;
@@ -122,6 +123,11 @@ export function PostForm({ lang }: PostFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { categories, isLoading: isLoadingCategories } = useBlogCategories();
+  
+  // Estado para o diálogo de tradução
+  const [isTranslationDialogOpen, setIsTranslationDialogOpen] = useState(false);
+  const [newPostData, setNewPostData] = useState<{ postId: string, postContent: { title: string, summary: string | null, content: string } } | null>(null);
+
 
   const form = useForm<PostFormValues>({
     resolver: zodResolver(postSchema),
@@ -166,10 +172,16 @@ export function PostForm({ lang }: PostFormProps) {
 
       const result = await createPost(postData, lang);
 
-      if (result.success) {
+      if (result.success && result.postId && result.postContent) {
         toast.success(t.success);
-        // Redireciona para a página de edição ou lista após a criação
-        router.push(`/${lang}/admin/blog`); 
+        
+        // Armazena os dados e abre o diálogo de tradução
+        setNewPostData({
+          postId: result.postId,
+          postContent: result.postContent,
+        });
+        setIsTranslationDialogOpen(true);
+        
       } else {
         toast.error(result.message || t.error);
       }
@@ -177,228 +189,240 @@ export function PostForm({ lang }: PostFormProps) {
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Coluna Principal (Conteúdo) */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.general}</CardTitle>
-                <CardDescription>Informações essenciais da postagem.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.titleLabel}</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Título da Postagem" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="slug"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.slugLabel}</FormLabel>
-                      <FormControl>
-                        <Input placeholder="slug-da-postagem" {...field} />
-                      </FormControl>
-                      <FormDescription>{t.slugHelp}</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="summary"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.summaryLabel}</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Um breve resumo do conteúdo..." rows={3} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="content"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.contentLabel}</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="O conteúdo completo da postagem..." rows={15} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.seo}</CardTitle>
-                <CardDescription>Melhore a visibilidade nos motores de busca.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="seo_title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.seoTitleLabel}</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Título para SEO" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="seo_description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t.seoDescriptionLabel}</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Descrição para SEO" rows={3} {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Coluna Lateral (Metadados) */}
-          <div className="lg:col-span-1 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.image}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ImageUpload 
-                  lang={lang} 
-                  onUploadSuccess={handleImageUploadSuccess} 
-                  initialImageUrl={imageUrl}
-                  onRemove={handleImageRemove}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.statusLabel}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="sr-only">{t.statusLabel}</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder={t.statusLabel} />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="draft">{t.draft}</SelectItem>
-                          <SelectItem value="published">{t.published}</SelectItem>
-                          <SelectItem value="archived">{t.archived}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.categoryLabel}</CardTitle>
-                <CardDescription>{t.categoryHelp}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {isLoadingCategories ? (
-                  <p>Carregando categorias...</p>
-                ) : (
+    <>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Coluna Principal (Conteúdo) */}
+            <div className="lg:col-span-2 space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t.general}</CardTitle>
+                  <CardDescription>Informações essenciais da postagem.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <FormField
                     control={form.control}
-                    name="category_ids"
-                    render={() => (
+                    name="title"
+                    render={({ field }) => (
                       <FormItem>
-                        {categories.map((category) => (
-                          <FormField
-                            key={category.id}
-                            control={form.control}
-                            name="category_ids"
-                            render={({ field }) => {
-                              return (
-                                <FormItem
-                                  key={category.id}
-                                  className="flex flex-row items-start space-x-3 space-y-0"
-                                >
-                                  <FormControl>
-                                    <Checkbox
-                                      checked={field.value?.includes(category.id)}
-                                      onCheckedChange={(checked) => {
-                                        return checked
-                                          ? field.onChange([...(field.value || []), category.id])
-                                          : field.onChange(
-                                              field.value?.filter(
-                                                (value) => value !== category.id
-                                              )
-                                            );
-                                      }}
-                                    />
-                                  </FormControl>
-                                  <FormLabel className="font-normal cursor-pointer">
-                                    {category.name}
-                                  </FormLabel>
-                                </FormItem>
-                              );
-                            }}
-                          />
-                        ))}
+                        <FormLabel>{t.titleLabel}</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Título da Postagem" {...field} />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+                  <FormField
+                    control={form.control}
+                    name="slug"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.slugLabel}</FormLabel>
+                        <FormControl>
+                          <Input placeholder="slug-da-postagem" {...field} />
+                        </FormControl>
+                        <FormDescription>{t.slugHelp}</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="summary"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.summaryLabel}</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Um breve resumo do conteúdo..." rows={3} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="content"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.contentLabel}</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="O conteúdo completo da postagem..." rows={15} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={isPending}>
-            {isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t.saving}
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                {t.save}
-              </>
-            )}
-          </Button>
-        </div>
-      </form>
-    </Form>
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t.seo}</CardTitle>
+                  <CardDescription>Melhore a visibilidade nos motores de busca.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="seo_title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.seoTitleLabel}</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Título para SEO" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="seo_description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.seoDescriptionLabel}</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Descrição para SEO" rows={3} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Coluna Lateral (Metadados) */}
+            <div className="lg:col-span-1 space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t.image}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ImageUpload 
+                    lang={lang} 
+                    onUploadSuccess={handleImageUploadSuccess} 
+                    initialImageUrl={imageUrl}
+                    onRemove={handleImageRemove}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t.statusLabel}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="sr-only">{t.statusLabel}</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder={t.statusLabel} />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="draft">{t.draft}</SelectItem>
+                            <SelectItem value="published">{t.published}</SelectItem>
+                            <SelectItem value="archived">{t.archived}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t.categoryLabel}</CardTitle>
+                  <CardDescription>{t.categoryHelp}</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {isLoadingCategories ? (
+                    <p>Carregando categorias...</p>
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="category_ids"
+                      render={() => (
+                        <FormItem>
+                          {categories.map((category) => (
+                            <FormField
+                              key={category.id}
+                              control={form.control}
+                              name="category_ids"
+                              render={({ field }) => {
+                                return (
+                                  <FormItem
+                                    key={category.id}
+                                    className="flex flex-row items-start space-x-3 space-y-0"
+                                  >
+                                    <FormControl>
+                                      <Checkbox
+                                        checked={field.value?.includes(category.id)}
+                                        onCheckedChange={(checked) => {
+                                          return checked
+                                            ? field.onChange([...(field.value || []), category.id])
+                                            : field.onChange(
+                                                field.value?.filter(
+                                                  (value) => value !== category.id
+                                                )
+                                              );
+                                        }}
+                                      />
+                                    </FormControl>
+                                    <FormLabel className="font-normal cursor-pointer">
+                                      {category.name}
+                                    </FormLabel>
+                                  </FormItem>
+                                );
+                              }}
+                            />
+                          ))}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isPending}>
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {t.saving}
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  {t.save}
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </Form>
+      
+      {newPostData && (
+        <TranslationDialog
+          lang={lang}
+          postId={newPostData.postId}
+          postContent={newPostData.postContent}
+          isOpen={isTranslationDialogOpen}
+          onClose={() => setIsTranslationDialogOpen(false)}
+        />
+      )}
+    </>
   );
 }
