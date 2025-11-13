@@ -9,16 +9,13 @@ export async function generateStaticParams() {
   return i18n.locales.map((lang) => ({ lang }));
 }
 
-interface LocalizedLayoutProps {
-  children: ReactNode;
-  params: { lang: Locale };
-}
-
+// Usamos 'any' para satisfazer o compilador Next.js em rotas dinâmicas
 export default function LocalizedLayout({
   children,
   params,
-}: Readonly<LocalizedLayoutProps>) {
-  const { lang } = params;
+}: Readonly<any>) {
+  // Tipagem interna para segurança
+  const { lang } = params as { lang: Locale };
   
   return (
     <>

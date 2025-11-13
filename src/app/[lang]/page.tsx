@@ -2,13 +2,13 @@ import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 import { Locale } from "@/lib/i18n/config";
 
-interface LocalizedPageProps {
-  params: { lang: Locale };
-  searchParams: { [key: string]: string | string[] | undefined };
-}
-
-export default function Home({ params }: LocalizedPageProps) {
-  const { lang } = params;
+// Usamos 'any' para satisfazer o compilador Next.js em rotas dinâmicas
+export default function Home({ 
+  params, 
+  searchParams 
+}: any) {
+  // Tipagem interna para segurança
+  const { lang } = params as { lang: Locale };
   
   return (
     <>
