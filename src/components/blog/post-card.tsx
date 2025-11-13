@@ -1,0 +1,60 @@
+import React from 'react';
+import Link from 'next/link';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { PostListItem } from '@/app/actions/blog';
+import { Locale } from '@/lib/i18n/config';
+import { Calendar, Globe } from 'lucide-react';
+
+interface PostCardProps {
+  post: PostListItem;
+  lang: Locale;
+}
+
+const PostCard: React.FC<PostCardProps> = ({ post, lang }) => {
+  const formattedDate = post.published_at 
+    ? new Date(post.published_at).toLocaleDateString(lang, { year: 'numeric', month: 'long', day: 'numeric' })
+    : 'N/A';
+
+  return (
+    <Link href={`/${lang}/blog/${post.slug}`} className="block h-full">
+      <Card className="h-full flex flex-col overflow-hidden transition-shadow hover:shadow-lg">
+        {post.image_url && (
+          <div className="relative h-48 w-full overflow-hidden">
+            <img 
+              src={post.image_url} 
+              alt={post.title} 
+              className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+            />
+          </div>
+        )}
+        <CardHeader className="flex-grow">
+          <CardTitle className="text-xl line-clamp-2">{post.title}</CardTitle>
+          {post.summary && (
+            <p className="text-sm text-muted-foreground line-clamp-3 mt-2">
+              {post.summary}
+            </p>
+          )}
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex items-center text-xs text-muted-foreground space-x-3">
+            <div className="flex items-center gap-1">
+              <Calendar className="h-3 w-3" />
+              <span>{formattedDate}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Globe className="h-3 w-3" />
+              <span className="uppercase">{post.language_code}</span>
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter>
+          <span className="text-sm font-medium text-primary hover:underline">
+            {lang === 'pt' ? 'Ler mais' : lang === 'en' ? 'Read more' : 'Leer más'}
+          </span>
+        </CardFooter>
+      </Card>
+    </Link>
+  );
+};
+
+export default PostCard;

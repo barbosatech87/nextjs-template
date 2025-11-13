@@ -116,3 +116,177 @@ export async function deletePost(postId: string, lang: string) {
   revalidatePath(`/${lang}/admin/blog`);
   return { success: true, message: "Post deletado com sucesso." };
 }
+
+// --- Novas Funções para o Blog Público ---
+
+const POSTS_PER_PAGE = 9;
+
+export type PostListItem = {
+  id: string;
+  slug: string;
+  image_url: string | null;
+  published_at: string | null;
+  // Campos que podem vir da tradução ou do original
+  title: string;
+  summary: string | null;
+  language_code: string;
+};
+
+export type PostDetail = {
+  id: string;
+  slug: string;
+  image_url: string | null;
+  published_at: string | null;
+  author_id: string | null;
+  author_first_name: string | null;
+  author_last_name: string | null;
+  // Campos que podem vir da tradução ou do original
+  title: string;
+  summary: string | null;
+  content: string;
+  language_code: string;
+};
+
+/**
+ * Busca posts publicados com paginação, priorizando a tradução para o idioma solicitado.
+ */
+export async function getPublishedPosts(lang: string, page: number = 1) {
+  const supabase = createSupabaseServerClient();
+  const offset = (page - 1) * POSTS_PER_PAGE;
+
+  // 1. Buscar posts originais publicados, ordenados por data de publicação
+  let query = supabase
+    .from('blog_posts')
+    .select('id, slug, title, summary, image_url, published_at, language_code', { count: 'exact' })
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .range(offset, offset + POSTS_PER_PAGE - 1);
+
+  const { data: originalPosts, count, error } = await query;
+
+  if (error) {
+    console.error("Error fetching published posts:", error);
+    return { posts: [], totalPages: 0, currentPage: page };
+  }
+
+  if (!originalPosts || originalPosts.length === 0) {
+    return { posts: [], totalPages: 0, currentPage: page };
+  }
+
+  const postIds = originalPosts.map(p => p.id);
+  
+  // 2. Se o idioma solicitado não for o idioma original (pt), buscar traduções
+  let finalPosts: PostListItem[] = originalPosts.map(p => ({
+    id: p.id,
+    slug: p.slug,
+    image_url: p.image_url,
+    published_at: p.published_at,
+    title: p.title,
+    summary: p.summary,
+    language_code: p.language_code,
+  }));
+
+  if (lang !== 'pt') {
+    const { data: translations, error: transError } = await supabase
+      .from('blog_post_translations')
+      .select('post_id, translated_title, translated_summary, language_code')
+      .in('post_id', postIds)
+      .eq('language_code', lang);
+
+    if (transError) {
+      console.error("Error fetching translations:", transError);
+      // Continua com os posts originais se a tradução falhar
+    } else if (translations) {
+      const translationMap = new Map(translations.map(t => [t.post_id, t]));
+
+      finalPosts = finalPosts.map(post => {
+        const translation = translationMap.get(post.id);
+        if (translation) {
+          return {
+            ...post,
+            title: translation.translated_title,
+            summary: translation.translated_summary,
+            language_code: translation.language_code, // Atualiza o código do idioma para o traduzido
+          };
+        }
+        return post;
+      });
+    }
+  }
+
+  const totalPages = count ? Math.ceil(count / POSTS_PER_PAGE) : 0;
+
+  return { 
+    posts: finalPosts, 
+    totalPages, 
+    currentPage: page 
+  };
+}
+
+/**
+ * Busca um post específico por slug, priorizando a tradução para o idioma solicitado.
+ */
+export async function getPostBySlug(slug: string, lang: string): Promise<PostDetail | null> {
+  const supabase = createSupabaseServerClient();
+
+  // 1. Buscar o post original pelo slug
+  const { data: post, error: postError } = await supabase
+    .from('blog_posts')
+    .select(`
+      id, slug, title, summary, content, image_url, published_at, language_code, author_id,
+      profiles (first_name, last_name)
+    `)
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .single();
+
+  if (postError || !post) {
+    console.error("Error fetching post by slug:", postError);
+    return null;
+  }
+
+  // O Supabase retorna `profiles` como um array se não usarmos .single() na sub-query,
+  // mas como o relacionamento é 1:1 (author_id -> profiles.id), ele deve ser um array de 1 ou 0 elementos.
+  // Vamos tipar e acessar o primeiro elemento.
+  const authorProfile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+
+  const postDetail: PostDetail = {
+    id: post.id,
+    slug: post.slug,
+    image_url: post.image_url,
+    published_at: post.published_at,
+    author_id: post.author_id,
+    author_first_name: authorProfile?.first_name || null,
+    author_last_name: authorProfile?.last_name || null,
+    title: post.title,
+    summary: post.summary,
+    content: post.content,
+    language_code: post.language_code,
+  };
+
+  // 2. Se o idioma solicitado não for o idioma original (pt), buscar tradução
+  if (lang !== post.language_code) {
+    const { data: translation, error: transError } = await supabase
+      .from('blog_post_translations')
+      .select('translated_title, translated_summary, translated_content')
+      .eq('post_id', post.id)
+      .eq('language_code', lang)
+      .single();
+
+    if (transError) {
+      console.warn(`Translation not found for post ${post.id} in language ${lang}. Using original content.`);
+      // Retorna o post original se a tradução falhar
+      return postDetail;
+    }
+
+    if (translation) {
+      // Aplica a tradução
+      postDetail.title = translation.translated_title;
+      postDetail.summary = translation.translated_summary;
+      postDetail.content = translation.translated_content;
+      postDetail.language_code = lang; // Indica que o conteúdo é traduzido
+    }
+  }
+
+  return postDetail;
+}

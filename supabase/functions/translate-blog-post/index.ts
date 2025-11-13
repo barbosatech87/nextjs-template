@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
+// Adicionando declarações de tipos para os módulos Deno/ESM
+declare const Deno: any;
+declare const Request: any;
+declare const Response: any;
+
 // Define os cabeçalhos CORS
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
