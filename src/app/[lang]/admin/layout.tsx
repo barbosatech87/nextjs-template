@@ -26,6 +26,9 @@ export default async function AdminLayout({
     .eq('id', user.id)
     .single();
 
+  // Adicionando log de depuração
+  console.log(`User ID: ${user.id}, Role fetched: ${profile?.role}`);
+
   if (profile?.role !== 'admin') {
     // Se não for admin, redireciona para a página principal do idioma
     return redirect(`/${lang}`);
