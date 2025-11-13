@@ -5,9 +5,10 @@ import Link from 'next/link';
 import { useSession } from '@/components/auth/session-context-provider';
 import { Locale } from '@/lib/i18n/config';
 import { Button } from '@/components/ui/button';
-import { User, BookOpen, Brain, Calendar, Rss } from 'lucide-react';
+import { User, BookOpen, Brain, Calendar, Rss, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LanguageSwitcher } from '@/components/i18n/language-switcher';
+import { useProfile } from '@/hooks/use-profile';
 
 interface HeaderProps {
   lang: Locale;
@@ -22,6 +23,8 @@ const navTexts = {
     blog: "Blog",
     login: "Login / Cadastro",
     appName: "Bíblia & IA",
+    admin: "Painel Admin",
+    profile: "Perfil",
   },
   en: {
     bible: "Read Bible",
@@ -30,6 +33,8 @@ const navTexts = {
     blog: "Blog",
     login: "Login / Register",
     appName: "Bible & AI",
+    admin: "Admin Panel",
+    profile: "Profile",
   },
   es: {
     bible: "Leer Biblia",
@@ -38,11 +43,14 @@ const navTexts = {
     blog: "Blog",
     login: "Iniciar Sesión / Registro",
     appName: "Biblia & IA",
+    admin: "Panel de Admin",
+    profile: "Perfil",
   },
 };
 
 const Header: React.FC<HeaderProps> = ({ lang }) => {
   const { user, isLoading } = useSession();
+  const { profile } = useProfile();
   const texts = navTexts[lang] || navTexts.pt;
 
   const navItems = [
@@ -81,11 +89,20 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
           {isLoading ? (
             <div className="h-8 w-24 animate-pulse bg-muted rounded-md" />
           ) : user ? (
-            <Link href={`/${lang}/profile`}>
-              <Button variant="ghost" size="icon">
-                <User className="h-5 w-5" />
-              </Button>
-            </Link>
+            <>
+              {profile?.role === 'admin' && (
+                <Link href={`/${lang}/admin`}>
+                  <Button variant="ghost" size="icon" aria-label={texts.admin}>
+                    <Shield className="h-5 w-5" />
+                  </Button>
+                </Link>
+              )}
+              <Link href={`/${lang}/profile`}>
+                <Button variant="ghost" size="icon" aria-label={texts.profile}>
+                  <User className="h-5 w-5" />
+                </Button>
+              </Link>
+            </>
           ) : (
             <Link href={`/${lang}/auth`}>
               <Button variant="default" size="sm">
