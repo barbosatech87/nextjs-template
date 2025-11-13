@@ -13,17 +13,15 @@ export const VerseDisplay: React.FC<VerseDisplayProps> = ({ verses }) => {
   }
 
   return (
-    <div className="prose prose-lg lg:prose-xl max-w-none font-serif leading-relaxed text-foreground">
-      <p>
-        {verses.map((verse) => (
-          <React.Fragment key={verse.verse_number}>
-            <sup className="font-sans font-bold text-primary text-sm top-[-0.5em] mr-1">
-              {verse.verse_number}
-            </sup>
-            <span className="break-words">{verse.text} </span>
-          </React.Fragment>
-        ))}
-      </p>
+    <div className="prose prose-lg lg:prose-xl max-w-none font-serif text-foreground">
+      {verses.map((verse) => (
+        <p key={verse.verse_number} className="mb-4 leading-relaxed">
+          <sup className="font-sans font-bold text-primary text-sm top-[-0.5em] mr-1">
+            {verse.verse_number}
+          </sup>
+          <span className="break-words">{verse.text}</span>
+        </p>
+      ))}
     </div>
   );
 };

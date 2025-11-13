@@ -75,6 +75,10 @@ export default async function ChapterPage({ params }: AppPageProps<{ lang: Local
         texts={texts}
       />
       
+      <header className="text-center my-8">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{translatedBookName} {chapterNumber}</h1>
+      </header>
+
       <div className="mt-8">
         <VerseDisplay verses={verses || []} />
       </div>
