@@ -1,8 +1,8 @@
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { BlogPostsTable } from "@/components/admin/blog/blog-posts-table";
-import { Locale } from "@/lib/i18n/config";
+import { LocalizedPageProps } from "@/types/next";
 
-export default async function AdminBlogPage({ params }: { params: { lang: Locale } }) {
+export default async function AdminBlogPage({ params }: LocalizedPageProps) {
   const { lang } = params;
   const supabase = createSupabaseServerClient();
   

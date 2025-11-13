@@ -1,12 +1,26 @@
-import { use } from "react";
-import { Locale } from "@/lib/i18n/config";
+import { LocalizedPageProps } from "@/types/next";
+import { PostForm } from "@/components/admin/blog/post-form";
 
-export default function NewPostPage({ params }: { params: Promise<{ lang: Locale }> }) {
-  const { lang } = use(params);
+const texts = {
+  pt: {
+    title: "Criar Nova Postagem",
+  },
+  en: {
+    title: "Create New Post",
+  },
+  es: {
+    title: "Crear Nueva Entrada",
+  },
+};
+
+export default function NewPostPage({ params }: LocalizedPageProps) {
+  const { lang } = params;
+  const t = texts[lang] || texts.pt;
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold">Nova Postagem</h1>
-      <p>Página para criar uma nova postagem no blog. (Em construção)</p>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">{t.title}</h1>
+      <PostForm lang={lang} />
     </div>
   );
 }
