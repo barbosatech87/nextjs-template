@@ -13,7 +13,7 @@ const texts = {
   },
 };
 
-export default function NewPostPage({ params }: LocalizedPageProps) {
+export default async function NewPostPage({ params }: LocalizedPageProps) {
   const { lang } = params;
   const t = texts[lang] || texts.pt;
 

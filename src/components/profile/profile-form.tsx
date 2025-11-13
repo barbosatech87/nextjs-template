@@ -49,7 +49,8 @@ const texts = {
 };
 
 const ProfileForm: React.FC<ProfileFormProps> = ({ lang, initialProfile }) => {
-  const { updateProfile } = useProfile();
+  // Mantemos o useProfile aqui apenas para a função updateProfile
+  const { updateProfile } = useProfile(); 
   const t = texts[lang] || texts.pt;
 
   const form = useForm<ProfileFormValues>({
@@ -67,7 +68,9 @@ const ProfileForm: React.FC<ProfileFormProps> = ({ lang, initialProfile }) => {
   async function onSubmit(values: ProfileFormValues) {
     const success = await updateProfile(values);
     if (success) {
-      form.reset(values); // Resetar o formulário para refletir o novo estado
+      // Não precisamos resetar o formulário, pois o `values` já está sendo atualizado
+      // com base no `initialProfile` que é atualizado pelo `useProfile` no wrapper.
+      // form.reset(values); 
     }
   }
 

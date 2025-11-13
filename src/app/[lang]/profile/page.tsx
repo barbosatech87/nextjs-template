@@ -1,17 +1,14 @@
-"use client";
-
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 import { Locale } from "@/lib/i18n/config";
-import { useSession } from "@/components/auth/session-context-provider";
+import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { redirect } from "next/navigation";
-import { useProfile } from "@/hooks/use-profile";
-import ProfileForm from "@/components/profile/profile-form";
-import PasswordChangeForm from "@/components/profile/password-change-form";
+import ProfileFormWrapper from "@/components/profile/profile-form-wrapper"; // Novo wrapper
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import PasswordChangeForm from "@/components/profile/password-change-form";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { use } from "react";
+import { LocalizedPageProps } from "@/types/next";
 
 const texts = {
   pt: {
@@ -34,19 +31,25 @@ const texts = {
   },
 };
 
-export default function ProfilePage({ params }: { params: Promise<{ lang: Locale }> }) {
-  const { lang } = use(params);
-  const { user, isLoading: isSessionLoading } = useSession();
-  const { profile, isLoading: isProfileLoading } = useProfile();
+// Componente Wrapper para lidar com o estado do perfil no cliente
+// Isso permite que a página principal seja um Server Component
+// e resolve o problema de use(params)
+// O componente ProfileFormWrapper será criado abaixo.
+
+export default async function ProfilePage({ params }: LocalizedPageProps) {
+  const { lang } = params;
   const t = texts[lang] || texts.pt;
+  
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
   // 1. Redirecionar se não estiver logado
-  if (!isSessionLoading && !user) {
+  if (!user) {
     redirect(`/${lang}/auth`);
-    return null;
   }
 
-  const isLoading = isSessionLoading || isProfileLoading;
+  // Não precisamos buscar o perfil aqui, pois o useProfile fará isso no cliente.
+  // Apenas garantimos que o usuário está logado.
 
   return (
     <>
@@ -54,36 +57,26 @@ export default function ProfilePage({ params }: { params: Promise<{ lang: Locale
       <div className="flex-grow container px-4 md:px-8 py-12">
         <h1 className="text-3xl font-bold mb-8">{t.title}</h1>
 
-        {isLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-full max-w-md" />
-            <Skeleton className="h-10 w-full max-w-md" />
-            <Skeleton className="h-10 w-32" />
-            <Separator className="my-8" />
-            <Skeleton className="h-10 w-full max-w-md" />
-            <Skeleton className="h-10 w-32" />
-          </div>
-        ) : (
-          <div className="grid gap-8 lg:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ProfileForm lang={lang} initialProfile={profile} />
-              </CardContent>
-            </Card>
+        <div className="grid gap-8 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {/* O ProfileFormWrapper lida com o carregamento e o estado do perfil no cliente */}
+              <ProfileFormWrapper lang={lang} />
+            </CardContent>
+          </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>{t.passwordChangeTitle}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <PasswordChangeForm lang={lang} />
-              </CardContent>
-            </Card>
-          </div>
-        )}
+          <Card>
+            <CardHeader>
+              <CardTitle>{t.passwordChangeTitle}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PasswordChangeForm lang={lang} />
+            </CardContent>
+          </Card>
+        </div>
       </div>
       <Footer lang={lang} />
     </>
