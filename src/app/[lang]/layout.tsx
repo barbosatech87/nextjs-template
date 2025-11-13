@@ -2,7 +2,8 @@ import { SessionContextProvider } from "@/components/auth/session-context-provid
 import { i18n, Locale } from "@/lib/i18n/config";
 import { Toaster } from "@/components/ui/sonner";
 import { LangSetter } from "@/components/i18n/lang-setter";
-import { LocalizedLayoutProps } from "@/types/next";
+import { use } from "react";
+import { ReactNode } from "react";
 
 // Garante que o Next.js gere páginas para todos os idiomas
 export async function generateStaticParams() {
@@ -12,12 +13,15 @@ export async function generateStaticParams() {
 export default function LocalizedLayout({
   children,
   params,
-}: LocalizedLayoutProps) {
-  const { lang } = params;
+}: {
+  children: ReactNode;
+  params: Promise<{ lang: Locale }>;
+}) {
+  const { lang } = use(params);
   
   return (
     <>
-      <LangSetter lang={lang as Locale} />
+      <LangSetter lang={lang} />
       <SessionContextProvider>
         <div className="flex-grow flex flex-col min-h-screen">
           {children}
