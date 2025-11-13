@@ -13,10 +13,10 @@ export async function generateStaticParams() {
 export default function LocalizedLayout({
   children,
   params,
-}: {
+}: Readonly<{
   children: ReactNode;
   params: { lang: Locale };
-}) {
+}>) {
   const { lang } = params;
   
   return (

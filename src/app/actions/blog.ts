@@ -294,3 +294,158 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
 
   return postDetail;
 }
+
+// --- Funções para a Página Inicial ---
+
+export type DailyVerseData = {
+  book: string;
+  chapter: number;
+  verse_number: number;
+  text: string;
+};
+
+export async function getDailyVerse(lang: string): Promise<DailyVerseData | null> {
+  const supabase = createSupabaseServerClient();
+  const today = new Date().toISOString().split('T')[0];
+
+  let { data: dailyVerseRef, error: dailyVerseError } = await supabase
+    .from('daily_verse')
+    .select('book, chapter, verse_number')
+    .eq('date', today)
+    .eq('language_code', lang)
+    .single();
+
+  if (!dailyVerseRef || dailyVerseError) {
+    console.warn("Daily verse not found for today, fetching fallback.", dailyVerseError?.message);
+    const { data: fallbackRef, error: fallbackError } = await supabase
+      .rpc('get_fallback_verse', { lang_code: lang })
+      .single();
+    
+    if (fallbackError || !fallbackRef) {
+      console.error("Failed to get fallback verse:", fallbackError);
+      return null;
+    }
+    dailyVerseRef = fallbackRef as { book: string; chapter: number; verse_number: number };
+  }
+
+  if (!dailyVerseRef) {
+    return null;
+  }
+
+  const { data: verse, error: verseError } = await supabase
+    .from('verses')
+    .select('text')
+    .eq('book', dailyVerseRef.book)
+    .eq('chapter', dailyVerseRef.chapter)
+    .eq('verse_number', dailyVerseRef.verse_number)
+    .eq('language_code', lang)
+    .single();
+
+  if (verseError || !verse) {
+    console.error("Failed to fetch verse text for daily verse:", verseError);
+    return null;
+  }
+
+  return {
+    ...dailyVerseRef,
+    text: verse.text,
+  };
+}
+
+export async function getRecentPosts({
+  lang,
+  limit,
+  includeCategorySlug,
+  excludeCategorySlug,
+}: {
+  lang: string;
+  limit: number;
+  includeCategorySlug?: string;
+  excludeCategorySlug?: string;
+}): Promise<PostListItem[]> {
+  const supabase = createSupabaseServerClient();
+
+  const selectString = `id, slug, title, summary, image_url, published_at, language_code${includeCategorySlug ? ',blog_post_categories!inner(blog_categories!inner(slug))' : ''}`;
+
+  let query = supabase
+    .from('blog_posts')
+    .select(selectString)
+    .eq('status', 'published');
+
+  if (includeCategorySlug) {
+    query = query.eq('blog_post_categories.blog_categories.slug', includeCategorySlug);
+  }
+  
+  if (excludeCategorySlug) {
+    const { data: categoryToExclude } = await supabase
+      .from('blog_categories')
+      .select('id')
+      .eq('slug', excludeCategorySlug)
+      .single();
+
+    if (categoryToExclude) {
+      const { data: postsToExclude } = await supabase
+        .from('blog_post_categories')
+        .select('post_id')
+        .eq('category_id', categoryToExclude.id);
+
+      if (postsToExclude && postsToExclude.length > 0) {
+        const postIdsToExclude = postsToExclude.map(p => p.post_id);
+        query = query.not('id', 'in', `(${postIdsToExclude.join(',')})`);
+      }
+    }
+  }
+
+  query = query.order('published_at', { ascending: false }).limit(limit);
+
+  const { data: originalPosts, error } = await query;
+
+  if (error) {
+    console.error("Error fetching recent posts:", error);
+    return [];
+  }
+
+  if (!originalPosts || originalPosts.length === 0) {
+    return [];
+  }
+
+  const postIds = originalPosts.map(p => p.id);
+  
+  let finalPosts: PostListItem[] = originalPosts.map(p => ({
+    id: p.id,
+    slug: p.slug,
+    image_url: p.image_url,
+    published_at: p.published_at,
+    title: p.title,
+    summary: p.summary,
+    language_code: p.language_code,
+  }));
+
+  if (lang !== 'pt') {
+    const { data: translations, error: transError } = await supabase
+      .from('blog_post_translations')
+      .select('post_id, translated_title, translated_summary, language_code')
+      .in('post_id', postIds)
+      .eq('language_code', lang);
+
+    if (transError) {
+      console.error("Error fetching translations for recent posts:", transError);
+    } else if (translations) {
+      const translationMap = new Map(translations.map(t => [t.post_id, t]));
+      finalPosts = finalPosts.map(post => {
+        const translation = translationMap.get(post.id);
+        if (translation) {
+          return {
+            ...post,
+            title: translation.translated_title,
+            summary: translation.translated_summary,
+            language_code: translation.language_code,
+          };
+        }
+        return post;
+      });
+    }
+  }
+
+  return finalPosts;
+}
