@@ -9,7 +9,7 @@ interface FooterProps {
 // Simulação de textos de rodapé
 const footerTexts = {
   pt: {
-    copyright: "© 2024 Bíblia & IA. Todos os direitos reservados.",
+    copyright: "© 2024 PaxWord. Todos os direitos reservados.",
     links: {
       privacy: "Política de Privacidade",
       terms: "Termos de Serviço",
@@ -17,7 +17,7 @@ const footerTexts = {
     }
   },
   en: {
-    copyright: "© 2024 Bible & AI. All rights reserved.",
+    copyright: "© 2024 PaxWord. All rights reserved.",
     links: {
       privacy: "Privacy Policy",
       terms: "Terms of Service",
@@ -25,7 +25,7 @@ const footerTexts = {
     }
   },
   es: {
-    copyright: "© 2024 Biblia & IA. Todos los derechos reservados.",
+    copyright: "© 2024 PaxWord. Todos los derechos reservados.",
     links: {
       privacy: "Política de Privacidad",
       terms: "Términos de Servicio",
