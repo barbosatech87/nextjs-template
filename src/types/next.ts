@@ -1,11 +1,23 @@
-import { ReactNode } from "react";
-import { Locale } from "@/lib/i18n/config";
+import { ReactNode } from 'react';
 
-// Esta interface permanece pois é um bloco de construção útil.
-export interface NextLocalizedParams {
-  lang: Locale;
-  [key: string]: string | string[] | undefined;
-}
+// Define um tipo genérico para os parâmetros da rota
+type RouteParams = { [key: string]: string | string[] | undefined };
 
-// As interfaces LocalizedPageProps e LocalizedLayoutProps foram removidas
-// para evitar conflitos de tipo com o Next.js.
+// Define um tipo genérico para os parâmetros de busca
+type SearchParams = { [key: string]: string | string[] | undefined };
+
+/**
+ * Props para um componente de Página do Next.js (app router).
+ */
+export type PageProps = {
+  params: RouteParams;
+  searchParams?: SearchParams;
+};
+
+/**
+ * Props para um componente de Layout do Next.js (app router).
+ */
+export type LayoutProps = {
+  children: ReactNode;
+  params: RouteParams;
+};

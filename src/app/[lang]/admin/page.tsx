@@ -1,4 +1,3 @@
-import { use } from "react";
 import { Locale } from "@/lib/i18n/config";
 
 const texts = {
@@ -16,8 +15,8 @@ const texts = {
   },
 };
 
-export default function AdminDashboardPage({ params }: { params: Promise<{ lang: Locale }> }) {
-  const { lang } = use(params);
+export default function AdminDashboardPage({ params }: { params: { lang: Locale } }) {
+  const { lang } = params;
   const t = texts[lang as keyof typeof texts] || texts.pt;
 
   return (

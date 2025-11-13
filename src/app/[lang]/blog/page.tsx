@@ -3,7 +3,6 @@ import Footer from "@/components/layout/footer";
 import { getPublishedPosts } from "@/app/actions/blog";
 import PostCard from "@/components/blog/post-card";
 import { PaginationControls } from "@/components/blog/pagination-controls";
-import { use } from "react";
 import { Locale } from "@/lib/i18n/config";
 
 const texts = {
@@ -25,10 +24,10 @@ export default async function BlogListPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ lang: Locale }>;
+  params: { lang: Locale };
   searchParams?: { [key: string]: string | string[] | undefined };
 }) {
-  const { lang } = use(params);
+  const { lang } = params;
   const t = texts[lang as keyof typeof texts] || texts.pt;
 
   const pageParam = searchParams?.page;
