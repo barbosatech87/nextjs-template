@@ -5,10 +5,10 @@ import { ReactNode } from 'react';
  * We make it generic for both params and searchParams.
  */
 export type AppPageProps<
-  TParams = {},
-  TSearchParams extends { [key: string]: string | string[] | undefined } = {}
+  TParams = any,
+  TSearchParams = any
 > = {
-  params: TParams & { [key: string]: string };
+  params: TParams;
   searchParams?: TSearchParams;
 };
 
@@ -17,8 +17,8 @@ export type AppPageProps<
  * We make it generic for params.
  */
 export type AppLayoutProps<
-  TParams = {}
+  TParams = any
 > = {
   children: ReactNode;
-  params: TParams & { [key: string]: string };
+  params: TParams;
 };
