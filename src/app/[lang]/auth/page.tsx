@@ -10,7 +10,6 @@ import { useEffect, use } from 'react';
 
 type AuthPageProps = {
   params: Promise<{ lang: Locale }>;
-  searchParams?: { [key: string]: string | string[] | undefined };
 };
 
 export default function AuthPage({ params }: AuthPageProps) {
