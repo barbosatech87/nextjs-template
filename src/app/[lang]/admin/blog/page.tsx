@@ -1,0 +1,17 @@
+import { createSupabaseServerClient } from "@/integrations/supabase/server";
+import { LocalizedPageProps } from "@/types/next";
+import { BlogPostsTable } from "@/components/admin/blog/blog-posts-table";
+
+export default async function AdminBlogPage({ params: { lang } }: LocalizedPageProps) {
+  const supabase = createSupabaseServerClient();
+  
+  // Usando a função RPC para buscar os posts com dados do autor
+  const { data: posts, error } = await supabase.rpc('get_admin_blog_posts');
+
+  if (error) {
+    console.error("Error fetching blog posts:", error);
+    return <div>Erro ao carregar os posts. Tente novamente mais tarde.</div>;
+  }
+
+  return <BlogPostsTable posts={posts || []} lang={lang} />;
+}

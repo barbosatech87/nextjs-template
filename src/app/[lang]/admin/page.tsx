@@ -1,0 +1,27 @@
+import { LocalizedPageProps } from "@/types/next";
+
+const texts = {
+  pt: {
+    title: "Painel Administrativo",
+    welcome: "Bem-vindo ao painel de administração. Use a barra lateral para navegar.",
+  },
+  en: {
+    title: "Admin Dashboard",
+    welcome: "Welcome to the admin panel. Use the sidebar to navigate.",
+  },
+  es: {
+    title: "Panel de Administración",
+    welcome: "Bienvenido al panel de administración. Utilice la barra lateral para navegar.",
+  },
+};
+
+export default function AdminDashboardPage({ params: { lang } }: LocalizedPageProps) {
+  const t = texts[lang] || texts.pt;
+
+  return (
+    <div className="space-y-4">
+      <h1 className="text-2xl font-bold">{t.title}</h1>
+      <p>{t.welcome}</p>
+    </div>
+  );
+}

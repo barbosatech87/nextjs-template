@@ -1,0 +1,36 @@
+import { ReactNode } from 'react';
+import { redirect } from 'next/navigation';
+import { createSupabaseServerClient } from '@/integrations/supabase/server';
+import { LocalizedLayoutProps } from '@/types/next';
+import { AdminSidebar } from '@/components/admin/admin-sidebar';
+
+export default async function AdminLayout({ children, params }: LocalizedLayoutProps) {
+  const { lang } = params;
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return redirect(`/${lang}/auth`);
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin') {
+    // Se não for admin, redireciona para a página principal do idioma
+    return redirect(`/${lang}`);
+  }
+
+  return (
+    <div className="flex min-h-screen">
+      <AdminSidebar lang={lang}>
+        <div className="p-4 sm:p-6 lg:p-8 w-full">
+          {children}
+        </div>
+      </AdminSidebar>
+    </div>
+  );
+}
