@@ -2,12 +2,15 @@ import { use } from 'react';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
-import { LocalizedLayoutProps } from '@/types/next';
+import { Locale } from '@/lib/i18n/config';
 
 export default async function AdminLayout({
   children,
   params,
-}: LocalizedLayoutProps) {
+}: {
+  children: React.ReactNode;
+  params: Promise<{ lang: Locale }>;
+}) {
   const { lang } = use(params);
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -22,7 +25,6 @@ export default async function AdminLayout({
     .eq('id', user.id)
     .single();
 
-  // Adicionando log de depuração
   console.log(`User ID: ${user.id}, Role fetched: ${profile?.role}`);
 
   if (profile?.role !== 'admin' && profile?.role !== 'writer') {

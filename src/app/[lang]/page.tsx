@@ -1,11 +1,11 @@
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
-import { LocalizedPageProps } from "@/types/next";
+import { Locale } from "@/lib/i18n/config";
 import { use } from "react";
 
 export default async function Home({ 
   params, 
-}: LocalizedPageProps) {
+}: { params: Promise<{ lang: Locale }> }) {
   const { lang } = use(params);
   
   return (

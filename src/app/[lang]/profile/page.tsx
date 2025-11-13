@@ -1,15 +1,12 @@
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
-import { Locale } from "@/lib/i18n/config";
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { redirect } from "next/navigation";
-import ProfileFormWrapper from "@/components/profile/profile-form-wrapper"; // Novo wrapper
+import ProfileFormWrapper from "@/components/profile/profile-form-wrapper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import PasswordChangeForm from "@/components/profile/password-change-form";
-import { Separator } from "@/components/ui/separator";
-import { Skeleton } from "@/components/ui/skeleton";
-import { LocalizedPageProps } from "@/types/next";
 import { use } from "react";
+import { Locale } from "@/lib/i18n/config";
 
 const texts = {
   pt: {
@@ -32,7 +29,7 @@ const texts = {
   },
 };
 
-export default async function ProfilePage({ params }: LocalizedPageProps) {
+export default async function ProfilePage({ params }: { params: Promise<{ lang: Locale }> }) {
   const { lang } = use(params);
   const t = texts[lang as keyof typeof texts] || texts.pt;
   

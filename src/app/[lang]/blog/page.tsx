@@ -1,10 +1,10 @@
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
-import { LocalizedPageProps } from "@/types/next";
 import { getPublishedPosts } from "@/app/actions/blog";
 import PostCard from "@/components/blog/post-card";
 import { PaginationControls } from "@/components/blog/pagination-controls";
 import { use } from "react";
+import { Locale } from "@/lib/i18n/config";
 
 const texts = {
   pt: {
@@ -21,12 +21,21 @@ const texts = {
   },
 };
 
-export default async function BlogListPage({ params, searchParams }: LocalizedPageProps) {
+export default async function BlogListPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ lang: Locale }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { lang } = use(params);
   const sp = searchParams ? use(searchParams) : undefined;
 
-  const t = texts[lang] || texts.pt;
-  const currentPage = parseInt((sp?.page as string) || '1', 10);
+  const t = texts[lang as keyof typeof texts] || texts.pt;
+
+  const pageParam = sp?.page;
+  const pageStr = Array.isArray(pageParam) ? pageParam[0] : pageParam;
+  const currentPage = parseInt(pageStr || '1', 10);
 
   const { posts, totalPages } = await getPublishedPosts(lang, currentPage);
 

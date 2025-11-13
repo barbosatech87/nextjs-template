@@ -1,15 +1,12 @@
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
-import { LocalizedPageProps } from "@/types/next";
 import { getPostBySlug } from "@/app/actions/blog";
 import { notFound } from "next/navigation";
 import { Calendar, User, Globe } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { use } from "react";
-
-// Nota: Em um projeto real, você usaria uma biblioteca de renderização de Markdown (como 'remark' ou 'markdown-to-jsx')
-// para renderizar o conteúdo. Por simplicidade e para evitar adicionar dependências agora, usaremos 'dangerouslySetInnerHTML'.
+import { Locale } from "@/lib/i18n/config";
 
 const texts = {
   pt: {
@@ -32,9 +29,9 @@ const texts = {
   },
 };
 
-export default async function BlogPostPage({ params }: LocalizedPageProps) {
+export default async function BlogPostPage({ params }: { params: Promise<{ lang: Locale; slug: string | string[] }> }) {
   const { lang, slug } = use(params);
-  const t = texts[lang] || texts.pt;
+  const t = texts[lang as keyof typeof texts] || texts.pt;
 
   if (Array.isArray(slug) || !slug) {
     notFound();

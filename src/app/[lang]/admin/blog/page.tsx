@@ -1,13 +1,12 @@
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { BlogPostsTable } from "@/components/admin/blog/blog-posts-table";
-import { LocalizedPageProps } from "@/types/next";
 import { use } from "react";
+import { Locale } from "@/lib/i18n/config";
 
-export default async function AdminBlogPage({ params }: LocalizedPageProps) {
+export default async function AdminBlogPage({ params }: { params: Promise<{ lang: Locale }> }) {
   const { lang } = use(params);
   const supabase = createSupabaseServerClient();
   
-  // Usando a função RPC para buscar os posts com dados do autor
   const { data: posts, error } = await supabase.rpc('get_admin_blog_posts');
 
   if (error) {
