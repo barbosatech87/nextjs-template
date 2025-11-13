@@ -1,73 +1,50 @@
 # AI Development Rules
 
-This document outlines the technology stack and specific library usage guidelines for this Next.js application. Adhering to these rules will help maintain consistency, improve collaboration, and ensure the AI assistant can effectively understand and modify the codebase.
+Este projeto usa **Next.js (App Router)** com **TypeScript**, **TailwindCSS** e **Shadcn/UI**.
 
-## Tech Stack Overview
+## Regras principais
 
-The application is built using the following core technologies:
+1. **Framework**
+   - Sempre usar Next.js App Router (`src/app/`).
+   - Não usar `react-router-dom`, `vite` ou qualquer configuração de Vite.
 
-*   **Framework**: Next.js (App Router)
-*   **Language**: TypeScript
-*   **UI Components**: Shadcn/UI - A collection of re-usable UI components built with Radix UI and Tailwind CSS.
-*   **Styling**: Tailwind CSS - A utility-first CSS framework for rapid UI development.
-*   **Icons**: Lucide React - A comprehensive library of simply beautiful SVG icons.
-*   **Forms**: React Hook Form for managing form state and validation, typically with Zod for schema validation.
-*   **State Management**: Primarily React Context API and built-in React hooks (`useState`, `useReducer`).
-*   **Notifications/Toasts**: Sonner for displaying non-intrusive notifications.
-*   **Charts**: Recharts for data visualization.
-*   **Animation**: `tailwindcss-animate` and animation capabilities built into Radix UI components.
+2. **UI**
+   - Usar componentes do diretório `src/components/ui/` (Shadcn/UI).
+   - Se precisar de algo novo, criar em `src/components/` seguindo o padrão Shadcn (Radix + Tailwind).
+   - Não adicionar bibliotecas externas de UI sem necessidade.
 
-## Library Usage Guidelines
+3. **Estilo**
+   - Exclusivamente TailwindCSS.
+   - `globals.css` só para estilos globais e diretivas do Tailwind.
 
-To ensure consistency and leverage the chosen stack effectively, please follow these rules:
+4. **Formulários**
+   - Usar `react-hook-form` + `zod` para validação.
 
-1.  **UI Components**:
-    *   **Primary Choice**: Always prioritize using components from the `src/components/ui/` directory (Shadcn/UI components).
-    *   **Custom Components**: If a required component is not available in Shadcn/UI, create a new component in `src/components/` following Shadcn/UI's composition patterns (i.e., building on Radix UI primitives and styled with Tailwind CSS).
-    *   **Avoid**: Introducing new, third-party UI component libraries without discussion.
+5. **Ícones**
+   - Usar apenas `lucide-react`.
 
-2.  **Styling**:
-    *   **Primary Choice**: Exclusively use Tailwind CSS utility classes for all styling.
-    *   **Global Styles**: Reserve `src/app/globals.css` for base Tailwind directives, global CSS variable definitions, and minimal base styling. Avoid adding component-specific styles here.
-    *   **CSS-in-JS**: Do not use CSS-in-JS libraries (e.g., Styled Components, Emotion).
+6. **Estado**
+   - Usar `useState`, `useReducer` e Context API.
+   - Não usar Redux ou outras libs sem discussão.
 
-3.  **Icons**:
-    *   **Primary Choice**: Use icons from the `lucide-react` library.
+7. **API & Data**
+   - Usar rotas de API do Next.js (`src/app/api/`) ou Server Actions.
+   - Usar `fetch` nativo.
 
-4.  **Forms**:
-    *   **Management**: Use `react-hook-form` for all form logic (state, validation, submission).
-    *   **Validation**: Use `zod` for schema-based validation with `react-hook-form` via `@hookform/resolvers`.
+8. **Notificações**
+   - Usar `Sonner` (`src/components/ui/sonner.tsx`).
 
-5.  **State Management**:
-    *   **Local State**: Use React's `useState` and `useReducer` hooks for component-level state.
-    *   **Shared/Global State**: For state shared between multiple components, prefer React Context API.
-    *   **Complex Global State**: If application state becomes significantly complex, discuss the potential introduction of a dedicated state management library (e.g., Zustand, Jotai) before implementing.
+9. **Charts**
+   - Usar `recharts`.
 
-6.  **Routing**:
-    *   Utilize the Next.js App Router (file-system based routing in the `src/app/` directory).
+10. **Hooks & Utils**
+    - Hooks em `src/hooks/`.
+    - Funções utilitárias em `src/lib/utils.ts`.
 
-7.  **API Calls & Data Fetching**:
-    *   **Client-Side**: Use the native `fetch` API or a simple wrapper around it.
-    *   **Server-Side (Next.js)**: Leverage Next.js Route Handlers (in `src/app/api/`) or Server Actions for server-side logic and data fetching.
+11. **TypeScript**
+    - Todo código deve ser em TypeScript.
+    - Evitar `any`.
 
-8.  **Animations**:
-    *   Use `tailwindcss-animate` plugin and the animation utilities provided by Radix UI components.
-
-9.  **Notifications/Toasts**:
-    *   Use the `Sonner` component (from `src/components/ui/sonner.tsx`) for all toast notifications.
-
-10. **Charts & Data Visualization**:
-    *   Use `recharts` and its associated components (e.g., `src/components/ui/chart.tsx`) for displaying charts.
-
-11. **Utility Functions**:
-    *   General-purpose helper functions should be placed in `src/lib/utils.ts`.
-    *   Ensure functions are well-typed and serve a clear, reusable purpose.
-
-12. **Custom Hooks**:
-    *   Custom React hooks should be placed in the `src/hooks/` directory (e.g., `src/hooks/use-mobile.tsx`).
-
-13. **TypeScript**:
-    *   Write all new code in TypeScript.
-    *   Strive for strong typing and leverage TypeScript's features to improve code quality and maintainability. Avoid using `any` where possible.
-
-By following these guidelines, we can build a more robust, maintainable, and consistent application.
+## Proibições
+- Não usar `react-router-dom`, `vite`, `styled-components`, `emotion`.
+- Não usar bibliotecas de UI externas além do Shadcn/UI.

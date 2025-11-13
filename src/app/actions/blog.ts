@@ -232,29 +232,26 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
   // 1. Buscar o post original pelo slug
   const { data: post, error: postError } = await supabase
     .from('blog_posts')
-    .select(`
-      id, slug, title, summary, content, image_url, published_at, language_code, author_id,
-      profiles (first_name, last_name)
-    `)
+    .select('id, slug, title, summary, content, image_url, published_at, language_code, author_id')
     .eq('slug', slug)
     .eq('status', 'published')
     .single();
 
-  if (postError) {
-    // Loga o erro detalhado do Supabase
+  if (postError || !post) {
     console.error("Error fetching post by slug:", postError);
     return null;
   }
-  
-  if (!post) {
-    // Se não houver post, retorna null
-    return null;
-  }
 
-  // Tipagem manual para o perfil do autor, que é um objeto ou null.
-  // Usamos 'unknown' para forçar a conversão, já que o Supabase retorna a estrutura correta
-  // mas o TypeScript infere um array devido à tipagem padrão de joins.
-  const authorProfile = post.profiles as unknown as { first_name: string | null, last_name: string | null } | null;
+  // 2. Buscar o perfil do autor separadamente para maior robustez
+  let authorProfile: { first_name: string | null, last_name: string | null } | null = null;
+  if (post.author_id) {
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('id', post.author_id)
+      .single();
+    authorProfile = profileData;
+  }
 
   const postDetail: PostDetail = {
     id: post.id,
@@ -270,7 +267,7 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
     language_code: post.language_code,
   };
 
-  // 2. Se o idioma solicitado não for o idioma original (pt), buscar tradução
+  // 3. Se o idioma solicitado não for o idioma original, buscar tradução
   if (lang !== post.language_code) {
     const { data: translation, error: transError } = await supabase
       .from('blog_post_translations')
@@ -281,15 +278,13 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
 
     if (transError && transError.code !== 'PGRST116') { // PGRST116 = No rows found
       console.warn(`Translation query error for post ${post.id} in language ${lang}:`, transError);
-      // Continua com o post original
     }
 
     if (translation) {
-      // Aplica a tradução
       postDetail.title = translation.translated_title;
       postDetail.summary = translation.translated_summary;
       postDetail.content = translation.translated_content;
-      postDetail.language_code = lang; // Indica que o conteúdo é traduzido
+      postDetail.language_code = lang;
     }
   }
 
