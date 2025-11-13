@@ -11,7 +11,11 @@ export default function RootPage() {
   // 1. Obter os idiomas do navegador a partir dos cabeçalhos
   const headersList = headers();
   const negotiatorHeaders: Record<string, string> = {};
-  headersList.forEach((value, key) => (negotiatorHeaders[key] = value));
+  
+  // Usando for...of para iterar sobre ReadonlyHeaders (que é um iterável de [key, value])
+  for (const [key, value] of headersList) {
+    negotiatorHeaders[key] = value;
+  }
 
   // 2. Encontrar a melhor localidade correspondente
   const locales: string[] = [...i18n.locales];
