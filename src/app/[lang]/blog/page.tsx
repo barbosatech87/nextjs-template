@@ -3,9 +3,8 @@ import Footer from "@/components/layout/footer";
 import { getPublishedPosts } from "@/app/actions/blog";
 import PostCard from "@/components/blog/post-card";
 import { PaginationControls } from "@/components/blog/pagination-controls";
+import { LocalizedPageProps } from "@/types/next";
 import { use } from "react";
-import { Locale } from "@/lib/i18n/config";
-import { LocalizedPageProps } from "@/types/next"; // Importando a tipagem correta
 
 const texts = {
   pt: {
@@ -24,11 +23,10 @@ const texts = {
 
 export default async function BlogListPage({
   params,
-  searchParams, // searchParams agora é um objeto simples, não uma Promise
+  searchParams,
 }: LocalizedPageProps) {
-  const { lang } = use(params); // params continua sendo uma Promise
-  // searchParams é um objeto simples, não precisa de use()
-  const sp = searchParams; 
+  const { lang } = use(params); // Desempacotando params com use()
+  const sp = searchParams ? use(searchParams) : undefined; // Desempacotando searchParams com use()
 
   const t = texts[lang as keyof typeof texts] || texts.pt;
 

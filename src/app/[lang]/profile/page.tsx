@@ -5,8 +5,8 @@ import { redirect } from "next/navigation";
 import ProfileFormWrapper from "@/components/profile/profile-form-wrapper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import PasswordChangeForm from "@/components/profile/password-change-form";
+import { LocalizedPageProps } from "@/types/next";
 import { use } from "react";
-import { Locale } from "@/lib/i18n/config";
 
 const texts = {
   pt: {
@@ -29,8 +29,8 @@ const texts = {
   },
 };
 
-export default async function ProfilePage({ params }: { params: Promise<{ lang: Locale }> }) {
-  const { lang } = use(params);
+export default async function ProfilePage({ params }: LocalizedPageProps) {
+  const { lang } = use(params); // Desempacotando params com use()
   const t = texts[lang as keyof typeof texts] || texts.pt;
   
   const supabase = createSupabaseServerClient();

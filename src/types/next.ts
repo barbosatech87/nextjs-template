@@ -8,7 +8,7 @@ export interface NextLocalizedParams {
 
 export interface LocalizedPageProps {
   params: Promise<NextLocalizedParams>;
-  searchParams?: { [key: string]: string | string[] | undefined }; // Corrigido para não ser uma Promise
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export interface LocalizedLayoutProps {
