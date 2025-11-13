@@ -117,7 +117,7 @@ export async function deletePost(postId: string, lang: string) {
   return { success: true, message: "Post deletado com sucesso." };
 }
 
-// --- Novas Funções para o Blog Público ---
+// --- Funções para o Blog Público ---
 
 const POSTS_PER_PAGE = 9;
 
@@ -240,15 +240,21 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
     .eq('status', 'published')
     .single();
 
-  if (postError || !post) {
+  if (postError) {
+    // Loga o erro detalhado do Supabase
     console.error("Error fetching post by slug:", postError);
     return null;
   }
+  
+  if (!post) {
+    // Se não houver post, retorna null
+    return null;
+  }
 
-  // O Supabase retorna `profiles` como um array se não usarmos .single() na sub-query,
-  // mas como o relacionamento é 1:1 (author_id -> profiles.id), ele deve ser um array de 1 ou 0 elementos.
-  // Vamos tipar e acessar o primeiro elemento.
-  const authorProfile = Array.isArray(post.profiles) ? post.profiles[0] : post.profiles;
+  // Tipagem manual para o perfil do autor, que é um objeto ou null.
+  // Usamos 'unknown' para forçar a conversão, já que o Supabase retorna a estrutura correta
+  // mas o TypeScript infere um array devido à tipagem padrão de joins.
+  const authorProfile = post.profiles as unknown as { first_name: string | null, last_name: string | null } | null;
 
   const postDetail: PostDetail = {
     id: post.id,
@@ -273,10 +279,9 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
       .eq('language_code', lang)
       .single();
 
-    if (transError) {
-      console.warn(`Translation not found for post ${post.id} in language ${lang}. Using original content.`);
-      // Retorna o post original se a tradução falhar
-      return postDetail;
+    if (transError && transError.code !== 'PGRST116') { // PGRST116 = No rows found
+      console.warn(`Translation query error for post ${post.id} in language ${lang}:`, transError);
+      // Continua com o post original
     }
 
     if (translation) {
