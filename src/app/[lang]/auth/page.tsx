@@ -8,7 +8,12 @@ import { redirect } from 'next/navigation';
 import { Locale } from '@/lib/i18n/config';
 import { useEffect } from 'react';
 
-export default function AuthPage({ params: { lang } }: { params: { lang: Locale } }) {
+type AuthPageProps = {
+  params: { lang: Locale };
+  searchParams?: { [key: string]: string | string[] | undefined };
+};
+
+export default function AuthPage({ params: { lang } }: AuthPageProps) {
   const { user, isLoading } = useSession();
 
   // Redireciona usuários autenticados para a página inicial
