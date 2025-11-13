@@ -1,16 +1,11 @@
 import { ReactNode } from 'react';
 
 /**
- * A general type for Next.js page/layout params.
- */
-type NextJsParams = { [key: string]: string | string[] | undefined };
-
-/**
  * Props for a Page component in Next.js (app router).
  * We make it generic for both params and searchParams.
  */
 export type AppPageProps<
-  TParams extends NextJsParams = {},
+  TParams extends { [key: string]: string | string[] | undefined } = {},
   TSearchParams extends { [key: string]: string | string[] | undefined } = {}
 > = {
   params: TParams;
@@ -21,7 +16,9 @@ export type AppPageProps<
  * Props for a Layout component in Next.js (app router).
  * We make it generic for params.
  */
-export type AppLayoutProps<TParams extends NextJsParams = {}> = {
+export type AppLayoutProps<
+  TParams extends { [key: string]: string | string[] | undefined } = {}
+> = {
   children: ReactNode;
   params: TParams;
 };

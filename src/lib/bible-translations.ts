@@ -71,6 +71,16 @@ const bookNameTranslations: Record<string, Record<"pt" | "es", string>> = {
   "Revelation": { "pt": "Apocalipse", "es": "Apocalipsis" },
 };
 
+const slugToBookMap = new Map<string, string>();
+Object.keys(bookNameTranslations).forEach(bookName => {
+    const slug = bookName.toLowerCase().replace(/\s+/g, '-');
+    slugToBookMap.set(slug, bookName);
+});
+
+export function getBookNameFromSlug(slug: string): string | undefined {
+    return slugToBookMap.get(slug);
+}
+
 export function getTranslatedBookName(englishName: string, lang: Locale): string {
   if (lang === 'en') {
     return englishName;
