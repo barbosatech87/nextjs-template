@@ -6,14 +6,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/auth/session-context-provider';
 import { redirect } from 'next/navigation';
 import { Locale } from '@/lib/i18n/config';
-import { useEffect } from 'react';
+import { useEffect, use } from 'react';
 
 type AuthPageProps = {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
   searchParams?: { [key: string]: string | string[] | undefined };
 };
 
-export default function AuthPage({ params: { lang } }: AuthPageProps) {
+export default function AuthPage({ params }: AuthPageProps) {
+  const { lang } = use(params);
   const { user, isLoading } = useSession();
 
   // Redireciona usuários autenticados para a página inicial

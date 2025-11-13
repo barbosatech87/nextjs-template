@@ -11,26 +11,31 @@ import PasswordChangeForm from "@/components/profile/password-change-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { use } from "react";
 
 const texts = {
   pt: {
     title: "Meu Perfil",
     loading: "Carregando perfil...",
     unauthorized: "Acesso negado. Faça login para ver seu perfil.",
+    passwordChangeTitle: "Alterar Senha",
   },
   en: {
     title: "My Profile",
     loading: "Loading profile...",
     unauthorized: "Access denied. Please log in to view your profile.",
+    passwordChangeTitle: "Change Password",
   },
   es: {
     title: "Mi Perfil",
     loading: "Cargando perfil...",
     unauthorized: "Acceso denegado. Inicia sesión para ver tu perfil.",
+    passwordChangeTitle: "Cambiar Contraseña",
   },
 };
 
-export default function ProfilePage({ params: { lang } }: { params: { lang: Locale } }) {
+export default function ProfilePage({ params }: { params: Promise<{ lang: Locale }> }) {
+  const { lang } = use(params);
   const { user, isLoading: isSessionLoading } = useSession();
   const { profile, isLoading: isProfileLoading } = useProfile();
   const t = texts[lang] || texts.pt;
@@ -71,7 +76,7 @@ export default function ProfilePage({ params: { lang } }: { params: { lang: Loca
 
             <Card>
               <CardHeader>
-                <CardTitle>{texts.pt.title}</CardTitle> {/* Reusing title for card */}
+                <CardTitle>{t.passwordChangeTitle}</CardTitle>
               </CardHeader>
               <CardContent>
                 <PasswordChangeForm lang={lang} />
