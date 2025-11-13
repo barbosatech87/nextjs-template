@@ -7,6 +7,7 @@ import { Locale } from '@/lib/i18n/config';
 import { Button } from '@/components/ui/button';
 import { User, BookOpen, Brain, Calendar, Rss } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { LanguageSwitcher } from '@/components/i18n/language-switcher';
 
 interface HeaderProps {
   lang: Locale;
@@ -92,7 +93,7 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
               </Button>
             </Link>
           )}
-          {/* TODO: Adicionar seletor de idioma aqui */}
+          <LanguageSwitcher lang={lang} />
         </div>
       </div>
     </header>
