@@ -1,6 +1,8 @@
-import { LocalizedPageProps } from "@/types/next";
+import { use } from "react";
+import { Locale } from "@/lib/i18n/config";
 
-export default function AiImageGeneratorPage({ params: { lang } }: LocalizedPageProps) {
+export default function AiImageGeneratorPage({ params }: { params: Promise<{ lang: Locale }> }) {
+  const { lang } = use(params);
   return (
     <div>
       <h1 className="text-2xl font-bold">Gerador de Imagem com IA</h1>

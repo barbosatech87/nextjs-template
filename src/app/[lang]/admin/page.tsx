@@ -1,4 +1,5 @@
-import { LocalizedPageProps } from "@/types/next";
+import { use } from "react";
+import { Locale } from "@/lib/i18n/config";
 
 const texts = {
   pt: {
@@ -15,7 +16,8 @@ const texts = {
   },
 };
 
-export default function AdminDashboardPage({ params: { lang } }: LocalizedPageProps) {
+export default function AdminDashboardPage({ params }: { params: Promise<{ lang: Locale }> }) {
+  const { lang } = use(params);
   const t = texts[lang as keyof typeof texts] || texts.pt;
 
   return (

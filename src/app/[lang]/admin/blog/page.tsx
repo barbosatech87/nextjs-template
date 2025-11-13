@@ -1,9 +1,9 @@
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
-import { LocalizedPageProps } from "@/types/next";
 import { BlogPostsTable } from "@/components/admin/blog/blog-posts-table";
 import { Locale } from "@/lib/i18n/config";
 
-export default async function AdminBlogPage({ params: { lang } }: LocalizedPageProps) {
+export default async function AdminBlogPage({ params }: { params: { lang: Locale } }) {
+  const { lang } = params;
   const supabase = createSupabaseServerClient();
   
   // Usando a função RPC para buscar os posts com dados do autor
@@ -14,5 +14,5 @@ export default async function AdminBlogPage({ params: { lang } }: LocalizedPageP
     return <div>Erro ao carregar os posts. Tente novamente mais tarde.</div>;
   }
 
-  return <BlogPostsTable posts={posts || []} lang={lang as Locale} />;
+  return <BlogPostsTable posts={posts || []} lang={lang} />;
 }
