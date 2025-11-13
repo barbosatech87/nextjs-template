@@ -3,6 +3,7 @@
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { revalidatePath } from "next/cache";
 import { BlogPost } from "@/types/supabase";
+import { marked } from 'marked';
 
 // Tipos para a função de criação
 export type NewPostData = Omit<BlogPost, 'id' | 'author_id' | 'created_at' | 'updated_at' | 'status' | 'language_code'> & {
@@ -253,6 +254,8 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
     authorProfile = profileData;
   }
 
+  const parsedContent = await marked.parse(post.content || '');
+
   const postDetail: PostDetail = {
     id: post.id,
     slug: post.slug,
@@ -263,7 +266,7 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
     author_last_name: authorProfile?.last_name || null,
     title: post.title,
     summary: post.summary,
-    content: post.content,
+    content: parsedContent,
     language_code: post.language_code,
   };
 
@@ -281,9 +284,10 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
     }
 
     if (translation) {
+      const parsedTranslatedContent = await marked.parse(translation.translated_content || '');
       postDetail.title = translation.translated_title;
       postDetail.summary = translation.translated_summary;
-      postDetail.content = translation.translated_content;
+      postDetail.content = parsedTranslatedContent;
       postDetail.language_code = lang;
     }
   }
