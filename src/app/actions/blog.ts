@@ -5,6 +5,21 @@ import { revalidatePath } from "next/cache";
 import { BlogPost } from "@/types/supabase";
 import { marked } from 'marked';
 
+// Helper function to remove the first H1 from markdown content
+function removeFirstH1(markdown: string): string {
+  if (!markdown) return '';
+  const lines = markdown.split('\n');
+  // Check if the first non-empty line is an H1
+  const firstLineIndex = lines.findIndex(line => line.trim() !== '');
+  if (firstLineIndex === -1) return markdown; // All lines are empty
+
+  if (lines[firstLineIndex].trim().startsWith('# ')) {
+    lines.splice(firstLineIndex, 1);
+    return lines.join('\n');
+  }
+  return markdown;
+}
+
 // Tipos para a função de criação
 export type NewPostData = Omit<BlogPost, 'id' | 'author_id' | 'created_at' | 'updated_at' | 'status' | 'language_code'> & {
   category_ids: string[];
@@ -254,7 +269,8 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
     authorProfile = profileData;
   }
 
-  const parsedContent = await marked.parse(post.content || '');
+  const contentWithoutTitle = removeFirstH1(post.content || '');
+  const parsedContent = await marked.parse(contentWithoutTitle);
 
   const postDetail: PostDetail = {
     id: post.id,
@@ -284,7 +300,8 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
     }
 
     if (translation) {
-      const parsedTranslatedContent = await marked.parse(translation.translated_content || '');
+      const translatedContentWithoutTitle = removeFirstH1(translation.translated_content || '');
+      const parsedTranslatedContent = await marked.parse(translatedContentWithoutTitle);
       postDetail.title = translation.translated_title;
       postDetail.summary = translation.translated_summary;
       postDetail.content = parsedTranslatedContent;

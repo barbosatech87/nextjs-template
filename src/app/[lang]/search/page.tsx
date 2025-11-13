@@ -91,7 +91,7 @@ function SearchSkeleton({ lang }: { lang: Locale }) {
     )
 }
 
-export default async function SearchPage({
+export default function SearchPage({
   params,
   searchParams,
 }: {

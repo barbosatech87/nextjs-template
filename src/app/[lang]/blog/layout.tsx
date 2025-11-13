@@ -1,7 +1,7 @@
 import { Locale } from "@/lib/i18n/config";
 import { ReactNode } from "react";
 
-export default async function BlogLayout({
+export default function BlogLayout({
   children,
   params,
 }: {
