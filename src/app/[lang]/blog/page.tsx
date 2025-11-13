@@ -26,7 +26,7 @@ export default async function BlogListPage({
   searchParams,
 }: AppPageProps<{ lang: Locale }, { page?: string }>) {
   const { lang } = params;
-  const t = texts[lang as keyof typeof texts] || texts.pt;
+  const t = texts[lang] || texts.pt;
 
   const pageParam = searchParams?.page;
   const pageStr = Array.isArray(pageParam) ? pageParam[0] : pageParam;

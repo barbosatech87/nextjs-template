@@ -31,7 +31,7 @@ const texts = {
 
 export default async function BlogPostPage({ params }: AppPageProps<{ lang: Locale; slug: string }>) {
   const { lang, slug } = params;
-  const t = texts[lang as keyof typeof texts] || texts.pt;
+  const t = texts[lang] || texts.pt;
 
   if (Array.isArray(slug) || !slug) {
     notFound();

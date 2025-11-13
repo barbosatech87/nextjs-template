@@ -16,7 +16,7 @@ const texts = {
 
 export default function NewPostPage({ params }: AppPageProps<{ lang: Locale }>) {
   const { lang } = params;
-  const t = texts[lang as keyof typeof texts] || texts.pt;
+  const t = texts[lang] || texts.pt;
 
   return (
     <div className="space-y-6">

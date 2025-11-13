@@ -31,7 +31,7 @@ const texts = {
 
 export default async function ProfilePage({ params }: AppPageProps<{ lang: Locale }>) {
   const { lang } = params;
-  const t = texts[lang as keyof typeof texts] || texts.pt;
+  const t = texts[lang] || texts.pt;
   
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
