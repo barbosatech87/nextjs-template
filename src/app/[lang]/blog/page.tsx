@@ -21,10 +21,10 @@ const texts = {
 export default async function BlogListPage({
   params,
   searchParams,
-}: Readonly<{
+}: {
   params: { lang: Locale };
   searchParams?: { page?: string };
-}>) {
+}) {
   const { lang } = params;
   const t = texts[lang] || texts.pt;
 

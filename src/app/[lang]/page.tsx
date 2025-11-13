@@ -46,9 +46,9 @@ const homeTexts = {
 
 export default async function Home({ 
   params, 
-}: Readonly<{
+}: {
   params: { lang: Locale };
-}>) {
+}) {
   const { lang } = params;
   const texts = homeTexts[lang] || homeTexts.pt;
   

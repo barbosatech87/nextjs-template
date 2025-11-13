@@ -26,7 +26,7 @@ const texts = {
   },
 };
 
-export default async function BlogPostPage({ params }: Readonly<{ params: { lang: Locale; slug: string } }>) {
+export default async function BlogPostPage({ params }: { params: { lang: Locale; slug: string } }) {
   const { lang, slug } = params;
   const t = texts[lang] || texts.pt;
 

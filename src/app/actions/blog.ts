@@ -409,9 +409,12 @@ export async function getRecentPosts({
     return [];
   }
 
-  const postIds = originalPosts.map(p => p.id);
+  // Type assertion to fix TS inference issue with complex Supabase queries
+  const typedPosts = originalPosts as unknown as PostListItem[];
+
+  const postIds = typedPosts.map(p => p.id);
   
-  let finalPosts: PostListItem[] = originalPosts.map(p => ({
+  let finalPosts: PostListItem[] = typedPosts.map(p => ({
     id: p.id,
     slug: p.slug,
     image_url: p.image_url,

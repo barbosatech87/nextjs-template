@@ -91,13 +91,13 @@ function SearchSkeleton({ lang }: { lang: Locale }) {
     )
 }
 
-export default function SearchPage({
+export default async function SearchPage({
   params,
   searchParams,
-}: Readonly<{
+}: {
   params: { lang: Locale };
   searchParams?: { q?: string };
-}>) {
+}) {
   const { lang } = params;
   const query = searchParams?.q || '';
   const texts = searchPageTexts[lang] || searchPageTexts.pt;
