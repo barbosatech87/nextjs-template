@@ -17,7 +17,7 @@ export default function LocalizedLayout({
   
   return (
     <>
-      <LangSetter lang={lang} />
+      <LangSetter lang={lang as Locale} />
       <SessionContextProvider>
         <div className="flex-grow flex flex-col min-h-screen">
           {children}

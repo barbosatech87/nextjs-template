@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { LocalizedLayoutProps } from '@/types/next';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
+import { Locale } from '@/lib/i18n/config';
 
 export default async function AdminLayout({ children, params }: LocalizedLayoutProps) {
   const { lang } = params;
@@ -26,7 +27,7 @@ export default async function AdminLayout({ children, params }: LocalizedLayoutP
 
   return (
     <div className="flex min-h-screen">
-      <AdminSidebar lang={lang}>
+      <AdminSidebar lang={lang as Locale}>
         <div className="p-4 sm:p-6 lg:p-8 w-full">
           {children}
         </div>

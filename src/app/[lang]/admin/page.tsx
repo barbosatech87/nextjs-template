@@ -16,7 +16,7 @@ const texts = {
 };
 
 export default function AdminDashboardPage({ params: { lang } }: LocalizedPageProps) {
-  const t = texts[lang] || texts.pt;
+  const t = texts[lang as keyof typeof texts] || texts.pt;
 
   return (
     <div className="space-y-4">

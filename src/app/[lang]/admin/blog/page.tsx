@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { LocalizedPageProps } from "@/types/next";
 import { BlogPostsTable } from "@/components/admin/blog/blog-posts-table";
+import { Locale } from "@/lib/i18n/config";
 
 export default async function AdminBlogPage({ params: { lang } }: LocalizedPageProps) {
   const supabase = createSupabaseServerClient();
@@ -13,5 +14,5 @@ export default async function AdminBlogPage({ params: { lang } }: LocalizedPageP
     return <div>Erro ao carregar os posts. Tente novamente mais tarde.</div>;
   }
 
-  return <BlogPostsTable posts={posts || []} lang={lang} />;
+  return <BlogPostsTable posts={posts || []} lang={lang as Locale} />;
 }
