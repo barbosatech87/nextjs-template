@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { use } from 'react';
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
@@ -8,7 +8,7 @@ export default async function AdminLayout({
   children,
   params,
 }: LocalizedLayoutProps) {
-  const { lang } = params;
+  const { lang } = use(params);
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -25,8 +25,7 @@ export default async function AdminLayout({
   // Adicionando log de depuração
   console.log(`User ID: ${user.id}, Role fetched: ${profile?.role}`);
 
-  if (profile?.role !== 'admin' && profile?.role !== 'writer') { // Permitindo writers também
-    // Se não for admin ou writer, redireciona para a página principal do idioma
+  if (profile?.role !== 'admin' && profile?.role !== 'writer') {
     return redirect(`/${lang}`);
   }
 

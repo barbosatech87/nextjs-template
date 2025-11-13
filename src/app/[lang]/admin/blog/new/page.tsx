@@ -1,5 +1,6 @@
 import { LocalizedPageProps } from "@/types/next";
 import { PostForm } from "@/components/admin/blog/post-form";
+import { use } from "react";
 
 const texts = {
   pt: {
@@ -14,7 +15,7 @@ const texts = {
 };
 
 export default async function NewPostPage({ params }: LocalizedPageProps) {
-  const { lang } = params;
+  const { lang } = use(params);
   const t = texts[lang] || texts.pt;
 
   return (

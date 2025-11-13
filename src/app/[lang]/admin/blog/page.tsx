@@ -1,9 +1,10 @@
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { BlogPostsTable } from "@/components/admin/blog/blog-posts-table";
 import { LocalizedPageProps } from "@/types/next";
+import { use } from "react";
 
 export default async function AdminBlogPage({ params }: LocalizedPageProps) {
-  const { lang } = params;
+  const { lang } = use(params);
   const supabase = createSupabaseServerClient();
   
   // Usando a função RPC para buscar os posts com dados do autor

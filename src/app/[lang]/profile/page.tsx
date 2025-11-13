@@ -9,6 +9,7 @@ import PasswordChangeForm from "@/components/profile/password-change-form";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LocalizedPageProps } from "@/types/next";
+import { use } from "react";
 
 const texts = {
   pt: {
@@ -31,25 +32,16 @@ const texts = {
   },
 };
 
-// Componente Wrapper para lidar com o estado do perfil no cliente
-// Isso permite que a página principal seja um Server Component
-// e resolve o problema de use(params)
-// O componente ProfileFormWrapper será criado abaixo.
-
 export default async function ProfilePage({ params }: LocalizedPageProps) {
-  const { lang } = params;
-  const t = texts[lang] || texts.pt;
+  const { lang } = use(params);
+  const t = texts[lang as keyof typeof texts] || texts.pt;
   
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
-  // 1. Redirecionar se não estiver logado
   if (!user) {
     redirect(`/${lang}/auth`);
   }
-
-  // Não precisamos buscar o perfil aqui, pois o useProfile fará isso no cliente.
-  // Apenas garantimos que o usuário está logado.
 
   return (
     <>
@@ -63,7 +55,6 @@ export default async function ProfilePage({ params }: LocalizedPageProps) {
               <CardTitle>{t.title}</CardTitle>
             </CardHeader>
             <CardContent>
-              {/* O ProfileFormWrapper lida com o carregamento e o estado do perfil no cliente */}
               <ProfileFormWrapper lang={lang} />
             </CardContent>
           </Card>

@@ -1,8 +1,8 @@
 import { SessionContextProvider } from "@/components/auth/session-context-provider";
-import { i18n, Locale } from "@/lib/i18n/config";
+import { i18n } from "@/lib/i18n/config";
 import { Toaster } from "@/components/ui/sonner";
 import { LangSetter } from "@/components/i18n/lang-setter";
-import { ReactNode } from "react";
+import { use } from "react";
 import { LocalizedLayoutProps } from "@/types/next";
 
 // Garante que o Next.js gere páginas para todos os idiomas
@@ -14,7 +14,7 @@ export default async function LocalizedLayout({
   children,
   params,
 }: LocalizedLayoutProps) {
-  const { lang } = params;
+  const { lang } = use(params);
   
   return (
     <>

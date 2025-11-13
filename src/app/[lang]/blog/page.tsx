@@ -4,6 +4,7 @@ import { LocalizedPageProps } from "@/types/next";
 import { getPublishedPosts } from "@/app/actions/blog";
 import PostCard from "@/components/blog/post-card";
 import { PaginationControls } from "@/components/blog/pagination-controls";
+import { use } from "react";
 
 const texts = {
   pt: {
@@ -21,9 +22,11 @@ const texts = {
 };
 
 export default async function BlogListPage({ params, searchParams }: LocalizedPageProps) {
-  const { lang } = params;
+  const { lang } = use(params);
+  const sp = searchParams ? use(searchParams) : undefined;
+
   const t = texts[lang] || texts.pt;
-  const currentPage = parseInt(searchParams?.page as string || '1', 10);
+  const currentPage = parseInt((sp?.page as string) || '1', 10);
 
   const { posts, totalPages } = await getPublishedPosts(lang, currentPage);
 

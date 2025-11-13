@@ -6,6 +6,7 @@ import { notFound } from "next/navigation";
 import { Calendar, User, Globe } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { use } from "react";
 
 // Nota: Em um projeto real, você usaria uma biblioteca de renderização de Markdown (como 'remark' ou 'markdown-to-jsx')
 // para renderizar o conteúdo. Por simplicidade e para evitar adicionar dependências agora, usaremos 'dangerouslySetInnerHTML'.
@@ -32,11 +33,10 @@ const texts = {
 };
 
 export default async function BlogPostPage({ params }: LocalizedPageProps) {
-  const { lang, slug } = params;
+  const { lang, slug } = use(params);
   const t = texts[lang] || texts.pt;
 
   if (Array.isArray(slug) || !slug) {
-    // Se o slug for um array (rota catch-all) ou undefined, não encontrado.
     notFound();
   }
 
@@ -59,7 +59,6 @@ export default async function BlogPostPage({ params }: LocalizedPageProps) {
       <Header lang={lang} />
       <div className="flex-grow container px-4 md:px-8 py-12">
         <article className="max-w-3xl mx-auto">
-          {/* Imagem de Capa */}
           {post.image_url && (
             <div className="mb-8 rounded-lg overflow-hidden shadow-xl">
               <img 
@@ -70,12 +69,10 @@ export default async function BlogPostPage({ params }: LocalizedPageProps) {
             </div>
           )}
 
-          {/* Título */}
           <h1 className="text-4xl md:text-5xl font-extrabold mb-4 leading-tight">
             {post.title}
           </h1>
 
-          {/* Metadados */}
           <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-8">
             <div className="flex items-center gap-1">
               <User className="h-4 w-4" />
@@ -91,7 +88,6 @@ export default async function BlogPostPage({ params }: LocalizedPageProps) {
             </Badge>
           </div>
 
-          {/* Resumo (se existir) */}
           {post.summary && (
             <p className="text-xl italic text-foreground/80 mb-8 border-l-4 pl-4 border-primary/50">
               {post.summary}
@@ -100,11 +96,8 @@ export default async function BlogPostPage({ params }: LocalizedPageProps) {
 
           <Separator className="mb-8" />
 
-          {/* Conteúdo do Post */}
           <div 
             className="prose prose-lg dark:prose-invert max-w-none"
-            // ATENÇÃO: Usando dangerouslySetInnerHTML para renderizar o conteúdo (Markdown/HTML)
-            // Em um ambiente de produção, certifique-se de que o conteúdo seja sanitizado.
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
         </article>
