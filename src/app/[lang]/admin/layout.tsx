@@ -6,11 +6,12 @@ import { Locale } from '@/lib/i18n/config';
 
 export default async function AdminLayout({
   children,
-  params,
+  params: paramsPromise, // Renaming to indicate it's a promise
 }: {
   children: ReactNode;
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>; // Explicitly type params as a Promise
 }) {
+  const params = await paramsPromise; // Await the promise to get the actual params object
   const { lang } = params;
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
