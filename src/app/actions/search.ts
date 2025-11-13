@@ -1,7 +1,7 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
-import { getTranslatedBookName } from "@/lib/bible-translations";
+import { getTranslatedBookName, getEnglishBookName } from "@/lib/bible-translations";
 import { Locale } from "@/lib/i18n/config";
 
 export type SearchResult = {
@@ -10,6 +10,29 @@ export type SearchResult = {
   snippet: string;
   url: string;
 };
+
+interface ParsedReference {
+  book: string;
+  chapter: number;
+  verse: number;
+}
+
+function parseBibleReference(query: string, lang: Locale): ParsedReference | null {
+  // Regex para capturar "Livro Capítulo:Versículo"
+  const regex = /^(.*?)\s+(\d+)(?::(\d+))?$/;
+  const match = query.trim().match(regex);
+
+  if (!match) return null;
+
+  const bookQuery = match[1].trim();
+  const chapter = parseInt(match[2], 10);
+  const verse = match[3] ? parseInt(match[3], 10) : 1; // Padrão para o versículo 1 se não especificado
+
+  const englishBookName = getEnglishBookName(bookQuery, lang);
+  if (!englishBookName) return null;
+
+  return { book: englishBookName, chapter, verse };
+}
 
 function createSnippet(text: string, query: string): string {
   if (!text) return '';
@@ -30,10 +53,41 @@ function createSnippet(text: string, query: string): string {
   return snippet;
 }
 
-export async function searchAll(query: string, lang: string): Promise<SearchResult[]> {
+export async function searchAll(query: string, lang: Locale): Promise<SearchResult[]> {
   if (!query) return [];
 
   const supabase = createSupabaseServerClient();
+  const results: SearchResult[] = [];
+  const addedVerseKeys = new Set<string>();
+
+  // 1. Tenta buscar por referência específica
+  const reference = parseBibleReference(query, lang);
+  if (reference) {
+    const { data: specificVerse, error } = await supabase
+      .from('verses')
+      .select('book, chapter, verse_number, text')
+      .eq('book', reference.book)
+      .eq('chapter', reference.chapter)
+      .eq('verse_number', reference.verse)
+      .eq('language_code', lang)
+      .single();
+
+    if (specificVerse && !error) {
+      const bookSlug = specificVerse.book.toLowerCase().replace(/\s+/g, '-');
+      const verseKey = `${specificVerse.book}-${specificVerse.chapter}-${specificVerse.verse_number}`;
+      if (!addedVerseKeys.has(verseKey)) {
+        results.push({
+          type: 'verse',
+          title: `${getTranslatedBookName(specificVerse.book, lang)} ${specificVerse.chapter}:${specificVerse.verse_number}`,
+          snippet: specificVerse.text, // Mostra o texto completo para busca exata
+          url: `/${lang}/bible/${bookSlug}/${specificVerse.chapter}`,
+        });
+        addedVerseKeys.add(verseKey);
+      }
+    }
+  }
+
+  // 2. Continua com a busca por texto completo
   const searchPattern = `%${query}%`;
 
   const verseSearch = supabase
@@ -67,27 +121,30 @@ export async function searchAll(query: string, lang: string): Promise<SearchResu
   if (originalPostError) console.error("Original post search error:", originalPostError);
   if (translatedPostError) console.error("Translated post search error:", translatedPostError);
 
-  const results: SearchResult[] = [];
-  const addedBooks = new Set<string>();
-
+  // Adiciona resultados da busca por texto de versículos (evitando duplicatas)
   if (verses) {
     verses.forEach(v => {
-      const bookSlug = v.book.toLowerCase().replace(/\s+/g, '-');
-      results.push({
-        type: 'verse',
-        title: `${getTranslatedBookName(v.book, lang as Locale)} ${v.chapter}:${v.verse_number}`,
-        snippet: createSnippet(v.text, query),
-        url: `/${lang}/bible/${bookSlug}/${v.chapter}`,
-      });
+      const verseKey = `${v.book}-${v.chapter}-${v.verse_number}`;
+      if (!addedVerseKeys.has(verseKey)) {
+        const bookSlug = v.book.toLowerCase().replace(/\s+/g, '-');
+        results.push({
+          type: 'verse',
+          title: `${getTranslatedBookName(v.book, lang)} ${v.chapter}:${v.verse_number}`,
+          snippet: createSnippet(v.text, query),
+          url: `/${lang}/bible/${bookSlug}/${v.chapter}`,
+        });
+        addedVerseKeys.add(verseKey);
+      }
     });
   }
 
+  // Adiciona resultados de blog
   const blogResults = new Map<string, SearchResult>();
   if (translatedPosts) {
     translatedPosts.forEach(p => {
-      // FIX: A inferência de tipo do Supabase trata a relação como um array.
-      if (p.blog_posts && Array.isArray(p.blog_posts) && p.blog_posts[0]?.slug) {
-        const slug = p.blog_posts[0].slug;
+      const blogPostData = Array.isArray(p.blog_posts) ? p.blog_posts[0] : p.blog_posts;
+      if (blogPostData && blogPostData.slug) {
+        const slug = blogPostData.slug;
         blogResults.set(slug, {
           type: 'blog',
           title: p.translated_title,
@@ -111,13 +168,14 @@ export async function searchAll(query: string, lang: string): Promise<SearchResu
   }
   results.push(...Array.from(blogResults.values()));
 
+  // Adiciona resultados de livros
   const { data: books, error: bookError } = await supabase.rpc('get_bible_metadata', { lang_code: lang });
   if (bookError) console.error("Book metadata error:", bookError);
 
   if (books) {
-    // FIX: Adiciona o tipo explícito para o parâmetro 'book'.
+    const addedBooks = new Set<string>();
     books.forEach((book: { book: string; total_chapters: number }) => {
-      const translatedName = getTranslatedBookName(book.book, lang as Locale);
+      const translatedName = getTranslatedBookName(book.book, lang);
       if (translatedName.toLowerCase().includes(query.toLowerCase()) && !addedBooks.has(book.book)) {
         const bookSlug = book.book.toLowerCase().replace(/\s+/g, '-');
         results.push({

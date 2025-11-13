@@ -77,6 +77,27 @@ Object.keys(bookNameTranslations).forEach(bookName => {
     slugToBookMap.set(slug, bookName);
 });
 
+// Mapa reverso para encontrar o nome em inglês a partir da tradução
+const reverseTranslationMap: { [key in Locale]?: Map<string, string> } = {};
+
+function generateReverseMap() {
+  if (Object.keys(reverseTranslationMap).length > 0) return;
+  
+  const locales: Locale[] = ['pt', 'es'];
+  locales.forEach(lang => {
+    const langMap = new Map<string, string>();
+    for (const englishName in bookNameTranslations) {
+      const translated = bookNameTranslations[englishName][lang as 'pt' | 'es'];
+      if (translated) {
+        langMap.set(translated.toLowerCase(), englishName);
+      }
+    }
+    reverseTranslationMap[lang] = langMap;
+  });
+}
+
+generateReverseMap(); // Gera o mapa na inicialização do módulo
+
 export function getBookNameFromSlug(slug: string): string | undefined {
     return slugToBookMap.get(slug);
 }
@@ -85,5 +106,13 @@ export function getTranslatedBookName(englishName: string, lang: Locale): string
   if (lang === 'en') {
     return englishName;
   }
-  return bookNameTranslations[englishName]?.[lang] || englishName;
+  return bookNameTranslations[englishName]?.[lang as 'pt' | 'es'] || englishName;
+}
+
+export function getEnglishBookName(translatedName: string, lang: Locale): string | undefined {
+  if (lang === 'en') {
+    // Se o idioma for inglês, verifica se o nome já é um nome canônico
+    return bookNameTranslations[translatedName] ? translatedName : undefined;
+  }
+  return reverseTranslationMap[lang]?.get(translatedName.toLowerCase());
 }
