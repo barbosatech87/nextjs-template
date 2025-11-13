@@ -24,7 +24,7 @@ const texts = {
 export default async function BlogListPage({
   params,
   searchParams,
-}: AppPageProps<{ lang: Locale }>) {
+}: AppPageProps<{ lang: Locale }, { page?: string }>) {
   const { lang } = params;
   const t = texts[lang as keyof typeof texts] || texts.pt;
 
