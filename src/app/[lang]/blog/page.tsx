@@ -4,6 +4,7 @@ import { getPublishedPosts } from "@/app/actions/blog";
 import PostCard from "@/components/blog/post-card";
 import { PaginationControls } from "@/components/blog/pagination-controls";
 import { Locale } from "@/lib/i18n/config";
+import { AppPageProps } from "@/types/app";
 
 const texts = {
   pt: {
@@ -23,10 +24,7 @@ const texts = {
 export default async function BlogListPage({
   params,
   searchParams,
-}: {
-  params: { lang: Locale };
-  searchParams?: { [key: string]: string | string[] | undefined };
-}) {
+}: AppPageProps<{ lang: Locale }>) {
   const { lang } = params;
   const t = texts[lang as keyof typeof texts] || texts.pt;
 

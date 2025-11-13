@@ -1,5 +1,6 @@
 import { PostForm } from "@/components/admin/blog/post-form";
 import { Locale } from "@/lib/i18n/config";
+import { AppPageProps } from "@/types/app";
 
 const texts = {
   pt: {
@@ -13,7 +14,7 @@ const texts = {
   },
 };
 
-export default async function NewPostPage({ params }: { params: { lang: Locale } }) {
+export default async function NewPostPage({ params }: AppPageProps<{ lang: Locale }>) {
   const { lang } = params;
   const t = texts[lang as keyof typeof texts] || texts.pt;
 

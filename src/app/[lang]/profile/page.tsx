@@ -6,6 +6,7 @@ import ProfileFormWrapper from "@/components/profile/profile-form-wrapper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import PasswordChangeForm from "@/components/profile/password-change-form";
 import { Locale } from "@/lib/i18n/config";
+import { AppPageProps } from "@/types/app";
 
 const texts = {
   pt: {
@@ -28,7 +29,7 @@ const texts = {
   },
 };
 
-export default async function ProfilePage({ params }: { params: { lang: Locale } }) {
+export default async function ProfilePage({ params }: AppPageProps<{ lang: Locale }>) {
   const { lang } = params;
   const t = texts[lang as keyof typeof texts] || texts.pt;
   

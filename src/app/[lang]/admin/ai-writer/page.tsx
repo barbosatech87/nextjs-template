@@ -1,6 +1,7 @@
 import { Locale } from "@/lib/i18n/config";
+import { AppPageProps } from "@/types/app";
 
-export default function AiWriterPage({ params }: { params: { lang: Locale } }) {
+export default function AiWriterPage({ params }: AppPageProps<{ lang: Locale }>) {
   const { lang } = params;
   return (
     <div>

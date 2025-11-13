@@ -1,12 +1,11 @@
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
 import { Locale } from "@/lib/i18n/config";
+import { AppPageProps } from "@/types/app";
 
 export default async function Home({ 
   params, 
-}: { 
-  params: { lang: Locale };
-}) {
+}: AppPageProps<{ lang: Locale }>) {
   const { lang } = params;
   
   return (

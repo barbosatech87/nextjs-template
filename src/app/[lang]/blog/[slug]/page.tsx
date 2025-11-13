@@ -6,6 +6,7 @@ import { Calendar, User, Globe } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Locale } from "@/lib/i18n/config";
+import { AppPageProps } from "@/types/app";
 
 const texts = {
   pt: {
@@ -28,7 +29,7 @@ const texts = {
   },
 };
 
-export default async function BlogPostPage({ params }: { params: { lang: Locale; slug: string } }) {
+export default async function BlogPostPage({ params }: AppPageProps<{ lang: Locale; slug: string }>) {
   const { lang, slug } = params;
   const t = texts[lang as keyof typeof texts] || texts.pt;
 

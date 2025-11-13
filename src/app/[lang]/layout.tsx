@@ -2,6 +2,7 @@ import { SessionContextProvider } from "@/components/auth/session-context-provid
 import { i18n, Locale } from "@/lib/i18n/config";
 import { Toaster } from "@/components/ui/sonner";
 import { LangSetter } from "@/components/i18n/lang-setter";
+import { AppLayoutProps } from "@/types/app";
 
 export async function generateStaticParams() {
   return i18n.locales.map((lang) => ({ lang }));
@@ -10,10 +11,7 @@ export async function generateStaticParams() {
 export default async function LocalizedLayout({
   children,
   params,
-}: {
-  children: React.ReactNode;
-  params: { lang: Locale };
-}) {
+}: AppLayoutProps<{ lang: Locale }>) {
   const { lang } = params;
   
   return (

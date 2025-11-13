@@ -2,14 +2,12 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
 import { Locale } from '@/lib/i18n/config';
+import { AppLayoutProps } from '@/types/app';
 
 export default async function AdminLayout({
   children,
   params,
-}: {
-  children: React.ReactNode;
-  params: { lang: Locale };
-}) {
+}: AppLayoutProps<{ lang: Locale }>) {
   const { lang } = params;
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();

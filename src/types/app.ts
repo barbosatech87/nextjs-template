@@ -5,7 +5,7 @@ import { ReactNode } from 'react';
  * The `params` and `searchParams` are generic to allow for specific
  * types in each page component.
  */
-export type PageProps<
+export type AppPageProps<
   TParams extends { [key: string]: string | string[] } = {},
   TSearchParams extends { [key: string]: string | string[] | undefined } = {}
 > = {
@@ -17,7 +17,7 @@ export type PageProps<
  * Props for a Layout component in Next.js (app router).
  * The `params` are generic to allow for specific types in each layout.
  */
-export type LayoutProps<
+export type AppLayoutProps<
   TParams extends { [key: string]: string | string[] } = {}
 > = {
   children: ReactNode;
