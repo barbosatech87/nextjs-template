@@ -1,13 +1,12 @@
 import Header from "@/components/layout/header";
 import Footer from "@/components/layout/footer";
-import { Locale } from "@/lib/i18n/config";
+import { LocalizedPageProps } from "@/types/next";
 
 export default function Home({ 
   params, 
   searchParams 
-}: any) {
-  // Tipagem interna para segurança
-  const { lang } = params as { lang: Locale };
+}: LocalizedPageProps) {
+  const { lang } = params;
   
   return (
     <>
