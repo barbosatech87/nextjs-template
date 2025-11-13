@@ -6,7 +6,7 @@ import { ReactNode } from 'react';
  * types in each page component.
  */
 export type AppPageProps<
-  TParams extends { [key: string]: string | string[] } = {},
+  TParams = {},
   TSearchParams extends { [key: string]: string | string[] | undefined } = {}
 > = {
   params: TParams;
@@ -18,7 +18,7 @@ export type AppPageProps<
  * The `params` are generic to allow for specific types in each layout.
  */
 export type AppLayoutProps<
-  TParams extends { [key: string]: string | string[] } = {}
+  TParams = {}
 > = {
   children: ReactNode;
   params: TParams;

@@ -14,7 +14,7 @@ const texts = {
   },
 };
 
-export default async function NewPostPage({ params }: AppPageProps<{ lang: Locale }>) {
+export default function NewPostPage({ params }: AppPageProps<{ lang: Locale }>) {
   const { lang } = params;
   const t = texts[lang as keyof typeof texts] || texts.pt;
 

@@ -8,7 +8,7 @@ export async function generateStaticParams() {
   return i18n.locales.map((lang) => ({ lang }));
 }
 
-export default async function LocalizedLayout({
+export default function LocalizedLayout({
   children,
   params,
 }: AppLayoutProps<{ lang: Locale }>) {
