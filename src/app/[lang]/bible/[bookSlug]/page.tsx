@@ -1,7 +1,6 @@
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { notFound } from 'next/navigation';
 import { Locale } from '@/lib/i18n/config';
-import { AppPageProps } from '@/types/app';
 import { getBookNameFromSlug, getTranslatedBookName } from '@/lib/bible-translations';
 import { ChapterSelection } from '@/components/bible/chapter-selection';
 import {
@@ -32,7 +31,7 @@ const pageTexts = {
   }
 };
 
-export default async function BookPage({ params }: AppPageProps<{ lang: Locale; bookSlug: string }>) {
+export default async function BookPage({ params }: { params: { lang: Locale; bookSlug: string } }) {
   const { lang, bookSlug } = params;
   const texts = pageTexts[lang] || pageTexts.pt;
 

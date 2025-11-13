@@ -1,7 +1,6 @@
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { notFound } from 'next/navigation';
 import { Locale } from '@/lib/i18n/config';
-import { AppPageProps } from '@/types/app';
 import { getBookNameFromSlug, getTranslatedBookName } from '@/lib/bible-translations';
 import { VerseDisplay } from '@/components/bible/verse-display';
 import { BibleNavigation } from '@/components/bible/bible-navigation';
@@ -24,7 +23,7 @@ const pageTexts = {
   }
 };
 
-export default async function ChapterPage({ params }: AppPageProps<{ lang: Locale; bookSlug: string; chapter: string }>) {
+export default async function ChapterPage({ params }: { params: { lang: Locale; bookSlug: string; chapter: string } }) {
   const { lang, bookSlug, chapter } = params;
   const texts = pageTexts[lang] || pageTexts.pt;
 

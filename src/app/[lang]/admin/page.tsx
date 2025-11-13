@@ -1,5 +1,4 @@
 import { Locale } from "@/lib/i18n/config";
-import { AppPageProps } from "@/types/app";
 
 const texts = {
   pt: {
@@ -16,7 +15,7 @@ const texts = {
   },
 };
 
-export default function AdminDashboardPage({ params }: AppPageProps<{ lang: Locale }>) {
+export default function AdminDashboardPage({ params }: { params: { lang: Locale } }) {
   const { lang } = params;
   const t = texts[lang as keyof typeof texts] || texts.pt;
 

@@ -1,10 +1,7 @@
-import Header from "@/components/layout/header";
-import Footer from "@/components/layout/footer";
 import { getPublishedPosts } from "@/app/actions/blog";
 import PostCard from "@/components/blog/post-card";
 import { PaginationControls } from "@/components/blog/pagination-controls";
 import { Locale } from "@/lib/i18n/config";
-import { AppPageProps } from "@/types/app";
 
 const texts = {
   pt: {
@@ -24,7 +21,10 @@ const texts = {
 export default async function BlogListPage({
   params,
   searchParams,
-}: AppPageProps<{ lang: Locale }, { page?: string }>) {
+}: {
+  params: { lang: Locale };
+  searchParams?: { page?: string };
+}) {
   const { lang } = params;
   const t = texts[lang] || texts.pt;
 
@@ -35,32 +35,28 @@ export default async function BlogListPage({
   const { posts, totalPages } = await getPublishedPosts(lang, currentPage);
 
   return (
-    <>
-      <Header lang={lang} />
-      <div className="flex-grow container px-4 md:px-8 py-12">
-        <h1 className="text-4xl font-extrabold mb-10 text-center">{t.title}</h1>
+    <div className="container px-4 md:px-8 py-12">
+      <h1 className="text-4xl font-extrabold mb-10 text-center">{t.title}</h1>
 
-        {posts.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground">
-            <p>{t.noPosts}</p>
+      {posts.length === 0 ? (
+        <div className="text-center py-20 text-muted-foreground">
+          <p>{t.noPosts}</p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {posts.map((post) => (
+              <PostCard key={post.id} post={post} lang={lang} />
+            ))}
           </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {posts.map((post) => (
-                <PostCard key={post.id} post={post} lang={lang} />
-              ))}
-            </div>
-            
-            <PaginationControls 
-              totalPages={totalPages} 
-              currentPage={currentPage} 
-              lang={lang} 
-            />
-          </>
-        )}
-      </div>
-      <Footer lang={lang} />
-    </>
+          
+          <PaginationControls 
+            totalPages={totalPages} 
+            currentPage={currentPage} 
+            lang={lang} 
+          />
+        </>
+      )}
+    </div>
   );
 }

@@ -1,12 +1,9 @@
-import Header from "@/components/layout/header";
-import Footer from "@/components/layout/footer";
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { redirect } from "next/navigation";
 import ProfileFormWrapper from "@/components/profile/profile-form-wrapper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import PasswordChangeForm from "@/components/profile/password-change-form";
 import { Locale } from "@/lib/i18n/config";
-import { AppPageProps } from "@/types/app";
 
 const texts = {
   pt: {
@@ -29,7 +26,7 @@ const texts = {
   },
 };
 
-export default async function ProfilePage({ params }: AppPageProps<{ lang: Locale }>) {
+export default async function ProfilePage({ params }: { params: { lang: Locale } }) {
   const { lang } = params;
   const t = texts[lang] || texts.pt;
   
@@ -41,32 +38,28 @@ export default async function ProfilePage({ params }: AppPageProps<{ lang: Local
   }
 
   return (
-    <>
-      <Header lang={lang} />
-      <div className="flex-grow container px-4 md:px-8 py-12">
-        <h1 className="text-3xl font-bold mb-8">{t.title}</h1>
+    <div className="container px-4 md:px-8 py-12">
+      <h1 className="text-3xl font-bold mb-8">{t.title}</h1>
 
-        <div className="grid gap-8 lg:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t.title}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ProfileFormWrapper lang={lang} />
-            </CardContent>
-          </Card>
+      <div className="grid gap-8 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ProfileFormWrapper lang={lang} />
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{t.passwordChangeTitle}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PasswordChangeForm lang={lang} />
-            </CardContent>
-          </Card>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t.passwordChangeTitle}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PasswordChangeForm lang={lang} />
+          </CardContent>
+        </Card>
       </div>
-      <Footer lang={lang} />
-    </>
+    </div>
   );
 }

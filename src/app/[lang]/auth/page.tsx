@@ -7,9 +7,8 @@ import { useSession } from '@/components/auth/session-context-provider';
 import { redirect } from 'next/navigation';
 import { Locale } from '@/lib/i18n/config';
 import { useEffect } from 'react';
-import { AppPageProps } from '@/types/app';
 
-export default function AuthPage({ params }: AppPageProps<{ lang: Locale }>) {
+export default function AuthPage({ params }: { params: { lang: Locale } }) {
   const { lang } = params;
   const { user, isLoading } = useSession();
 

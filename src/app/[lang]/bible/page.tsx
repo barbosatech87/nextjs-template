@@ -1,9 +1,6 @@
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { Locale } from '@/lib/i18n/config';
-import { AppPageProps } from '@/types/app';
 import { BookSelection } from '@/components/bible/book-selection';
-import Header from '@/components/layout/header';
-import Footer from '@/components/layout/footer';
 
 const pageTexts = {
   pt: {
@@ -23,7 +20,7 @@ const pageTexts = {
   }
 }
 
-export default async function BiblePage({ params }: AppPageProps<{ lang: Locale }>) {
+export default async function BiblePage({ params }: { params: { lang: Locale } }) {
   const { lang } = params;
   const supabase = createSupabaseServerClient();
   const texts = pageTexts[lang] || pageTexts.pt;
@@ -35,27 +32,19 @@ export default async function BiblePage({ params }: AppPageProps<{ lang: Locale 
   if (error || !books) {
     console.error("Error fetching bible metadata:", error);
     return (
-      <div className="flex flex-col min-h-screen">
-        <Header lang={lang} />
-        <main className="flex-grow container mx-auto px-4 py-8 text-center">
-          <h1 className="text-2xl font-bold text-destructive">{texts.error}</h1>
-        </main>
-        <Footer lang={lang} />
-      </div>
+      <main className="container mx-auto px-4 py-8 text-center">
+        <h1 className="text-2xl font-bold text-destructive">{texts.error}</h1>
+      </main>
     );
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <Header lang={lang} />
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold tracking-tight">{texts.title}</h1>
-          <p className="text-lg text-muted-foreground mt-2">{texts.description}</p>
-        </div>
-        <BookSelection books={books} lang={lang} />
-      </main>
-      <Footer lang={lang} />
-    </div>
+    <main className="container mx-auto px-4 py-8">
+      <div className="text-center mb-8">
+        <h1 className="text-4xl font-bold tracking-tight">{texts.title}</h1>
+        <p className="text-lg text-muted-foreground mt-2">{texts.description}</p>
+      </div>
+      <BookSelection books={books} lang={lang} />
+    </main>
   );
 }
