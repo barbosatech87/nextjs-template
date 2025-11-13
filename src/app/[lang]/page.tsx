@@ -5,7 +5,9 @@ import { use } from "react";
 
 export default async function Home({ 
   params, 
-}: { params: Promise<{ lang: Locale }> }) {
+}: { 
+  params: Promise<{ lang: Locale }>;
+}) {
   const { lang } = use(params);
   
   return (

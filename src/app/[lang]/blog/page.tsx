@@ -5,7 +5,6 @@ import PostCard from "@/components/blog/post-card";
 import { PaginationControls } from "@/components/blog/pagination-controls";
 import { use } from "react";
 import { Locale } from "@/lib/i18n/config";
-import { LocalizedPageProps } from "@/types/next"; // Importando a tipagem correta
 
 const texts = {
   pt: {
@@ -24,15 +23,15 @@ const texts = {
 
 export default async function BlogListPage({
   params,
-  searchParams, // searchParams agora é um objeto simples, não uma Promise
-}: LocalizedPageProps) {
-  const { lang } = use(params); // params continua sendo uma Promise
-  // searchParams é um objeto simples, não precisa de use()
-  const sp = searchParams; 
-
+  searchParams,
+}: {
+  params: Promise<{ lang: Locale }>;
+  searchParams?: { [key: string]: string | string[] | undefined };
+}) {
+  const { lang } = use(params);
   const t = texts[lang as keyof typeof texts] || texts.pt;
 
-  const pageParam = sp?.page;
+  const pageParam = searchParams?.page;
   const pageStr = Array.isArray(pageParam) ? pageParam[0] : pageParam;
   const currentPage = parseInt(pageStr || '1', 10);
 

@@ -29,7 +29,7 @@ const texts = {
   },
 };
 
-export default async function BlogPostPage({ params }: { params: Promise<{ lang: Locale; slug: string | string[] }> }) {
+export default async function BlogPostPage({ params }: { params: Promise<{ lang: Locale; slug: string }> }) {
   const { lang, slug } = use(params);
   const t = texts[lang as keyof typeof texts] || texts.pt;
 

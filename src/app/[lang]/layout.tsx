@@ -4,7 +4,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { LangSetter } from "@/components/i18n/lang-setter";
 import { use } from "react";
 
-// Garante que o Next.js gere páginas para todos os idiomas
 export async function generateStaticParams() {
   return i18n.locales.map((lang) => ({ lang }));
 }
