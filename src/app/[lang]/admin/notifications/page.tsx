@@ -1,115 +1,41 @@
-"use client";
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { PlusCircle } from 'lucide-react';
+import { Locale } from '@/lib/i18n/config';
+import { getNotificationBroadcasts } from '@/app/actions/notifications';
+import { NotificationsTable } from '@/components/admin/notifications/notifications-table';
 
-import { z } from "zod";
-import { useTransition } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { sendNotificationToAll } from "@/app/actions/notifications";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
-import { Locale } from "@/lib/i18n/config";
-import React from "react";
+interface ManageNotificationsPageProps {
+  params: { lang: Locale };
+}
 
-const schema = z.object({
-  title: z.string().min(1, { message: "O título é obrigatório." }),
-  body: z.string().min(1, { message: "A mensagem é obrigatória." }),
-});
-
-export default function AdminNotificationsPage({ params }: { params: Promise<{ lang: Locale }> }) {
-  const { lang } = React.use(params);
-
-  const [isPending, startTransition] = useTransition();
+export default async function ManageNotificationsPage({ params }: ManageNotificationsPageProps) {
+  const { lang } = params;
+  const broadcasts = await getNotificationBroadcasts();
 
   const t = {
     pt: {
-      heading: "Enviar Notificação",
-      title: "Título",
-      body: "Mensagem",
-      send: "Enviar para todos",
-      help: "Dispara uma notificação para todos os usuários. Envio por e-mail será adicionado futuramente.",
-      success: (n: number) => `Notificação enviada para ${n} usuário(s).`,
+      title: 'Gerenciar Notificações',
+      description: 'Envie novas notificações e gerencie os envios existentes.',
+      newNotification: 'Nova Notificação',
     },
-    en: {
-      heading: "Send Notification",
-      title: "Title",
-      body: "Message",
-      send: "Send to all",
-      help: "Sends a notification to all users. Email delivery will be added later.",
-      success: (n: number) => `Notification sent to ${n} user(s).`,
-    },
-    es: {
-      heading: "Enviar Notificación",
-      title: "Título",
-      body: "Mensaje",
-      send: "Enviar a todos",
-      help: "Envía una notificación a todos los usuarios. El envío por correo se agregará más tarde.",
-      success: (n: number) => `Notificación enviada a ${n} usuario(s).`,
-    },
-  }[lang] ?? {
-    heading: "Enviar Notificação",
-    title: "Título",
-    body: "Mensagem",
-    send: "Enviar para todos",
-    help: "Dispara uma notificação para todos os usuários. Envio por e-mail será adicionado futuramente.",
-    success: (n: number) => `Notificação enviada para ${n} usuário(s).`,
-  };
-
-  const form = useForm<z.infer<typeof schema>>({
-    resolver: zodResolver(schema),
-    defaultValues: { title: "", body: "" },
-  });
-
-  const onSubmit = (values: z.infer<typeof schema>) => {
-    startTransition(async () => {
-      const res = await sendNotificationToAll(values.title, values.body);
-      toast.success(t.success(res.count));
-      form.reset();
-    });
   };
 
   return (
-    <div className="max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">{t.heading}</h1>
-        <p className="text-sm text-muted-foreground mt-1">{t.help}</p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">{t.pt.title}</h1>
+          <p className="text-muted-foreground">{t.pt.description}</p>
+        </div>
+        <Button asChild>
+          <Link href={`/${lang}/admin/notifications/new`}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            {t.pt.newNotification}
+          </Link>
+        </Button>
       </div>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t.title}</FormLabel>
-                <FormControl>
-                  <Input {...field} placeholder={t.title} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="body"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t.body}</FormLabel>
-                <FormControl>
-                  <Textarea {...field} placeholder={t.body} rows={6} />
-                </FormControl>
-                <FormDescription />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="submit" disabled={isPending}>
-            {t.send}
-          </Button>
-        </form>
-      </Form>
+      <NotificationsTable broadcasts={broadcasts} lang={lang} />
     </div>
   );
 }
