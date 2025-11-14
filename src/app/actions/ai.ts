@@ -44,6 +44,10 @@ export async function generatePostWithAI(
   if (!validation.success) {
     return { success: false, message: "Dados de entrada inválidos." };
   }
+  
+  if (!process.env.OPENAI_API_KEY) {
+    return { success: false, message: "Chave da API OpenAI não configurada no servidor." };
+  }
 
   try {
     const systemPrompt = `
@@ -103,10 +107,20 @@ export async function generatePostWithAI(
     return { success: true, data: parsedContent };
   } catch (error) {
     console.error("Erro ao gerar post com IA:", error);
+    
+    let errorMessage = "Falha ao comunicar com a API da OpenAI.";
+    
     if (error instanceof z.ZodError) {
-      return { success: false, message: "A IA retornou um formato de dados inesperado." };
+      errorMessage = "A IA retornou um formato de dados inesperado.";
+    } else if (error instanceof OpenAI.APIError) {
+      // Captura erros específicos da API OpenAI (ex: 401, 429)
+      errorMessage = `Erro da API OpenAI: ${error.status} - ${error.message}`;
+    } else if (error instanceof Error) {
+      // Captura outros erros de execução
+      errorMessage = error.message;
     }
-    return { success: false, message: "Falha ao comunicar com a API da OpenAI." };
+
+    return { success: false, message: errorMessage };
   }
 }
 
