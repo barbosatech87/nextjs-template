@@ -11,6 +11,7 @@ import { Loader2 } from 'lucide-react';
 import { Locale } from '@/lib/i18n/config';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 interface PasswordChangeFormProps {
   lang: Locale;
@@ -51,6 +52,7 @@ const texts = {
 
 const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ lang }) => {
   const t = texts[lang] || texts.pt;
+  const router = useRouter();
 
   const form = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordSchema),
@@ -70,7 +72,9 @@ const PasswordChangeForm: React.FC<PasswordChangeFormProps> = ({ lang }) => {
     } else {
       toast.success(t.success);
       form.reset();
-      // O Supabase geralmente invalida a sessão após a mudança de senha, forçando o re-login.
+      // Força o logout após a mudança de senha para invalidar a sessão antiga
+      await supabase.auth.signOut();
+      router.push(`/${lang}/auth`);
     }
   }
 
