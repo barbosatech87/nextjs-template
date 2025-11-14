@@ -95,8 +95,8 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
           </SidebarMenu>
         </SidebarContent>
       </Sidebar>
-      {/* O SidebarInset precisa de um padding superior para compensar o Header principal (h-16) */}
-      <SidebarInset className="pt-16 flex-1 overflow-y-auto">
+      {/* Removendo pt-16. O MainLayout já fornece o padding superior. */}
+      <SidebarInset className="flex-1 overflow-y-auto">
         {children}
       </SidebarInset>
     </SidebarProvider>
