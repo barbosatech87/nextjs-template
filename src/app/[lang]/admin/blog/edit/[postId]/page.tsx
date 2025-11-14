@@ -19,7 +19,7 @@ export default async function EditPostPage({ params }: EditPostPageProps) {
       <h1 className="text-2xl font-bold mb-6">
         {lang === 'pt' ? 'Editar Post' : 'Edit Post'}
       </h1>
-      <PostForm lang={lang} postToEdit={post} />
+      <PostForm lang={lang} initialData={post} isEditing={true} postId={postId} />
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { Locale } from "@/lib/i18n/config";
 import OpenAI from "openai";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 
 // Inicializa o cliente da OpenAI
 const openai = new OpenAI({
@@ -35,7 +36,7 @@ const postOutputSchema = z.object({
 
 export type AIResponse = z.infer<typeof postOutputSchema>;
 
-// --- Função Principal de Geração ---
+// --- Função Principal de Geração de Post ---
 export async function generatePostWithAI(
   request: GenerationRequest
 ): Promise<{ success: boolean; data?: AIResponse; message?: string }> {
@@ -108,6 +109,56 @@ export async function generatePostWithAI(
     return { success: false, message: "Falha ao comunicar com a API da OpenAI." };
   }
 }
+
+/**
+ * Gera uma imagem usando a API da OpenAI e a salva no Supabase.
+ */
+export async function generateImageAction(prompt: string): Promise<{ success: boolean; message?: string }> {
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, message: "Usuário não autenticado." };
+  }
+
+  try {
+    const imageResponse = await openai.images.generate({
+      model: "dall-e-3",
+      prompt: prompt,
+      n: 1,
+      size: "1024x1024",
+      quality: "standard",
+    });
+
+    const imageUrl = imageResponse.data[0].url;
+    if (!imageUrl) {
+      throw new Error("A API não retornou uma URL de imagem.");
+    }
+
+    // Salvar no banco de dados
+    const { error: dbError } = await supabase
+      .from('generated_images')
+      .insert({
+        user_id: user.id,
+        prompt: prompt,
+        image_url: imageUrl,
+        model: 'dall-e-3'
+      });
+
+    if (dbError) {
+      throw new Error(`Falha ao salvar a imagem no banco de dados: ${dbError.message}`);
+    }
+
+    revalidatePath('/admin/ai-image-generator');
+    return { success: true };
+
+  } catch (error) {
+    console.error("Erro ao gerar imagem com IA:", error);
+    const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro desconhecido.";
+    return { success: false, message: `Falha ao gerar imagem: ${errorMessage}` };
+  }
+}
+
 
 /**
  * Busca metadados da Bíblia (livro e total de capítulos) para um idioma específico.

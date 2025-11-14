@@ -1,33 +1,21 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import { ReactNode } from 'react';
+import { SessionContextProvider } from '@/components/auth/session-context-provider';
+import { Toaster } from '@/components/ui/sonner';
+import './globals.css';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+interface RootLayoutProps {
+  children: ReactNode;
+}
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "Bíblia & IA",
-  description: "Leitura da Bíblia, Blog e Ferramentas de IA",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
+    // O atributo lang será definido no layout [lang]
     <html suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body>
+        <SessionContextProvider>
+          {children}
+          <Toaster />
+        </SessionContextProvider>
       </body>
     </html>
   );

@@ -1,13 +1,16 @@
 import { AiImageGeneratorForm } from '@/components/admin/ai-image-generator/ai-image-generator-form';
 import { ImageGallery } from '@/components/admin/ai-image-generator/image-gallery';
 import { Locale } from '@/lib/i18n/config';
+import { getGeneratedImages } from '@/app/actions/image-generation';
 
 interface AiImageGeneratorPageProps {
     params: { lang: Locale };
 }
 
-export default function AiImageGeneratorPage({ params }: AiImageGeneratorPageProps) {
+export default async function AiImageGeneratorPage({ params }: AiImageGeneratorPageProps) {
     const { lang } = params;
+    const images = await getGeneratedImages();
+
     return (
         <div className="space-y-8">
             <div>
@@ -16,8 +19,8 @@ export default function AiImageGeneratorPage({ params }: AiImageGeneratorPagePro
                     {lang === 'pt' ? 'Gere imagens únicas usando IA para seus posts.' : 'Generate unique images using AI for your posts.'}
                 </p>
             </div>
-            <AiImageGeneratorForm />
-            <ImageGallery />
+            <AiImageGeneratorForm lang={lang} />
+            <ImageGallery images={images} lang={lang} />
         </div>
     );
 }

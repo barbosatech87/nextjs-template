@@ -11,6 +11,7 @@ import {
   SidebarMenuButton,
   SidebarProvider,
   SidebarTrigger,
+  SidebarInset,
 } from '@/components/ui/sidebar';
 import { BookCopy, BotMessageSquare, Image, LayoutDashboard, Users } from 'lucide-react';
 import Link from 'next/link';
@@ -93,9 +94,9 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
           </SidebarMenu>
         </SidebarContent>
       </Sidebar>
-      <main className="flex-1">
+      <SidebarInset>
         {children}
-      </main>
+      </SidebarInset>
     </SidebarProvider>
   );
 }

@@ -1,165 +1,101 @@
 "use client";
 
-import React, { useTransition } from 'react';
-import { GeneratedImage, deleteGeneratedImage } from '@/app/actions/image-generation';
-import { Locale } from '@/lib/i18n/config';
+import React from 'react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Trash2, Copy, Check } from 'lucide-react';
+import Image from 'next/image';
+import { Copy, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { deleteGeneratedImage, GeneratedImageData } from '@/app/actions/image-generation';
+import { Locale } from '@/lib/i18n/config';
 
 interface ImageGalleryProps {
-  images: GeneratedImage[];
+  images: GeneratedImageData[];
   lang: Locale;
 }
 
 const texts = {
   pt: {
     title: "Galeria de Imagens Geradas",
-    noImages: "Nenhuma imagem gerada ainda.",
-    deleteConfirmTitle: "Excluir Imagem?",
-    deleteConfirmDesc: "Esta ação é irreversível e removerá a imagem do banco de dados e do armazenamento.",
-    cancel: "Cancelar",
-    delete: "Excluir",
-    deleteSuccess: "Imagem excluída com sucesso.",
-    deleteError: "Erro ao excluir imagem.",
+    noImages: "Nenhuma imagem gerada ainda. Use o formulário acima para criar uma.",
     copyUrl: "Copiar URL",
-    copied: "Copiado!",
-    prompt: "Prompt:",
-    generatedOn: "Gerado em:",
+    delete: "Deletar",
+    urlCopied: "URL copiada para a área de transferência!",
+    deleteConfirm: "Tem certeza que deseja deletar esta imagem?",
+    deleteSuccess: "Imagem deletada com sucesso.",
+    deleteError: "Erro ao deletar imagem.",
   },
   en: {
     title: "Generated Image Gallery",
-    noImages: "No images generated yet.",
-    deleteConfirmTitle: "Delete Image?",
-    deleteConfirmDesc: "This action is irreversible and will remove the image from the database and storage.",
-    cancel: "Cancel",
+    noImages: "No images generated yet. Use the form above to create one.",
+    copyUrl: "Copy URL",
     delete: "Delete",
+    urlCopied: "URL copied to clipboard!",
+    deleteConfirm: "Are you sure you want to delete this image?",
     deleteSuccess: "Image deleted successfully.",
     deleteError: "Error deleting image.",
-    copyUrl: "Copy URL",
-    copied: "Copied!",
-    prompt: "Prompt:",
-    generatedOn: "Generated on:",
   },
   es: {
     title: "Galería de Imágenes Generadas",
-    noImages: "Aún no se han generado imágenes.",
-    deleteConfirmTitle: "¿Eliminar Imagen?",
-    deleteConfirmDesc: "Esta acción es irreversible y eliminará la imagen de la base de datos y del almacenamiento.",
-    cancel: "Cancelar",
+    noImages: "Aún no se han generado imágenes. Utilice el formulario de arriba para crear una.",
+    copyUrl: "Copiar URL",
     delete: "Eliminar",
+    urlCopied: "¡URL copiada al portapapeles!",
+    deleteConfirm: "¿Estás seguro de que quieres eliminar esta imagen?",
     deleteSuccess: "Imagen eliminada con éxito.",
     deleteError: "Error al eliminar la imagen.",
-    copyUrl: "Copiar URL",
-    copied: "¡Copiado!",
-    prompt: "Prompt:",
-    generatedOn: "Generado el:",
-  },
+  }
 };
 
 export function ImageGallery({ images, lang }: ImageGalleryProps) {
-  const [isPending, startTransition] = useTransition();
   const t = texts[lang] || texts.pt;
 
-  const handleDelete = (imageId: string, imageUrl: string) => {
-    startTransition(async () => {
-      const result = await deleteGeneratedImage(imageId, imageUrl, lang);
+  const handleCopy = (url: string) => {
+    navigator.clipboard.writeText(url);
+    toast.success(t.urlCopied);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (confirm(t.deleteConfirm)) {
+      const result = await deleteGeneratedImage(id);
       if (result.success) {
         toast.success(t.deleteSuccess);
       } else {
         toast.error(result.message || t.deleteError);
       }
-    });
+    }
   };
-
-  const handleCopy = (url: string) => {
-    navigator.clipboard.writeText(url);
-    toast.success(t.copied);
-  };
-
-  if (images.length === 0) {
-    return (
-      <Card className="text-center py-10">
-        <CardTitle className="text-xl text-muted-foreground">{t.noImages}</CardTitle>
-      </Card>
-    );
-  }
 
   return (
-    <TooltipProvider>
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">{t.title}</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {images.map((image) => (
-            <Card key={image.id} className="flex flex-col">
-              <CardHeader className="p-0">
-                <div className="relative h-64 w-full overflow-hidden rounded-t-lg">
-                  <img 
-                    src={image.image_url} 
-                    alt={image.prompt} 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </CardHeader>
-              <CardContent className="p-4 flex-grow">
-                <p className="text-sm font-medium line-clamp-2">
-                  <span className="font-bold">{t.prompt}</span> {image.prompt}
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  {t.generatedOn} {new Date(image.created_at).toLocaleDateString(lang)}
-                </p>
-              </CardContent>
-              <CardFooter className="flex justify-between p-4 pt-0">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" onClick={() => handleCopy(image.image_url)}>
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{t.copyUrl}</TooltipContent>
-                </Tooltip>
-
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="destructive" size="icon" disabled={isPending}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>{t.deleteConfirmTitle}</AlertDialogTitle>
-                      <AlertDialogDescription>{t.deleteConfirmDesc}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDelete(image.id, image.image_url)}
-                        disabled={isPending}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      >
-                        {t.delete}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      </div>
-    </TooltipProvider>
+    <Card>
+      <CardHeader>
+        <CardTitle>{t.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {images.length === 0 ? (
+          <p className="text-muted-foreground">{t.noImages}</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {images.map((image) => (
+              <Card key={image.id} className="overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="aspect-square relative">
+                    <Image src={image.image_url} alt={image.prompt} layout="fill" objectFit="cover" />
+                  </div>
+                </CardContent>
+                <CardFooter className="p-2 flex justify-between bg-muted/50">
+                  <Button variant="ghost" size="sm" onClick={() => handleCopy(image.image_url)}>
+                    <Copy className="h-4 w-4 mr-1" /> {t.copyUrl}
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => handleDelete(image.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

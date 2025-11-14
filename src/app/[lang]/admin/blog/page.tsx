@@ -3,13 +3,15 @@ import Link from 'next/link';
 import { PlusCircle } from 'lucide-react';
 import { Locale } from '@/lib/i18n/config';
 import { BlogPostsTable } from '@/components/admin/blog/blog-posts-table';
+import { getAdminPosts } from '@/app/actions/blog';
 
 interface ManageBlogPageProps {
   params: { lang: Locale };
 }
 
-export default function ManageBlogPage({ params }: ManageBlogPageProps) {
+export default async function ManageBlogPage({ params }: ManageBlogPageProps) {
   const { lang } = params;
+  const posts = await getAdminPosts();
 
   return (
     <div className="space-y-6">
@@ -29,7 +31,7 @@ export default function ManageBlogPage({ params }: ManageBlogPageProps) {
           </Link>
         </Button>
       </div>
-      <BlogPostsTable />
+      <BlogPostsTable posts={posts} lang={lang} />
     </div>
   );
 }

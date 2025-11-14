@@ -12,41 +12,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Save } from 'lucide-react';
 import { Locale } from '@/lib/i18n/config';
-import { NewPostData, createPost, updatePost, EditablePostData } from '@/app/actions/blog';
+import { NewPostData, createPost, updatePost } from '@/app/actions/blog';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { ImageUpload } from './image-upload';
 import { useBlogCategories } from '@/hooks/use-blog-categories';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TranslationDialog } from './translation-dialog';
-import { AIResponse } from '@/app/actions/ai';
-
-// Tipo unificado para dados iniciais (AIResponse é um subconjunto de EditablePostData)
-// Usamos Partial<EditablePostData> para cobrir todos os campos do DB, e & Partial<AIResponse>
-// para garantir que os campos da IA (que podem ser mais restritivos) sejam aceitos.
-type PostStatus = 'draft' | 'published' | 'archived';
-
-type InitialPostData = Partial<Omit<EditablePostData, 'status'>> & Partial<AIResponse> & {
-  status?: PostStatus;
-  category_ids?: string[];
-};
-
-
-interface PostFormProps {
-  lang: Locale;
-  // Permitindo InitialPostData ou null
-  initialData?: InitialPostData | null;
-  isEditing?: boolean;
-  postId?: string; // Necessário apenas no modo de edição
-}
 
 // --- Schema de Validação ---
 const postSchema = z.object({
   title: z.string().min(5, { message: "O título deve ter pelo menos 5 caracteres." }).max(100),
   slug: z.string().min(5, { message: "O slug deve ter pelo menos 5 caracteres." }).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "O slug deve ser em minúsculas e usar hífens."),
   content: z.string().min(50, { message: "O conteúdo deve ter pelo menos 50 caracteres." }),
-  summary: z.string().max(300, { message: "O resumo deve ter no máximo 300 caracteres." }).nullable().optional(), // Permitindo null
-  image_url: z.string().url({ message: "URL de imagem inválida." }).nullable().optional(), // Permitindo null
+  summary: z.string().max(300, { message: "O resumo deve ter no máximo 300 caracteres." }).nullable().optional(),
+  image_url: z.string().url({ message: "URL de imagem inválida." }).nullable().optional(),
   
   // SEO
   seo_title: z.string().max(70, { message: "Máximo de 70 caracteres." }).nullable().optional(),
@@ -60,6 +40,16 @@ const postSchema = z.object({
 });
 
 type PostFormValues = z.infer<typeof postSchema>;
+
+// Tipo simplificado para dados iniciais, aceitando um subconjunto dos valores do formulário.
+type InitialPostData = Partial<PostFormValues>;
+
+interface PostFormProps {
+  lang: Locale;
+  initialData?: InitialPostData | null;
+  isEditing?: boolean;
+  postId?: string;
+}
 
 // --- Textos I18n ---
 const texts = {
@@ -164,7 +154,7 @@ export function PostForm({ lang, initialData, isEditing = false, postId }: PostF
     image_url: initialData?.image_url || null,
     seo_title: initialData?.seo_title || null,
     seo_description: initialData?.seo_description || null,
-    status: (initialData?.status as PostStatus) || 'draft', // <-- Correção do Erro 1
+    status: initialData?.status || 'draft',
     published_at: initialData?.published_at || null,
     scheduled_for: initialData?.scheduled_for || null,
     category_ids: initialData?.category_ids || [],
@@ -228,19 +218,15 @@ export function PostForm({ lang, initialData, isEditing = false, postId }: PostF
       if (result.success) {
         toast.success(isEditing ? t.successEdit : t.successCreate);
         
-        // Corrigindo erros 1 e 2: Usando type assertion para garantir que o resultado
-        // contenha as propriedades de CreatePostSuccess quando !isEditing for true.
         if (!isEditing && 'postId' in result && 'postContent' in result) {
           const creationResult = result as { postId: string, postContent: { title: string, summary: string | null, content: string } };
           
-          // Modo Criação: Abre o diálogo de tradução
           setNewPostData({
             postId: creationResult.postId,
             postContent: creationResult.postContent,
           });
           setIsTranslationDialogOpen(true);
         } else if (isEditing) {
-          // Modo Edição: Redireciona para a lista
           router.push(`/${lang}/admin/blog`);
         }
         
