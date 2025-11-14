@@ -103,7 +103,7 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
               key={item.href}
               href={item.href}
               className={cn(
-                "text-sm font-medium transition-colors hover:text-primary text-muted-foreground"
+                "text-sm font-medium transition-colors hover:text-primary"
               )}
             >
               {item.label}
