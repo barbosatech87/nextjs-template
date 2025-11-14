@@ -74,7 +74,7 @@ const bookNameTranslations: Record<string, BookTranslations> = {
   "2 John": { "pt": "2 João", "es": "2 Juan" },
   "3 John": { "pt": "3 João", "es": "3 Juan" },
   "Jude": { "pt": "Judas", "es": "Judas" },
-  "Revelation": { "pt": "Apocalipse", "es": "Apocalipsis", englishAliases: ["Revelation of John"] },
+  "Revelation of John": { "pt": "Apocalipse", "es": "Apocalipsis", englishAliases: ["Revelation"] },
 };
 
 // Mapeamento de algarismos romanos para arábicos
