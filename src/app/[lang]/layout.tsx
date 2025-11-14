@@ -9,7 +9,8 @@ export function generateStaticParams() {
   return i18n.locales.map((lang) => ({ lang }));
 }
 
-export default async function RootLangLayout({
+// Removendo 'async'
+export default function RootLangLayout({
   children,
   params,
 }: { children: ReactNode; params: { lang: Locale } }) {

@@ -44,15 +44,13 @@ const homeTexts = {
   },
 };
 
-interface HomeProps {
-  params: { lang: Locale };
-  searchParams: { [key: string]: string | string[] | undefined } | undefined;
-}
-
 export default async function Home({ 
   params, 
   searchParams,
-}: HomeProps) {
+}: {
+  params: { lang: Locale };
+  searchParams: { [key: string]: string | string[] | undefined } | undefined;
+}) {
   const { lang } = params;
   const texts = homeTexts[lang] || homeTexts.pt;
   
