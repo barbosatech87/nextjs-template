@@ -15,7 +15,11 @@ const texts = {
   },
 };
 
-export default function AdminDashboardPage({ params }: { params: { lang: Locale } }) {
+interface AdminDashboardPageProps {
+  params: { lang: Locale };
+}
+
+export default function AdminDashboardPage({ params }: AdminDashboardPageProps) {
   const { lang } = params;
   const t = texts[lang as keyof typeof texts] || texts.pt;
 

@@ -91,13 +91,15 @@ function SearchSkeleton({ lang }: { lang: Locale }) {
     )
 }
 
+interface SearchPageProps {
+  params: { lang: Locale };
+  searchParams?: { q?: string };
+}
+
 export default function SearchPage({
   params,
   searchParams,
-}: {
-  params: { lang: Locale };
-  searchParams?: { q?: string };
-}) {
+}: SearchPageProps) {
   const { lang } = params;
   const query = searchParams?.q || '';
   const texts = searchPageTexts[lang] || searchPageTexts.pt;

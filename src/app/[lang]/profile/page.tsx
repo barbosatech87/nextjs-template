@@ -26,7 +26,11 @@ const texts = {
   },
 };
 
-export default async function ProfilePage({ params }: { params: { lang: Locale } }) {
+interface ProfilePageProps {
+  params: { lang: Locale };
+}
+
+export default async function ProfilePage({ params }: ProfilePageProps) {
   const { lang } = params;
   const t = texts[lang] || texts.pt;
   

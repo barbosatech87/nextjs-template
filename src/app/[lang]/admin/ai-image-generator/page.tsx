@@ -1,6 +1,10 @@
 import { Locale } from "@/lib/i18n/config";
 
-export default function AiImageGeneratorPage({ params }: { params: { lang: Locale } }) {
+interface AiImageGeneratorPageProps {
+  params: { lang: Locale };
+}
+
+export default function AiImageGeneratorPage({ params }: AiImageGeneratorPageProps) {
   const { lang } = params;
   return (
     <div>

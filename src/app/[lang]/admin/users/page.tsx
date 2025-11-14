@@ -1,6 +1,10 @@
 import { Locale } from "@/lib/i18n/config";
 
-export default function ManageUsersPage({ params }: { params: { lang: Locale } }) {
+interface ManageUsersPageProps {
+  params: { lang: Locale };
+}
+
+export default function ManageUsersPage({ params }: ManageUsersPageProps) {
   const { lang } = params;
   return (
     <div>

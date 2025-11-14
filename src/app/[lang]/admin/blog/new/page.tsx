@@ -2,13 +2,15 @@ import { PostForm } from "@/components/admin/blog/post-form";
 import { Locale } from "@/lib/i18n/config";
 import { AIResponse } from "@/app/actions/ai";
 
+interface NewPostPageProps {
+  params: { lang: Locale };
+  searchParams?: { [key: string]: string | string[] | undefined };
+}
+
 export default function NewPostPage({
   params,
   searchParams,
-}: {
-  params: { lang: Locale };
-  searchParams?: { [key: string]: string | string[] | undefined };
-}) {
+}: NewPostPageProps) {
   const { lang } = params;
   let initialData: Partial<AIResponse> | null = null;
 

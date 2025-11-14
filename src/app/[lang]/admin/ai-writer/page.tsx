@@ -1,7 +1,11 @@
 import { Locale } from "@/lib/i18n/config";
 import { AiWriterForm } from "@/components/admin/ai-writer/ai-writer-form";
 
-export default function AiWriterPage({ params }: { params: { lang: Locale } }) {
+interface AiWriterPageProps {
+  params: { lang: Locale };
+}
+
+export default function AiWriterPage({ params }: AiWriterPageProps) {
   const { lang } = params;
   return (
     <div className="space-y-6">

@@ -4,13 +4,15 @@ import { AdminSidebar } from '@/components/admin/admin-sidebar';
 import { Locale } from '@/lib/i18n/config';
 import { ReactNode } from 'react';
 
+interface AdminLayoutProps {
+  children: ReactNode;
+  params: { lang: Locale };
+}
+
 export default async function AdminLayout({
   children,
   params,
-}: {
-  children: ReactNode;
-  params: { lang: Locale };
-}) {
+}: AdminLayoutProps) {
   const { lang } = params;
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();

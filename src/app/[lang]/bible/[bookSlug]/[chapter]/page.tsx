@@ -23,7 +23,11 @@ const pageTexts = {
   }
 };
 
-export default async function ChapterPage({ params }: { params: { lang: Locale; bookSlug: string; chapter: string } }) {
+interface ChapterPageProps {
+  params: { lang: Locale; bookSlug: string; chapter: string };
+}
+
+export default async function ChapterPage({ params }: ChapterPageProps) {
   const { lang, bookSlug, chapter } = params;
   const texts = pageTexts[lang] || pageTexts.pt;
 

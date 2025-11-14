@@ -9,13 +9,15 @@ export function generateStaticParams() {
   return i18n.locales.map((lang) => ({ lang }));
 }
 
+interface RootLangLayoutProps {
+  children: ReactNode;
+  params: { lang: Locale };
+}
+
 export default function RootLangLayout({
   children,
   params,
-}: {
-  children: ReactNode;
-  params: { lang: Locale };
-}) {
+}: RootLangLayoutProps) {
   const { lang } = params;
   
   return (

@@ -8,7 +8,11 @@ import { redirect } from 'next/navigation';
 import { Locale } from '@/lib/i18n/config';
 import { useEffect } from 'react';
 
-export default function AuthPage({ params }: { params: { lang: Locale } }) {
+interface AuthPageProps {
+  params: { lang: Locale };
+}
+
+export default function AuthPage({ params }: AuthPageProps) {
   const { lang } = params;
   const { user, isLoading } = useSession();
 

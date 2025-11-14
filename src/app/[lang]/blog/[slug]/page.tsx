@@ -26,7 +26,11 @@ const texts = {
   },
 };
 
-export default async function BlogPostPage({ params }: { params: { lang: Locale; slug: string } }) {
+interface BlogPostPageProps {
+  params: { lang: Locale; slug: string };
+}
+
+export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { lang, slug } = params;
   const t = texts[lang] || texts.pt;
 

@@ -44,11 +44,13 @@ const homeTexts = {
   },
 };
 
+interface HomePageProps {
+  params: { lang: Locale };
+}
+
 export default async function Home({ 
   params, 
-}: {
-  params: { lang: Locale };
-}) {
+}: HomePageProps) {
   const { lang } = params;
   const texts = homeTexts[lang] || homeTexts.pt;
   

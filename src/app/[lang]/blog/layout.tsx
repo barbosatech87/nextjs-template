@@ -1,13 +1,15 @@
 import { Locale } from "@/lib/i18n/config";
 import { ReactNode } from "react";
 
+interface BlogLayoutProps {
+  children: ReactNode;
+  params: { lang: Locale };
+}
+
 export default function BlogLayout({
   children,
   params,
-}: {
-  children: ReactNode;
-  params: { lang: Locale };
-}) {
+}: BlogLayoutProps) {
   // Não precisamos usar params aqui, apenas aceitar para satisfazer o tipo do Next.
   return <>{children}</>;
 }

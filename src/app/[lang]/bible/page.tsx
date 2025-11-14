@@ -20,7 +20,11 @@ const pageTexts = {
   }
 }
 
-export default async function BiblePage({ params }: { params: { lang: Locale } }) {
+interface BiblePageProps {
+  params: { lang: Locale };
+}
+
+export default async function BiblePage({ params }: BiblePageProps) {
   const { lang } = params;
   const supabase = createSupabaseServerClient();
   const texts = pageTexts[lang] || pageTexts.pt;
