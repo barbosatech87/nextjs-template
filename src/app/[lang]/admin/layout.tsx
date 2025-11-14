@@ -22,7 +22,8 @@ export default async function AdminLayout({ children, params }: AdminLayoutProps
       .select('role')
       .eq('id', user.id)
       .single();
-    isAuthorized = profile?.role === 'admin';
+    // Permite que admins e writers acessem o painel
+    isAuthorized = profile?.role === 'admin' || profile?.role === 'writer';
   }
 
   return (

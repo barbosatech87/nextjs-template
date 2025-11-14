@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode } from 'react';
 import { Locale } from '@/lib/i18n/config';
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { redirect } from 'next/navigation';
@@ -8,7 +8,7 @@ interface AdminSectionLayoutProps {
   params: { lang: Locale };
 }
 
-export default async function AdminNotificationsLayout({ children, params }: AdminSectionLayoutProps) {
+export default async function AdminPagesLayout({ children, params }: AdminSectionLayoutProps) {
   const { lang } = params;
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
