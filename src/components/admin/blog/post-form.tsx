@@ -272,7 +272,8 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
 
       if (result.success) {
         toast.success(isEditing ? t.successEdit : t.successCreate);
-        
+
+        // Após criar: já recebemos id e conteúdo no retorno
         if (!isEditing && 'postId' in result && 'postContent' in result) {
           const creationResult = result as { postId: string, postContent: { title: string, summary: string | null, content: string } };
           setNewPostData({
@@ -280,8 +281,23 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
             postContent: creationResult.postContent,
           });
           setIsTranslationDialogOpen(true);
-        } else if (isEditing) {
-          router.push(`/${lang}/admin/blog`);
+        } else {
+          // Após editar: usar os dados do próprio formulário para tradução
+          if (postId) {
+            setNewPostData({
+              postId,
+              postContent: {
+                title: values.title,
+                summary: values.summary || null,
+                content: values.content,
+              },
+            });
+            setIsTranslationDialogOpen(true);
+          } else {
+            // fallback improvável: se não houver postId, retorna para a lista
+            toast.success(t.successEdit);
+            router.push(`/${lang}/admin/blog`);
+          }
         }
       } else {
         toast.error((result as { message?: string }).message || t.error);
@@ -530,7 +546,7 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
               {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isEditing ? t.savingEdit : t.saving}
+                {isEditing ? t.savingEdit : t.saving}
                 </>
               ) : (
                 <>
