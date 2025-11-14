@@ -3,7 +3,7 @@ import { Locale } from './i18n/config';
 interface BookTranslations {
   pt: string;
   es: string;
-  englishAliases?: string[]; // Novo campo para aliases em inglês
+  englishAliases?: string[];
 }
 
 const bookNameTranslations: Record<string, BookTranslations> = {
@@ -16,12 +16,12 @@ const bookNameTranslations: Record<string, BookTranslations> = {
   "Joshua": { "pt": "Josué", "es": "Josué" },
   "Judges": { "pt": "Juízes", "es": "Jueces" },
   "Ruth": { "pt": "Rute", "es": "Rut" },
-  "1 Samuel": { "pt": "1 Samuel", "es": "1 Samuel" },
-  "2 Samuel": { "pt": "2 Samuel", "es": "2 Samuel" },
-  "1 Kings": { "pt": "1 Reis", "es": "1 Reyes" },
-  "2 Kings": { "pt": "2 Reis", "es": "2 Reyes" },
-  "1 Chronicles": { "pt": "1 Crônicas", "es": "1 Crónicas" },
-  "2 Chronicles": { "pt": "2 Crônicas", "es": "2 Crónicas" },
+  "I Samuel": { "pt": "1 Samuel", "es": "1 Samuel", englishAliases: ["1 Samuel"] },
+  "II Samuel": { "pt": "2 Samuel", "es": "2 Samuel", englishAliases: ["2 Samuel"] },
+  "I Kings": { "pt": "1 Reis", "es": "1 Reyes", englishAliases: ["1 Kings"] },
+  "II Kings": { "pt": "2 Reis", "es": "2 Reyes", englishAliases: ["2 Kings"] },
+  "I Chronicles": { "pt": "1 Crônicas", "es": "1 Crónicas", englishAliases: ["1 Chronicles"] },
+  "II Chronicles": { "pt": "2 Crônicas", "es": "2 Crónicas", englishAliases: ["2 Chronicles"] },
   "Ezra": { "pt": "Esdras", "es": "Esdras" },
   "Nehemiah": { "pt": "Neemias", "es": "Nehemías" },
   "Esther": { "pt": "Ester", "es": "Ester" },
@@ -54,25 +54,25 @@ const bookNameTranslations: Record<string, BookTranslations> = {
   "John": { "pt": "João", "es": "Juan" },
   "Acts": { "pt": "Atos", "es": "Hechos" },
   "Romans": { "pt": "Romanos", "es": "Romanos" },
-  "1 Corinthians": { "pt": "1 Coríntios", "es": "1 Corintios" },
-  "2 Corinthians": { "pt": "2 Coríntios", "es": "2 Corintios" },
+  "I Corinthians": { "pt": "1 Coríntios", "es": "1 Corintios", englishAliases: ["1 Corinthians"] },
+  "II Corinthians": { "pt": "2 Coríntios", "es": "2 Corintios", englishAliases: ["2 Corinthians"] },
   "Galatians": { "pt": "Gálatas", "es": "Gálatas" },
   "Ephesians": { "pt": "Efésios", "es": "Efesios" },
   "Philippians": { "pt": "Filipenses", "es": "Filipenses" },
   "Colossians": { "pt": "Colossenses", "es": "Colosenses" },
-  "1 Thessalonians": { "pt": "1 Tessalonicenses", "es": "1 Tesalonicenses" },
-  "2 Thessalonians": { "pt": "2 Tessalonicenses", "es": "2 Tesalonicenses" },
-  "1 Timothy": { "pt": "1 Timóteo", "es": "1 Timoteo" },
-  "2 Timothy": { "pt": "2 Timóteo", "es": "2 Timoteo" },
+  "I Thessalonians": { "pt": "1 Tessalonicenses", "es": "1 Tesalonicenses", englishAliases: ["1 Thessalonians"] },
+  "II Thessalonians": { "pt": "2 Tessalonicenses", "es": "2 Tesalonicenses", englishAliases: ["2 Thessalonians"] },
+  "I Timothy": { "pt": "1 Timóteo", "es": "1 Timoteo", englishAliases: ["1 Timothy"] },
+  "II Timothy": { "pt": "2 Timóteo", "es": "2 Timoteo", englishAliases: ["2 Timothy"] },
   "Titus": { "pt": "Tito", "es": "Tito" },
   "Philemon": { "pt": "Filemom", "es": "Filemón" },
   "Hebrews": { "pt": "Hebreus", "es": "Hebreos" },
   "James": { "pt": "Tiago", "es": "Santiago" },
-  "1 Peter": { "pt": "1 Pedro", "es": "1 Pedro" },
-  "2 Peter": { "pt": "2 Pedro", "es": "2 Pedro" },
-  "1 John": { "pt": "1 João", "es": "1 Juan" },
-  "2 John": { "pt": "2 João", "es": "2 Juan" },
-  "3 John": { "pt": "3 João", "es": "3 Juan" },
+  "I Peter": { "pt": "1 Pedro", "es": "1 Pedro", englishAliases: ["1 Peter"] },
+  "II Peter": { "pt": "2 Pedro", "es": "2 Pedro", englishAliases: ["2 Peter"] },
+  "I John": { "pt": "1 João", "es": "1 Juan", englishAliases: ["1 John"] },
+  "II John": { "pt": "2 João", "es": "2 Juan", englishAliases: ["2 John"] },
+  "III John": { "pt": "3 João", "es": "3 Juan", englishAliases: ["3 John"] },
   "Jude": { "pt": "Judas", "es": "Judas" },
   "Revelation of John": { "pt": "Apocalipse", "es": "Apocalipsis", englishAliases: ["Revelation"] },
 };
@@ -156,14 +156,13 @@ export function getBookNameFromSlug(slug: string): string | undefined {
 
 export function getTranslatedBookName(englishName: string, lang: Locale): string {
   if (lang === 'en') {
-    return englishName;
+    // Para inglês, retorna o nome canônico ou o primeiro alias se existir (ex: "1 Kings" em vez de "I Kings")
+    const bookData = bookNameTranslations[englishName as keyof typeof bookNameTranslations];
+    return bookData?.englishAliases?.[0] || englishName;
   }
   
-  // 1. Converte o nome de entrada (que pode vir do DB com romanos) para o formato arábico canônico.
-  const canonicalEnglishName = convertRomanToArabic(englishName);
-
-  // 2. Busca a tradução usando a chave canônica
-  const translated = bookNameTranslations[canonicalEnglishName as keyof typeof bookNameTranslations]?.[lang as 'pt' | 'es'];
+  // Busca a tradução usando a chave canônica (com algarismo romano)
+  const translated = bookNameTranslations[englishName as keyof typeof bookNameTranslations]?.[lang as 'pt' | 'es'];
   
   // Retorna a tradução ou o nome original em inglês como fallback
   return translated || englishName;

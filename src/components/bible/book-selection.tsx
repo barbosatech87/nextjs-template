@@ -24,17 +24,17 @@ interface BookSelectionProps {
 // Ordem canônica em inglês (compatível com o banco)
 const OT_ORDER: string[] = [
   "Genesis","Exodus","Leviticus","Numbers","Deuteronomy","Joshua","Judges","Ruth",
-  "1 Samuel","2 Samuel","1 Kings","2 Kings","1 Chronicles","2 Chronicles",
+  "I Samuel","II Samuel","I Kings","II Kings","I Chronicles","II Chronicles",
   "Ezra","Nehemiah","Esther","Job","Psalms","Proverbs","Ecclesiastes","Song of Solomon",
   "Isaiah","Jeremiah","Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos",
   "Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah","Haggai","Zechariah","Malachi",
 ];
 
 const NT_ORDER: string[] = [
-  "Matthew","Mark","Luke","John","Acts","Romans","1 Corinthians","2 Corinthians",
-  "Galatians","Ephesians","Philippians","Colossians","1 Thessalonians","2 Thessalonians",
-  "1 Timothy","2 Timothy","Titus","Philemon","Hebrews","James","1 Peter","2 Peter",
-  "1 John","2 John","3 John","Jude","Revelation of John",
+  "Matthew","Mark","Luke","John","Acts","Romans","I Corinthians","II Corinthians",
+  "Galatians","Ephesians","Philippians","Colossians","I Thessalonians","II Thessalonians",
+  "I Timothy","II Timothy","Titus","Philemon","Hebrews","James","I Peter","II Peter",
+  "I John","II John","III John","Jude","Revelation of John",
 ];
 
 const sectionTitles = {
@@ -99,7 +99,7 @@ export const BookSelection: React.FC<BookSelectionProps> = ({ books, lang }) => 
               // Usa o nome canônico em inglês para obter a tradução, com fallback
               const canonicalNameForDisplay = book.canonicalEnglishName || book.book;
               const translatedName = getTranslatedBookName(canonicalNameForDisplay, lang);
-              const slug = canonicalNameForDisplay.toLowerCase().replace(/\s+/g, '-');
+              const slug = (book.englishAliases?.[0] || canonicalNameForDisplay).toLowerCase().replace(/\s+/g, '-');
               return (
                 <Link 
                   key={canonicalNameForDisplay} 
@@ -127,7 +127,7 @@ export const BookSelection: React.FC<BookSelectionProps> = ({ books, lang }) => 
               // Usa o nome canônico em inglês para obter a tradução, com fallback
               const canonicalNameForDisplay = book.canonicalEnglishName || book.book;
               const translatedName = getTranslatedBookName(canonicalNameForDisplay, lang);
-              const slug = canonicalNameForDisplay.toLowerCase().replace(/\s+/g, '-');
+              const slug = (book.englishAliases?.[0] || canonicalNameForDisplay).toLowerCase().replace(/\s+/g, '-');
               return (
                 <Link 
                   key={canonicalNameForDisplay} 
