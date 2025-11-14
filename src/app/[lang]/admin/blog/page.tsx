@@ -1,9 +1,13 @@
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { BlogPostsTable } from "@/components/admin/blog/blog-posts-table";
 import { Locale } from "@/lib/i18n/config";
-import { LocalizedPageProps } from "@/types/next-app";
 
-export default async function AdminBlogPage({ params }: LocalizedPageProps) {
+interface AdminBlogPageProps {
+  params: { lang: Locale };
+  searchParams: { [key: string]: string | string[] | undefined } | undefined;
+}
+
+export default async function AdminBlogPage({ params }: AdminBlogPageProps) {
   const { lang } = params;
   const supabase = createSupabaseServerClient();
   

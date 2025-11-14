@@ -15,7 +15,7 @@ interface ImageGenerationRequest {
   prompt: string;
 }
 
-const IMAGE_MODEL = "gpt-image-1-mini"; // Novo modelo
+const IMAGE_MODEL = "dall-e-3"; // Usando o nome correto do endpoint da API
 
 serve(async (req: Request) => {
   // Lida com requisições OPTIONS (CORS preflight)
@@ -50,7 +50,7 @@ serve(async (req: Request) => {
         "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
       },
       body: JSON.stringify({
-        model: IMAGE_MODEL, // Usando o novo modelo
+        model: IMAGE_MODEL, // Usando 'dall-e-3'
         prompt: fullPrompt,
         n: 1,
         size: "1024x1024",
@@ -69,7 +69,7 @@ serve(async (req: Request) => {
 
     return new Response(JSON.stringify({ 
       imageUrl,
-      model: IMAGE_MODEL, // Retornando o nome do novo modelo
+      model: IMAGE_MODEL, // Retornando 'dall-e-3'
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

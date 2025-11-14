@@ -2,7 +2,11 @@ import { Locale } from "@/lib/i18n/config";
 import { AiImageGeneratorForm } from "@/components/admin/ai-image-generator/ai-image-generator-form";
 import { ImageGallery } from "@/components/admin/ai-image-generator/image-gallery";
 import { getGeneratedImages } from "@/app/actions/image-generation";
-import { LocalizedPageProps } from "@/types/next-app";
+
+interface AiImageGeneratorPageProps {
+  params: { lang: Locale };
+  searchParams: { [key: string]: string | string[] | undefined } | undefined;
+}
 
 const texts = {
   pt: {
@@ -19,7 +23,7 @@ const texts = {
   },
 };
 
-export default async function AiImageGeneratorPage({ params }: LocalizedPageProps) {
+export default async function AiImageGeneratorPage({ params }: AiImageGeneratorPageProps) {
   const { lang } = params;
   const t = texts[lang] || texts.pt;
   

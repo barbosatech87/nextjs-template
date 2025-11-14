@@ -1,6 +1,5 @@
 import { PostForm } from "@/components/admin/blog/post-form";
 import { Locale } from "@/lib/i18n/config";
-import { LocalizedPageProps } from "@/types/next-app";
 import { getPostById, EditablePostData } from "@/app/actions/blog";
 import { notFound } from "next/navigation";
 import { AIResponse } from "@/app/actions/ai"; // Import necessário para o tipo
@@ -30,7 +29,10 @@ type InitialPostData = Partial<Omit<EditablePostData, 'status'>> & Partial<AIRes
   category_ids?: string[];
 };
 
-interface EditPostPageProps extends LocalizedPageProps<{ postId: string }> {}
+interface EditPostPageProps {
+  params: { lang: Locale; postId: string };
+  searchParams: { [key: string]: string | string[] | undefined } | undefined;
+}
 
 export default async function EditPostPage({ params }: EditPostPageProps) {
   const { lang, postId } = params;
