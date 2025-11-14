@@ -100,7 +100,7 @@ export function PageForm({ lang, initialData, isEditing = false, pageId }: PageF
       if (result.success) {
         toast.success(isEditing ? t.successEdit : t.successCreate);
         
-        const id = isEditing ? pageId! : (result as { pageId: string }).pageId;
+        const id = isEditing ? pageId! : (result as unknown as { pageId: string }).pageId;
         setNewPageData({
           pageId: id,
           pageContent: {
