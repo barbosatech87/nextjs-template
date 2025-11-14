@@ -9,6 +9,7 @@ import { User, BookOpen, Brain, Calendar, Rss, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LanguageSwitcher } from '@/components/i18n/language-switcher';
 import { useProfile } from '@/hooks/use-profile';
+import { useNotifications } from '@/hooks/use-notifications';
 
 interface HeaderProps {
   lang: Locale;
@@ -51,6 +52,7 @@ const navTexts = {
 const Header: React.FC<HeaderProps> = ({ lang }) => {
   const { user, isLoading } = useSession();
   const { profile } = useProfile();
+  const { unreadCount } = useNotifications();
   const texts = navTexts[lang] || navTexts.pt;
 
   const navItems = [
@@ -97,10 +99,18 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
                   </Button>
                 </Link>
               )}
-              <Link href={`/${lang}/profile`}>
+              <Link href={`/${lang}/profile`} className="relative">
                 <Button variant="ghost" size="icon" aria-label={texts.profile}>
                   <User className="h-5 w-5" />
                 </Button>
+                {unreadCount > 0 && (
+                  <span
+                    aria-label={`${unreadCount} unread notifications`}
+                    className="absolute -right-1 -top-1 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-medium h-4 min-w-4 px-1"
+                  >
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </Link>
             </>
           ) : (

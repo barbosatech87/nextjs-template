@@ -13,7 +13,7 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { BookCopy, BotMessageSquare, Image, LayoutDashboard, Users } from 'lucide-react';
+import { BookCopy, BotMessageSquare, Image, LayoutDashboard, Users, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { Locale } from '@/lib/i18n/config';
 
@@ -25,6 +25,7 @@ const texts = {
     aiPost: "Post com IA",
     aiImage: "Gerador de Imagens",
     users: "Usuários",
+    notifications: "Notificações",
     title: "Admin"
   },
   en: {
@@ -34,6 +35,7 @@ const texts = {
     aiPost: "AI Post",
     aiImage: "Image Generator",
     users: "Users",
+    notifications: "Notifications",
     title: "Admin"
   },
   es: {
@@ -43,6 +45,7 @@ const texts = {
     aiPost: "Entrada con IA",
     aiImage: "Generador de Imágenes",
     users: "Usuarios",
+    notifications: "Notificaciones",
     title: "Admin"
   },
 };
@@ -62,6 +65,7 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
     { href: `/${lang}/admin/users`, label: t.users, icon: <Users /> },
     { href: `/${lang}/admin/ai-image-generator`, label: t.aiImage, icon: <Image /> },
     { href: `/${lang}/admin/ai-writer`, label: t.aiPost, icon: <BotMessageSquare /> },
+    { href: `/${lang}/admin/notifications`, label: t.notifications, icon: <Bell /> },
   ];
 
   return (

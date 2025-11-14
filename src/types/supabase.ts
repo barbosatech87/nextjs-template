@@ -61,6 +61,16 @@ export type UserFavorite = {
   created_at: string | null;
 };
 
+export type Notification = {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string;
+  read_at: string | null;
+  created_at: string;
+  metadata: Record<string, unknown> | null;
+};
+
 // Tipos combinados para uso no frontend
 export interface UserWithProfile extends User {
   profile: Profile | null;
