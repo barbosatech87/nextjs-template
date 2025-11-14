@@ -153,17 +153,17 @@ export function AiImageGeneratorForm({ lang }: AiImageGeneratorFormProps) {
             />
             
             {generatedImageUrl && (
-              <div className="space-y-4">
-                <div className="relative w-full aspect-square rounded-lg overflow-hidden border">
+              <div className="space-y-4 flex flex-col items-center"> {/* Adicionado flex-col e items-center */}
+                <div className="relative w-full max-w-md aspect-square rounded-lg overflow-hidden border"> {/* Adicionado max-w-md */}
                   <Image 
                     src={generatedImageUrl} 
                     alt={currentPrompt} 
                     layout="fill" 
                     objectFit="cover" 
-                    unoptimized // Imagens geradas pela IA podem ser grandes e não precisam de otimização do Next.js
+                    unoptimized
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 w-full max-w-md"> {/* Limitando a largura dos botões também */}
                   <Button 
                     type="button" 
                     onClick={handleSave} 
