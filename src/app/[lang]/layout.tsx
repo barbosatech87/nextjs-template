@@ -9,7 +9,6 @@ export function generateStaticParams() {
   return i18n.locales.map((lang) => ({ lang }));
 }
 
-// Removendo 'async'
 export default function RootLangLayout({
   children,
   params,

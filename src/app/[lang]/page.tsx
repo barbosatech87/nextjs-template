@@ -32,7 +32,7 @@ const homeTexts = {
   },
   es: {
     title: "Explora la Palabra",
-    subtitle: "Busca versículos, capítulos y artículos. Encuentra la inspiración que necesitas.",
+    subtitle: "Busca versículos, capítulos y artículos. Encuentra a inspiração que necesitas.",
     searchPlaceholder: "Escribe un versículo, libro o tema...",
     searchButton: "Buscar",
     dailyVerseTitle: "Versículo del Día",

@@ -3,11 +3,6 @@ import { AiImageGeneratorForm } from "@/components/admin/ai-image-generator/ai-i
 import { ImageGallery } from "@/components/admin/ai-image-generator/image-gallery";
 import { getGeneratedImages } from "@/app/actions/image-generation";
 
-interface AiImageGeneratorPageProps {
-  params: { lang: Locale };
-  searchParams: { [key: string]: string | string[] | undefined } | undefined;
-}
-
 const texts = {
   pt: {
     title: "Gerador de Imagens com IA",
@@ -23,7 +18,13 @@ const texts = {
   },
 };
 
-export default async function AiImageGeneratorPage({ params }: AiImageGeneratorPageProps) {
+export default async function AiImageGeneratorPage({ 
+  params, 
+  searchParams 
+}: {
+  params: { lang: Locale };
+  searchParams: { [key: string]: string | string[] | undefined } | undefined;
+}) {
   const { lang } = params;
   const t = texts[lang] || texts.pt;
   

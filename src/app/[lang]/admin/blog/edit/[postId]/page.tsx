@@ -29,12 +29,13 @@ type InitialPostData = Partial<Omit<EditablePostData, 'status'>> & Partial<AIRes
   category_ids?: string[];
 };
 
-interface EditPostPageProps {
+export default async function EditPostPage({ 
+  params, 
+  searchParams 
+}: {
   params: { lang: Locale; postId: string };
   searchParams: { [key: string]: string | string[] | undefined } | undefined;
-}
-
-export default async function EditPostPage({ params }: EditPostPageProps) {
+}) {
   const { lang, postId } = params;
   const t = texts[lang] || texts.pt;
 
