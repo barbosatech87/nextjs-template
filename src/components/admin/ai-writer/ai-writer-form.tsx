@@ -54,7 +54,13 @@ export function AiWriterForm({ lang }: AiWriterFormProps) {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { type: "devotional" },
+    defaultValues: { 
+      type: "devotional",
+      theme: "", // Inicializado como string vazia
+      book: "", // Inicializado como string vazia
+      chapter: "", // Inicializado como string vazia
+      verse: "", // Inicializado como string vazia
+    },
   });
 
   const generationType = form.watch("type");
@@ -112,7 +118,7 @@ export function AiWriterForm({ lang }: AiWriterFormProps) {
             <FormField control={form.control} name="book" render={({ field }) => (
               <FormItem>
                 <FormLabel>Livro</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl><SelectTrigger><SelectValue placeholder="Selecione o livro" /></SelectTrigger></FormControl>
                   <SelectContent>
                     {bibleMetadata.map(b => <SelectItem key={b.book} value={b.book}>{getTranslatedBookName(b.book, lang)}</SelectItem>)}
@@ -123,7 +129,7 @@ export function AiWriterForm({ lang }: AiWriterFormProps) {
             <FormField control={form.control} name="chapter" render={({ field }) => (
               <FormItem>
                 <FormLabel>Capítulo</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!selectedBook}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={!selectedBook}>
                   <FormControl><SelectTrigger><SelectValue placeholder="Selecione o capítulo" /></SelectTrigger></FormControl>
                   <SelectContent>{chapters.map(c => <SelectItem key={c} value={String(c)}>{c}</SelectItem>)}</SelectContent>
                 </Select>
@@ -153,7 +159,7 @@ export function AiWriterForm({ lang }: AiWriterFormProps) {
             <FormField control={form.control} name="book" render={({ field }) => (
               <FormItem>
                 <FormLabel>Livro</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl><SelectTrigger><SelectValue placeholder="Selecione o livro" /></SelectTrigger></FormControl>
                   <SelectContent>
                     {bibleMetadata.map(b => <SelectItem key={b.book} value={b.book}>{getTranslatedBookName(b.book, lang)}</SelectItem>)}
@@ -164,7 +170,7 @@ export function AiWriterForm({ lang }: AiWriterFormProps) {
             <FormField control={form.control} name="chapter" render={({ field }) => (
               <FormItem>
                 <FormLabel>Capítulo</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!selectedBook}>
+                <Select onValueChange={field.onChange} value={field.value} disabled={!selectedBook}>
                   <FormControl><SelectTrigger><SelectValue placeholder="Selecione o capítulo" /></SelectTrigger></FormControl>
                   <SelectContent>{chapters.map(c => <SelectItem key={c} value={String(c)}>{c}</SelectItem>)}</SelectContent>
                 </Select>
