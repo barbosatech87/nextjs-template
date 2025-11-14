@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -12,9 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Image, Sparkles, GalleryHorizontal } from 'lucide-react';
 import { Locale } from '@/lib/i18n/config';
-import { AiImageGeneratorForm } from '@/components/admin/ai-image-generator/ai-image-generator-form';
 import { ImageGallerySelector } from './image-gallery-selector';
 import { GeneratedImageData } from '@/app/actions/image-generation';
+import { AiImageGeneratorModalForm } from '../ai-image-generator/ai-image-generator-modal-form'; // Import corrigido
 
 interface ImageSelectorDialogProps {
   lang: Locale;
@@ -87,8 +87,7 @@ export function ImageSelectorDialog({
           </TabsList>
           
           <TabsContent value="generate" className="mt-4">
-            {/* Reutiliza o formulário de geração, mas passa o prompt inicial */}
-            <AiImageGeneratorForm 
+            <AiImageGeneratorModalForm 
               lang={lang} 
               initialPrompt={initialPrompt} 
               onImageSave={handleSelect} // Quando a imagem é salva, ela é selecionada
