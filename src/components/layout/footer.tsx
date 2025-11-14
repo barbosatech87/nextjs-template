@@ -1,6 +1,5 @@
 import React from 'react';
 import { Locale } from '@/lib/i18n/config';
-import { MadeWithDyad } from '../made-with-dyad';
 
 interface FooterProps {
   lang: Locale;
@@ -55,7 +54,6 @@ const Footer: React.FC<FooterProps> = ({ lang }) => {
           </a>
         </div>
       </div>
-      <MadeWithDyad />
     </footer>
   );
 };
