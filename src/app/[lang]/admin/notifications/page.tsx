@@ -11,10 +11,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Locale } from "@/lib/i18n/config";
-import React from "react"; // Importar React para usar React.use()
+import React from "react";
+
+const schema = z.object({
+  title: z.string().min(1, { message: "O título é obrigatório." }),
+  body: z.string().min(1, { message: "A mensagem é obrigatória." }),
+});
 
 export default function AdminNotificationsPage({ params }: { params: Promise<{ lang: Locale }> }) {
-  const { lang } = React.use(params); // Desembrulha a Promise
+  const { lang } = React.use(params);
 
   const [isPending, startTransition] = useTransition();
 
