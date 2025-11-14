@@ -80,6 +80,14 @@ Object.keys(bookNameTranslations).forEach(bookName => {
 // Mapa reverso para encontrar o nome em inglês a partir da tradução
 const reverseTranslationMap: { [key in Locale]?: Map<string, string> } = {};
 
+function normalizeName(name: string): string {
+  return name
+    .normalize('NFD') // Decompõe caracteres acentuados
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacríticos
+    .toLowerCase()
+    .trim();
+}
+
 function generateReverseMap() {
   if (Object.keys(reverseTranslationMap).length > 0) return;
   
@@ -89,7 +97,8 @@ function generateReverseMap() {
     for (const englishName in bookNameTranslations) {
       const translated = bookNameTranslations[englishName][lang as 'pt' | 'es'];
       if (translated) {
-        langMap.set(translated.toLowerCase(), englishName);
+        // Armazena a versão normalizada (sem acentos e minúsculas) como chave
+        langMap.set(normalizeName(translated), englishName);
       }
     }
     reverseTranslationMap[lang] = langMap;
@@ -114,5 +123,8 @@ export function getEnglishBookName(translatedName: string, lang: Locale): string
     // Se o idioma for inglês, verifica se o nome já é um nome canônico
     return bookNameTranslations[translatedName] ? translatedName : undefined;
   }
-  return reverseTranslationMap[lang]?.get(translatedName.toLowerCase());
+  
+  // Normaliza a entrada do usuário antes de buscar no mapa reverso
+  const normalizedName = normalizeName(translatedName);
+  return reverseTranslationMap[lang]?.get(normalizedName);
 }
