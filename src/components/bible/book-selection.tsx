@@ -58,11 +58,16 @@ export const BookSelection: React.FC<BookSelectionProps> = ({ books, lang }) => 
 
   // Mapeia os livros recebidos para facilitar a busca, convertendo o nome do DB para o nome canônico em inglês
   const bookMap = new Map<string, CanonicalBook>();
-  books.forEach(book => {
-    const englishCanonicalName = getEnglishBookName(book.book, lang); // Converte o nome localizado do DB para o nome canônico em inglês
+  books.forEach(originalBook => { // Renomeado 'book' para 'originalBook' para maior clareza
+    const englishCanonicalName = getEnglishBookName(originalBook.book, lang); // Converte o nome localizado do DB para o nome canônico em inglês
     if (englishCanonicalName) {
       // Armazena o livro com o nome canônico em inglês para uso posterior
-      bookMap.set(englishCanonicalName, { ...book, canonicalEnglishName });
+      const canonicalBook: CanonicalBook = {
+        book: originalBook.book, // Nome original do DB
+        total_chapters: originalBook.total_chapters,
+        canonicalEnglishName: englishCanonicalName, // O nome canônico em inglês
+      };
+      bookMap.set(englishCanonicalName, canonicalBook);
     }
   });
 
@@ -91,12 +96,13 @@ export const BookSelection: React.FC<BookSelectionProps> = ({ books, lang }) => 
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-x-4 gap-y-2">
             {otBooks.map((book, index) => {
-              // Usa o nome canônico em inglês para obter a tradução
-              const translatedName = getTranslatedBookName(book.canonicalEnglishName, lang);
-              const slug = book.canonicalEnglishName.toLowerCase().replace(/\s+/g, '-');
+              // Usa o nome canônico em inglês para obter a tradução, com fallback
+              const canonicalNameForDisplay = book.canonicalEnglishName || book.book;
+              const translatedName = getTranslatedBookName(canonicalNameForDisplay, lang);
+              const slug = canonicalNameForDisplay.toLowerCase().replace(/\s+/g, '-');
               return (
                 <Link 
-                  key={book.canonicalEnglishName} 
+                  key={canonicalNameForDisplay} 
                   href={`/${lang}/bible/${slug}`} 
                   className="block text-sm text-muted-foreground hover:text-primary transition-colors"
                 >
@@ -118,12 +124,13 @@ export const BookSelection: React.FC<BookSelectionProps> = ({ books, lang }) => 
         <CardContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-x-4 gap-y-2">
             {ntBooks.map((book, index) => {
-              // Usa o nome canônico em inglês para obter a tradução
-              const translatedName = getTranslatedBookName(book.canonicalEnglishName, lang);
-              const slug = book.canonicalEnglishName.toLowerCase().replace(/\s+/g, '-');
+              // Usa o nome canônico em inglês para obter a tradução, com fallback
+              const canonicalNameForDisplay = book.canonicalEnglishName || book.book;
+              const translatedName = getTranslatedBookName(canonicalNameForDisplay, lang);
+              const slug = canonicalNameForDisplay.toLowerCase().replace(/\s+/g, '-');
               return (
                 <Link 
-                  key={book.canonicalEnglishName} 
+                  key={canonicalNameForDisplay} 
                   href={`/${lang}/bible/${slug}`} 
                   className="block text-sm text-muted-foreground hover:text-primary transition-colors"
                 >
