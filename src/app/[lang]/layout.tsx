@@ -5,15 +5,17 @@ import { MainLayout } from '@/components/layout/main-layout';
 
 interface LangLayoutProps {
   children: ReactNode;
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
-export default function LangLayout({ children, params }: LangLayoutProps) {
+export default async function LangLayout({ children, params }: LangLayoutProps) {
+  const { lang } = await params;
+
   // O LangSetter define o atributo lang no <html>
   return (
     <>
-      <LangSetter lang={params.lang} />
-      <MainLayout lang={params.lang}>
+      <LangSetter lang={lang} />
+      <MainLayout lang={lang}>
         {children}
       </MainLayout>
     </>

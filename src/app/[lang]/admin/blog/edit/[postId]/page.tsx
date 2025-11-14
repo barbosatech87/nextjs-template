@@ -4,11 +4,11 @@ import { Locale } from '@/lib/i18n/config';
 import { getGeneratedImagesForServer } from '@/server/generated-images';
 
 interface EditPostPageProps {
-  params: { lang: Locale; postId: string };
+  params: Promise<{ lang: Locale; postId: string }>;
 }
 
 export default async function EditPostPage({ params }: EditPostPageProps) {
-  const { lang, postId } = params;
+  const { lang, postId } = await params;
   const post = await getPostById(postId);
   
   // Buscar imagens geradas via helper SSR (evita Server Action durante render)

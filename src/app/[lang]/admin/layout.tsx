@@ -6,11 +6,11 @@ import SafeRedirect from '@/components/navigation/safe-redirect';
 
 interface AdminLayoutProps {
   children: ReactNode;
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 export default async function AdminLayout({ children, params }: AdminLayoutProps) {
-  const { lang } = params;
+  const { lang } = await params;
 
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();

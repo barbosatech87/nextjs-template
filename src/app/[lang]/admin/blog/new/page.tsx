@@ -12,20 +12,22 @@ type InitialPostData = Partial<Omit<EditablePostData, 'status'>> & Partial<AIRes
 };
 
 interface NewPostPageProps {
-  params: { lang: Locale };
-  searchParams: { [key: string]: string | string[] | undefined } | undefined;
+  params: Promise<{ lang: Locale }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined } | undefined>;
 }
 
 export default async function NewPostPage({
   params,
   searchParams,
 }: NewPostPageProps) {
-  const { lang } = params;
+  const { lang } = await params;
+  const sp = await searchParams;
+
   let initialData: Partial<AIResponse> | null = null;
 
-  if (searchParams?.initialData && typeof searchParams.initialData === 'string') {
+  if (sp?.initialData && typeof sp.initialData === 'string') {
     try {
-      initialData = JSON.parse(searchParams.initialData);
+      initialData = JSON.parse(sp.initialData);
     } catch (error) {
       console.error("Failed to parse initial data from URL", error);
     }
