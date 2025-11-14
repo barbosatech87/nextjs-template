@@ -2,7 +2,7 @@ import { PostForm } from "@/components/admin/blog/post-form";
 import { Locale } from "@/lib/i18n/config";
 import { AIResponse } from "@/app/actions/ai";
 import { EditablePostData } from "@/app/actions/blog";
-import { getGeneratedImages, GeneratedImageData } from "@/app/actions/image-generation"; // Importar a função e o tipo
+import { getGeneratedImagesForServer } from "@/server/generated-images";
 
 // Definindo o tipo InitialPostData localmente para evitar importação circular
 type PostStatus = 'draft' | 'published' | 'archived';
@@ -28,15 +28,13 @@ export default async function NewPostPage({
       initialData = JSON.parse(searchParams.initialData);
     } catch (error) {
       console.error("Failed to parse initial data from URL", error);
-      // Opcional: Adicionar um toast de erro aqui se necessário
     }
   }
 
-  // Força a atribuição do tipo para resolver o erro de compatibilidade
   const typedInitialData: InitialPostData | null = initialData as InitialPostData | null;
   
-  // 1. Buscar imagens geradas no servidor
-  const initialImages = await getGeneratedImages();
+  // Buscar imagens geradas via helper SSR (evita Server Action durante render)
+  const initialImages = await getGeneratedImagesForServer();
 
   return (
     <div className="space-y-6">
@@ -53,7 +51,7 @@ export default async function NewPostPage({
       <PostForm 
         lang={lang} 
         initialData={typedInitialData} 
-        initialImages={initialImages} // Passando as imagens
+        initialImages={initialImages}
       />
     </div>
   );

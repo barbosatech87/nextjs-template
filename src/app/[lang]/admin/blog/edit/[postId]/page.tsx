@@ -1,7 +1,7 @@
 import { PostForm } from '@/components/admin/blog/post-form';
 import { getPostById } from '@/app/actions/blog';
 import { Locale } from '@/lib/i18n/config';
-import { getGeneratedImages } from '@/app/actions/image-generation';
+import { getGeneratedImagesForServer } from '@/server/generated-images';
 
 interface EditPostPageProps {
   params: { lang: Locale; postId: string };
@@ -11,8 +11,8 @@ export default async function EditPostPage({ params }: EditPostPageProps) {
   const { lang, postId } = params;
   const post = await getPostById(postId);
   
-  // Buscar imagens geradas para a galeria
-  const initialImages = await getGeneratedImages();
+  // Buscar imagens geradas via helper SSR (evita Server Action durante render)
+  const initialImages = await getGeneratedImagesForServer();
 
   if (!post) {
     return <div>Post não encontrado.</div>;
@@ -28,7 +28,7 @@ export default async function EditPostPage({ params }: EditPostPageProps) {
         initialData={post} 
         isEditing={true} 
         postId={postId} 
-        initialImages={initialImages} // Propriedade obrigatória adicionada
+        initialImages={initialImages}
       />
     </div>
   );
