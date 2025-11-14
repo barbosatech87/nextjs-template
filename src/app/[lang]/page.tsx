@@ -37,7 +37,8 @@ const homeTexts = {
 
 export default async function HomePage({ params }: HomePageProps) {
   const { lang } = params;
-  const t = homeTexts[lang];
+  // Garante que 't' seja o objeto de texto correto, usando 'pt' como fallback seguro.
+  const t = homeTexts[lang] || homeTexts.pt;
 
   // Busca de dados
   const dailyVerse = await getDailyVerse(lang);
