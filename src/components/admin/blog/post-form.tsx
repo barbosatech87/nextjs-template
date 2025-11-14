@@ -19,9 +19,11 @@ import { ImageUpload } from './image-upload';
 import { useBlogCategories } from '@/hooks/use-blog-categories';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TranslationDialog } from './translation-dialog';
+import { AIResponse } from '@/app/actions/ai';
 
 interface PostFormProps {
   lang: Locale;
+  initialData?: Partial<AIResponse> | null;
 }
 
 // --- Schema de Validação ---
@@ -118,7 +120,7 @@ const texts = {
   },
 };
 
-export function PostForm({ lang }: PostFormProps) {
+export function PostForm({ lang, initialData }: PostFormProps) {
   const t = texts[lang] || texts.pt;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -126,18 +128,18 @@ export function PostForm({ lang }: PostFormProps) {
   
   const [isTranslationDialogOpen, setIsTranslationDialogOpen] = useState(false);
   const [newPostData, setNewPostData] = useState<{ postId: string, postContent: { title: string, summary: string | null, content: string } } | null>(null);
-  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(!!initialData?.slug);
 
   const form = useForm<PostFormValues>({
     resolver: zodResolver(postSchema),
     defaultValues: {
-      title: '',
-      slug: '',
-      content: '',
-      summary: '',
+      title: initialData?.title || '',
+      slug: initialData?.slug || '',
+      content: initialData?.content || '',
+      summary: initialData?.summary || '',
       image_url: '',
-      seo_title: '',
-      seo_description: '',
+      seo_title: initialData?.seo_title || '',
+      seo_description: initialData?.seo_description || '',
       status: 'draft',
       published_at: null,
       scheduled_for: null,

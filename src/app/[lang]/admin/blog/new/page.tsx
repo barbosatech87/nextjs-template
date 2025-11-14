@@ -1,26 +1,39 @@
 import { PostForm } from "@/components/admin/blog/post-form";
 import { Locale } from "@/lib/i18n/config";
+import { AIResponse } from "@/app/actions/ai";
 
-const texts = {
-  pt: {
-    title: "Criar Nova Postagem",
-  },
-  en: {
-    title: "Create New Post",
-  },
-  es: {
-    title: "Crear Nueva Entrada",
-  },
-};
-
-export default function NewPostPage({ params }: { params: { lang: Locale } }) {
+export default function NewPostPage({
+  params,
+  searchParams,
+}: {
+  params: { lang: Locale };
+  searchParams?: { [key: string]: string | string[] | undefined };
+}) {
   const { lang } = params;
-  const t = texts[lang] || texts.pt;
+  let initialData: Partial<AIResponse> | null = null;
+
+  if (searchParams?.initialData && typeof searchParams.initialData === 'string') {
+    try {
+      initialData = JSON.parse(searchParams.initialData);
+    } catch (error) {
+      console.error("Failed to parse initial data from URL", error);
+      // Opcional: Adicionar um toast de erro aqui se necessário
+    }
+  }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">{t.title}</h1>
-      <PostForm lang={lang} />
+      <div>
+        <h1 className="text-2xl font-bold">
+          {initialData ? "Revisar Post Gerado por IA" : "Criar Nova Postagem"}
+        </h1>
+        <p className="text-muted-foreground">
+          {initialData
+            ? "Ajuste o conteúdo gerado pela IA antes de publicar."
+            : "Preencha os detalhes abaixo para criar uma nova postagem no blog."}
+        </p>
+      </div>
+      <PostForm lang={lang} initialData={initialData} />
     </div>
   );
 }
