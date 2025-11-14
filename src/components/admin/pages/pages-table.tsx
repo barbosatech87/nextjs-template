@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { deletePage } from "@/app/actions/pages";
 import { Locale } from "@/lib/i18n/config";
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2, Eye } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Page } from "@/types/supabase";
 
@@ -23,6 +23,7 @@ const texts = {
     title: "Título",
     status: "Status",
     actions: "Ações",
+    view: "Ver Página",
     edit: "Editar",
     delete: "Deletar",
     deleteConfirmTitle: "Você tem certeza?",
@@ -69,6 +70,14 @@ export function PagesTable({ pages, lang }: PagesTableProps) {
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal /></Button></DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {page.status === 'published' && (
+                        <DropdownMenuItem asChild>
+                          <Link href={`/${lang}/p/${page.slug}`} target="_blank" rel="noopener noreferrer">
+                            <Eye className="mr-2 h-4 w-4" />
+                            {t.view}
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem asChild><Link href={`/${lang}/admin/pages/edit/${page.id}`}>{t.edit}</Link></DropdownMenuItem>
                       <AlertDialogTrigger asChild><DropdownMenuItem className="text-destructive focus:text-destructive"><Trash2 className="mr-2 h-4 w-4" />{t.delete}</DropdownMenuItem></AlertDialogTrigger>
                     </DropdownMenuContent>
