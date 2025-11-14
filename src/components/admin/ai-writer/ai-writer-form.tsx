@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 
 import { Locale } from "@/lib/i18n/config";
-import { getBibleMetadata, generatePostWithAI, AIResponse } from "@/app/actions/ai";
+import { getBibleMetadata, generatePostWithAI, AIResponse, GenerationRequest } from "@/app/actions/ai";
 import { getTranslatedBookName } from "@/lib/bible-translations";
 
 interface AiWriterFormProps {
@@ -56,10 +56,10 @@ export function AiWriterForm({ lang }: AiWriterFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: { 
       type: "devotional",
-      theme: "", // Inicializado como string vazia
-      book: "", // Inicializado como string vazia
-      chapter: "", // Inicializado como string vazia
-      verse: "", // Inicializado como string vazia
+      theme: "", 
+      book: "", 
+      chapter: "", 
+      verse: "", 
     },
   });
 
@@ -78,15 +78,17 @@ export function AiWriterForm({ lang }: AiWriterFormProps) {
 
   const onSubmit = (values: FormValues) => {
     startTransition(async () => {
+      // Garante que apenas valores definidos sejam passados para o contexto
+      const context: GenerationRequest['context'] = {};
+      if (values.theme) context.theme = values.theme;
+      if (values.book) context.book = values.book;
+      if (values.chapter) context.chapter = parseInt(values.chapter, 10);
+      if (values.verse) context.verse = parseInt(values.verse, 10);
+
       const request = {
         lang,
         type: values.type,
-        context: {
-          theme: values.theme,
-          book: values.book,
-          chapter: values.chapter ? parseInt(values.chapter, 10) : undefined,
-          verse: values.verse ? parseInt(values.verse, 10) : undefined,
-        },
+        context,
       };
 
       const result = await generatePostWithAI(request);
@@ -138,7 +140,15 @@ export function AiWriterForm({ lang }: AiWriterFormProps) {
             <FormField control={form.control} name="verse" render={({ field }) => (
               <FormItem>
                 <FormLabel>Versículo</FormLabel>
-                <FormControl><Input type="number" placeholder="Nº do versículo" {...field} /></FormControl>
+                <FormControl>
+                  <Input 
+                    type="number" 
+                    placeholder="Nº do versículo" 
+                    {...field} 
+                    // Garante que o valor seja tratado como string para evitar problemas com type="number" e valor vazio
+                    value={field.value}
+                  />
+                </FormControl>
               </FormItem>
             )}/>
           </div>
