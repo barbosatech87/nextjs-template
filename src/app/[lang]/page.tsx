@@ -10,7 +10,7 @@ interface HomePageProps {
 
 const homeTexts = {
   pt: {
-    hero: { placeholder: 'Buscar na Bíblia...', button: 'Buscar' },
+    hero: { heading: 'Explore a palavra', placeholder: 'Buscar na Bíblia...', button: 'Buscar' },
     dailyVerse: { title: 'Versículo do Dia', readChapter: 'Ler o capítulo', verseUnavailable: 'Versículo do dia indisponível no momento.' },
     postSection: { 
       latest: { title: 'Últimas Postagens', viewAll: 'Ver todos' },
@@ -18,7 +18,7 @@ const homeTexts = {
     }
   },
   en: {
-    hero: { placeholder: 'Search the Bible...', button: 'Search' },
+    hero: { heading: 'Explore the Word', placeholder: 'Search the Bible...', button: 'Search' },
     dailyVerse: { title: 'Verse of the Day', readChapter: 'Read chapter', verseUnavailable: 'Verse of the day is currently unavailable.' },
     postSection: { 
       latest: { title: 'Latest Posts', viewAll: 'View all' },
@@ -26,7 +26,7 @@ const homeTexts = {
     }
   },
   es: {
-    hero: { placeholder: 'Buscar en la Biblia...', button: 'Buscar' },
+    hero: { heading: 'Explora la Palabra', placeholder: 'Buscar en la Biblia...', button: 'Buscar' },
     dailyVerse: { title: 'Versículo del Día', readChapter: 'Leer el capítulo', verseUnavailable: 'El versículo del día no está disponible actualmente.' },
     postSection: { 
       latest: { title: 'Últimas Publicaciones', viewAll: 'Ver todos' },
@@ -52,6 +52,9 @@ export default async function HomePage({ params }: HomePageProps) {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col items-center text-center gap-12 md:gap-16">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+          {t.hero.heading}
+        </h1>
         <HeroSearch lang={lang} texts={t.hero} />
         <DailyVerse lang={lang} verse={dailyVerse} texts={t.dailyVerse} />
       </div>
