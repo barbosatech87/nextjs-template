@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 // Define o prompt de sistema para garantir o estilo e proibir texto
-const SYSTEM_PROMPT = "Conceptual blog post image. The image must be high quality, artistic, and suitable for a Christian blog. IMPORTANT: Never include any readable text, numbers, or letters in the image. Focus on abstract or conceptual representation of the theme.";
+const SYSTEM_PROMPT = "Conceptual blog post image. The image must be high quality, artistic, and suitable for a Christian blog. CRITICAL: Never include any readable text, numbers, letters, or typography in the image. Focus on abstract or conceptual representation of the theme.";
 
 // Interface para o corpo da requisição
 interface ImageGenerationRequest {

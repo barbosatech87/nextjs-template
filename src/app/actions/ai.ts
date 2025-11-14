@@ -111,9 +111,53 @@ export async function generatePostWithAI(
 }
 
 /**
- * Gera uma imagem usando a API da OpenAI e a salva no Supabase.
+ * Gera uma imagem chamando a Edge Function.
  */
-export async function generateImageAction(prompt: string): Promise<{ success: boolean; message?: string }> {
+export async function generateImageAction(prompt: string): Promise<{ success: boolean; url?: string; message?: string }> {
+  const supabase = createSupabaseServerClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session) {
+    return { success: false, message: "Usuário não autenticado." };
+  }
+
+  try {
+    // O URL da Edge Function deve ser construído com o ID do projeto
+    const functionUrl = `https://xrwnftnfzwbrzijnbhfu.supabase.co/functions/v1/generate-image`;
+    
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ prompt }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to generate image.");
+    }
+
+    const imageUrl = data.imageUrl;
+    if (!imageUrl) {
+      throw new Error("A Edge Function não retornou uma URL de imagem.");
+    }
+
+    return { success: true, url: imageUrl };
+
+  } catch (error) {
+    console.error("Erro ao gerar imagem com IA:", error);
+    const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro desconhecido.";
+    return { success: false, message: `Falha ao gerar imagem: ${errorMessage}` };
+  }
+}
+
+/**
+ * Salva a imagem gerada no banco de dados após a confirmação do usuário.
+ */
+export async function saveGeneratedImage(prompt: string, imageUrl: string): Promise<{ success: boolean; message?: string }> {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -122,19 +166,6 @@ export async function generateImageAction(prompt: string): Promise<{ success: bo
   }
 
   try {
-    const imageResponse = await openai.images.generate({
-      model: "dall-e-3",
-      prompt: prompt,
-      n: 1,
-      size: "1024x1024",
-      quality: "standard",
-    });
-
-    const imageUrl = imageResponse.data?.[0]?.url;
-    if (!imageUrl) {
-      throw new Error("A API não retornou uma URL de imagem.");
-    }
-
     // Salvar no banco de dados
     const { error: dbError } = await supabase
       .from('generated_images')
@@ -153,9 +184,9 @@ export async function generateImageAction(prompt: string): Promise<{ success: bo
     return { success: true };
 
   } catch (error) {
-    console.error("Erro ao gerar imagem com IA:", error);
+    console.error("Erro ao salvar imagem gerada:", error);
     const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro desconhecido.";
-    return { success: false, message: `Falha ao gerar imagem: ${errorMessage}` };
+    return { success: false, message: `Falha ao salvar imagem: ${errorMessage}` };
   }
 }
 

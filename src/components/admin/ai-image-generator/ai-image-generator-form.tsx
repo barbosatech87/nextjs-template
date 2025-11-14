@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useTransition } from 'react';
+import React, { useTransition, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -8,10 +8,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { generateImageAction } from '@/app/actions/ai';
+import { generateImageAction, saveGeneratedImage } from '@/app/actions/ai';
 import { Locale } from '@/lib/i18n/config';
+import Image from 'next/image';
 
 const imageSchema = z.object({
   prompt: z.string().min(10, { message: "O prompt deve ter pelo menos 10 caracteres." }),
@@ -27,8 +28,13 @@ const texts = {
     promptPlaceholder: "Ex: Um leão majestoso em um campo florido ao pôr do sol, estilo pintura a óleo.",
     generate: "Gerar Imagem",
     generating: "Gerando...",
-    success: "Imagem gerada com sucesso! Verifique a galeria abaixo.",
+    success: "Imagem gerada com sucesso! Revise e salve.",
     error: "Falha ao gerar imagem. Tente novamente.",
+    save: "Salvar na Galeria",
+    saving: "Salvando...",
+    discard: "Descartar e Gerar Nova",
+    saveSuccess: "Imagem salva com sucesso na galeria!",
+    saveError: "Falha ao salvar imagem.",
   },
   en: {
     title: "Generate Image with AI",
@@ -37,8 +43,13 @@ const texts = {
     promptPlaceholder: "Ex: A majestic lion in a flowery field at sunset, oil painting style.",
     generate: "Generate Image",
     generating: "Generating...",
-    success: "Image generated successfully! Check the gallery below.",
+    success: "Image generated successfully! Review and save.",
     error: "Failed to generate image. Please try again.",
+    save: "Save to Gallery",
+    saving: "Saving...",
+    discard: "Discard and Generate New",
+    saveSuccess: "Image successfully saved to the gallery!",
+    saveError: "Failed to save image.",
   },
   es: {
     title: "Generar Imagen con IA",
@@ -47,8 +58,13 @@ const texts = {
     promptPlaceholder: "Ej: Un león majestuoso en un campo de flores al atardecer, estilo pintura al óleo.",
     generate: "Generar Imagen",
     generating: "Generando...",
-    success: "¡Imagen generada con éxito! Revisa la galería de abajo.",
+    success: "¡Imagen generada con éxito! Revisa y guarda.",
     error: "Error al generar la imagen. Inténtalo de nuevo.",
+    save: "Guardar en la Galería",
+    saving: "Guardando...",
+    discard: "Descartar y Generar Nueva",
+    saveSuccess: "¡Imagen guardada con éxito en la galería!",
+    saveError: "Error al guardar la imagen.",
   }
 };
 
@@ -58,6 +74,10 @@ interface AiImageGeneratorFormProps {
 
 export function AiImageGeneratorForm({ lang }: AiImageGeneratorFormProps) {
   const [isPending, startTransition] = useTransition();
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+  const [currentPrompt, setCurrentPrompt] = useState<string>('');
+  const [isSaving, startSavingTransition] = useTransition();
+  
   const t = texts[lang] || texts.pt;
 
   const form = useForm<ImageFormValues>({
@@ -68,15 +88,40 @@ export function AiImageGeneratorForm({ lang }: AiImageGeneratorFormProps) {
   });
 
   const onSubmit = (values: ImageFormValues) => {
+    setGeneratedImageUrl(null); // Limpa a imagem anterior
+    setCurrentPrompt(values.prompt);
+    
     startTransition(async () => {
       const result = await generateImageAction(values.prompt);
-      if (result.success) {
+      if (result.success && result.url) {
         toast.success(t.success);
-        form.reset();
+        setGeneratedImageUrl(result.url);
       } else {
         toast.error(result.message || t.error);
       }
     });
+  };
+
+  const handleSave = () => {
+    if (!generatedImageUrl || !currentPrompt) return;
+
+    startSavingTransition(async () => {
+      const result = await saveGeneratedImage(currentPrompt, generatedImageUrl);
+      if (result.success) {
+        toast.success(t.saveSuccess);
+        setGeneratedImageUrl(null);
+        setCurrentPrompt('');
+        form.reset();
+      } else {
+        toast.error(result.message || t.saveError);
+      }
+    });
+  };
+
+  const handleDiscard = () => {
+    setGeneratedImageUrl(null);
+    setCurrentPrompt('');
+    // Não reseta o prompt do formulário para que o usuário possa tentar novamente facilmente
   };
 
   return (
@@ -99,25 +144,67 @@ export function AiImageGeneratorForm({ lang }: AiImageGeneratorFormProps) {
                       placeholder={t.promptPlaceholder}
                       rows={4}
                       {...field}
+                      disabled={isPending || !!generatedImageUrl}
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isPending} className="w-full">
-              {isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t.generating}
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  {t.generate}
-                </>
-              )}
-            </Button>
+            
+            {generatedImageUrl && (
+              <div className="space-y-4">
+                <div className="relative w-full aspect-square rounded-lg overflow-hidden border">
+                  <Image 
+                    src={generatedImageUrl} 
+                    alt={currentPrompt} 
+                    layout="fill" 
+                    objectFit="cover" 
+                    unoptimized // Imagens geradas pela IA podem ser grandes e não precisam de otimização do Next.js
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    type="button" 
+                    onClick={handleSave} 
+                    disabled={isSaving}
+                    className="flex-1"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="mr-2 h-4 w-4" />
+                    )}
+                    {isSaving ? t.saving : t.save}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={handleDiscard}
+                    disabled={isSaving}
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    {t.discard}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {!generatedImageUrl && (
+              <Button type="submit" disabled={isPending} className="w-full">
+                {isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t.generating}
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    {t.generate}
+                  </>
+                )}
+              </Button>
+            )}
           </form>
         </Form>
       </CardContent>
