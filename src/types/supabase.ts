@@ -20,6 +20,7 @@ export type Page = {
   status: 'draft' | 'published';
   created_at: string;
   updated_at: string;
+  language_code: string;
 };
 
 export type Verse = {

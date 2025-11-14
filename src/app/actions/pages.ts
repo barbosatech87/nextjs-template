@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { Page } from "@/types/supabase";
 import { marked } from 'marked';
 
-export type PageData = Omit<Page, 'id' | 'author_id' | 'created_at' | 'updated_at'>;
+export type PageData = Omit<Page, 'id' | 'author_id' | 'created_at' | 'updated_at' | 'language_code'>;
 
 async function checkAdmin() {
   const supabase = createSupabaseServerClient();
@@ -29,7 +29,7 @@ export async function createPage(pageData: PageData, lang: string) {
     const author_id = await checkAdmin();
     const supabase = createSupabaseServerClient();
 
-    const { error } = await supabase.from("pages").insert({ ...pageData, author_id });
+    const { error } = await supabase.from("pages").insert({ ...pageData, author_id, language_code: lang });
 
     if (error) throw new Error(error.message);
 
@@ -104,20 +104,51 @@ export async function getPageById(pageId: string): Promise<Page | null> {
   return data as Page;
 }
 
-export async function getPageBySlug(slug: string): Promise<(Page & { content: string }) | null> {
+export async function getPageBySlug(slug: string, lang: string): Promise<(Page & { content: string }) | null> {
   const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase
+  const { data: page, error } = await supabase
     .from('pages')
     .select('*')
     .eq('slug', slug)
     .eq('status', 'published')
     .single();
 
-  if (error || !data) {
+  if (error || !page) {
     console.error("Error fetching page by slug:", error);
     return null;
   }
 
-  const parsedContent = await marked.parse(data.content || '');
-  return { ...data, content: parsedContent };
+  let finalTitle = page.title;
+  let finalSummary = page.summary;
+  let contentToParse = page.content || '';
+  let finalLanguageCode = page.language_code;
+
+  // Se o idioma solicitado for diferente do original, busca a tradução
+  if (lang !== page.language_code) {
+    const { data: translation } = await supabase
+      .from('page_translations')
+      .select('translated_title, translated_summary, translated_content')
+      .eq('page_id', page.id)
+      .eq('language_code', lang)
+      .single();
+
+    if (translation) {
+      finalTitle = translation.translated_title;
+      finalSummary = translation.translated_summary;
+      contentToParse = translation.translated_content || '';
+      finalLanguageCode = lang;
+    }
+  }
+
+  const parsedContent = await marked.parse(contentToParse);
+  
+  const finalPage: Page & { content: string } = {
+    ...page,
+    title: finalTitle,
+    summary: finalSummary,
+    content: parsedContent,
+    language_code: finalLanguageCode,
+  };
+
+  return finalPage;
 }
