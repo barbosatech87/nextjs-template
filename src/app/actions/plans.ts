@@ -175,7 +175,7 @@ export async function createUserReadingPlan(
 
     const allChapters: ChapterReference[] = [];
     for (const bookName of books) {
-      const bookMeta = bibleMetadata.find(b => b.book === bookName);
+      const bookMeta = bibleMetadata.find((b: { book: string, total_chapters: number }) => b.book === bookName);
       if (bookMeta) {
         for (let i = 1; i <= bookMeta.total_chapters; i++) {
           allChapters.push({ book: bookName, chapter: i });
