@@ -114,22 +114,24 @@ export async function getAiChatResponse(
       messages.push(responseMessage);
 
       for (const toolCall of toolCalls) {
-        const functionName = toolCall.function.name;
-        if (functionName === 'get_bible_verse') {
-          const functionArgs = JSON.parse(toolCall.function.arguments);
-          const functionResponse = await getBibleVerse(
-            functionArgs.book,
-            functionArgs.chapter,
-            functionArgs.verse_number,
-            lang
-          );
+        if (toolCall.type === 'function') {
+          const functionName = toolCall.function.name;
+          if (functionName === 'get_bible_verse') {
+            const functionArgs = JSON.parse(toolCall.function.arguments);
+            const functionResponse = await getBibleVerse(
+              functionArgs.book,
+              functionArgs.chapter,
+              functionArgs.verse_number,
+              lang
+            );
 
-          messages.push({
-            tool_call_id: toolCall.id,
-            role: 'tool',
-            name: functionName,
-            content: functionResponse,
-          });
+            messages.push({
+              tool_call_id: toolCall.id,
+              role: 'tool',
+              name: functionName,
+              content: functionResponse,
+            });
+          }
         }
       }
 
