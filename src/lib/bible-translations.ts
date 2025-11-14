@@ -103,23 +103,18 @@ function normalizeName(name: string): string {
     .trim();
 }
 
-// Cria um mapa de nomes em inglês em minúsculas/normalizadas para os nomes canônicos (que usam arábicos)
-const englishNameMap = new Map<string, string>();
-Object.keys(bookNameTranslations).forEach(bookName => {
-    // Adiciona a versão canônica (ex: "1 samuel")
-    englishNameMap.set(normalizeName(bookName), bookName);
-});
-
 // Mapa reverso para encontrar o nome em inglês a partir da tradução
 const reverseTranslationMap: { [key in Locale]?: Map<string, string> } = {};
 
 function generateReverseMap() {
+  // Garante que o mapa seja gerado apenas uma vez
   if (Object.keys(reverseTranslationMap).length > 0) return;
   
   const locales: Locale[] = ['pt', 'en', 'es'];
   locales.forEach(lang => {
     const langMap = new Map<string, string>();
     for (const englishName in bookNameTranslations) {
+      // Para 'en', a tradução é o próprio nome em inglês
       const translated = lang === 'en' 
         ? englishName 
         : bookNameTranslations[englishName as keyof typeof bookNameTranslations]?.[lang as 'pt' | 'es'];
@@ -136,11 +131,25 @@ function generateReverseMap() {
 generateReverseMap(); // Gera o mapa na inicialização do módulo
 
 export function getBookNameFromSlug(slug: string): string | undefined {
-    // Reconstroi o nome do livro a partir do slug e tenta encontrar no mapa de nomes em inglês
-    const bookNameFromSlug = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-    // Precisa lidar com casos como "1-samuel" -> "1 Samuel"
-    const canonicalBookName = Object.keys(bookNameTranslations).find(key => normalizeName(key) === normalizeName(bookNameFromSlug));
-    return canonicalBookName;
+    // Reconstroi o nome do livro a partir do slug (ex: "1-samuel" -> "1 Samuel")
+    const formattedSlug = slug.split('-').map(word => {
+        // Trata casos como "1" ou "2" no início do slug
+        if (word.match(/^\d+$/)) {
+            return word;
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+
+    // Normaliza o nome formatado do slug
+    const normalizedSlugName = normalizeName(formattedSlug);
+
+    // Tenta encontrar o nome canônico em inglês a partir do nome normalizado do slug
+    for (const englishName in bookNameTranslations) {
+        if (normalizeName(englishName) === normalizedSlugName) {
+            return englishName;
+        }
+    }
+    return undefined;
 }
 
 export function getTranslatedBookName(englishName: string, lang: Locale): string {
@@ -159,32 +168,25 @@ export function getTranslatedBookName(englishName: string, lang: Locale): string
 }
 
 export function getEnglishBookName(dbBookName: string, lang: Locale): string | undefined {
-    // 1. Primeiro, converte qualquer numeral romano no nome do DB para arábico.
-    const nameWithArabicNumerals = convertRomanToArabic(dbBookName);
+    // 1. Normaliza o nome do livro vindo do banco de dados
+    // Isso inclui converter numerais romanos para arábicos e remover acentos/minúsculas
+    const normalizedDbName = normalizeName(convertRomanToArabic(dbBookName));
 
-    // 2. Normaliza o nome para busca (minúsculas, sem acentos)
-    const normalizedName = normalizeName(nameWithArabicNumerals);
-
-    // 3. Tenta encontrar o nome canônico em inglês usando o mapa reverso para o idioma atual.
-    // Isso cobre casos onde o DB retorna o nome traduzido (ex: "Gênesis" -> "Genesis")
-    const canonicalFromTranslated = reverseTranslationMap[lang]?.get(normalizedName);
+    // 2. Tenta encontrar o nome canônico em inglês usando o mapa reverso para o idioma atual.
+    // Isso é crucial para converter nomes traduzidos (ex: "Apocalipse" -> "Revelation")
+    const canonicalFromTranslated = reverseTranslationMap[lang]?.get(normalizedDbName);
     if (canonicalFromTranslated) {
         return canonicalFromTranslated;
     }
 
-    // 4. Se não encontrou no mapa reverso (ex: DB já retornou um nome em inglês, mas não canônico),
-    // tenta encontrar diretamente no mapa de nomes em inglês.
-    // Isso cobre casos onde o DB retorna "Genesis" ou "1 Samuel" (já em inglês)
-    const canonicalFromEnglishMap = englishNameMap.get(normalizedName);
-    if (canonicalFromEnglishMap) {
-        return canonicalFromEnglishMap;
-    }
-
-    // 5. Como último recurso, se o nome do DB já for um nome canônico em inglês, retorna ele mesmo.
-    // Isso é para garantir que nomes como "Genesis" (se o DB já os tiver assim) sejam reconhecidos.
-    if (bookNameTranslations.hasOwnProperty(dbBookName)) {
-        return dbBookName;
+    // 3. Se não encontrou no mapa reverso (o que pode acontecer se o nome do DB já estiver em inglês
+    // ou se a tradução não foi mapeada), tenta encontrar diretamente nos nomes canônicos em inglês.
+    for (const englishName in bookNameTranslations) {
+        if (normalizeName(englishName) === normalizedDbName) {
+            return englishName;
+        }
     }
     
+    // Se nada funcionou, retorna undefined
     return undefined;
 }
