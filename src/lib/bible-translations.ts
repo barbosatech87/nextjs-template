@@ -71,10 +71,46 @@ const bookNameTranslations: Record<string, Record<"pt" | "es", string>> = {
   "Revelation": { "pt": "Apocalipse", "es": "Apocalipsis" },
 };
 
-// Cria um mapa de nomes em inglês em minúsculas para os nomes canônicos
+// Mapeamento de algarismos romanos para arábicos
+const romanToArabic: Record<string, string> = {
+    'i': '1',
+    'ii': '2',
+    'iii': '3',
+};
+
+function normalizeBookName(name: string): string {
+    // 1. Converte algarismos romanos iniciais para arábicos (ex: "I Kings" -> "1 Kings")
+    const parts = name.split(' ');
+    if (parts.length > 1) {
+        const firstPartLower = parts[0].toLowerCase();
+        if (romanToArabic[firstPartLower]) {
+            parts[0] = romanToArabic[firstPartLower];
+            name = parts.join(' ');
+        }
+    }
+    // 2. Remove acentos, minúsculas e espaços extras
+    return name
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+}
+
+// Cria um mapa de nomes em inglês em minúsculas/normalizadas para os nomes canônicos (que usam arábicos)
 const englishNameMap = new Map<string, string>();
 Object.keys(bookNameTranslations).forEach(bookName => {
+    // Adiciona a versão canônica (ex: "1 kings")
     englishNameMap.set(bookName.toLowerCase(), bookName);
+    
+    // Adiciona a versão com algarismos romanos (ex: "i kings") se aplicável
+    const parts = bookName.split(' ');
+    if (parts.length > 1 && romanToArabic[parts[0].toLowerCase()]) {
+        const romanName = Object.keys(romanToArabic).find(key => romanToArabic[key] === parts[0]);
+        if (romanName) {
+            const romanKey = `${romanName} ${parts.slice(1).join(' ')}`.toLowerCase();
+            englishNameMap.set(romanKey, bookName);
+        }
+    }
 });
 
 const slugToBookMap = new Map<string, string>();
@@ -122,9 +158,11 @@ export function getTranslatedBookName(englishName: string, lang: Locale): string
     return englishName;
   }
   
-  // Tenta encontrar a chave canônica (com capitalização correta)
+  // 1. Normaliza o nome em inglês (vindo do DB) para encontrar a chave canônica
+  // Isso lida com "I Kings" (do DB) -> "1 Kings" (chave canônica)
   const canonicalEnglishName = englishNameMap.get(englishName.toLowerCase()) || englishName;
 
+  // 2. Busca a tradução usando a chave canônica
   return bookNameTranslations[canonicalEnglishName as keyof typeof bookNameTranslations]?.[lang as 'pt' | 'es'] || englishName;
 }
 
