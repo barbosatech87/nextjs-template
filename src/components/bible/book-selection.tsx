@@ -94,7 +94,7 @@ export const BookSelection: React.FC<BookSelectionProps> = ({ books, lang }) => 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-x-4 gap-y-2">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2"> {/* Alterado para grid-cols-2 fixo */}
             {otBooks.map((book, index) => {
               // Usa o nome canônico em inglês para obter a tradução, com fallback
               const canonicalNameForDisplay = book.canonicalEnglishName || book.book;
@@ -104,7 +104,7 @@ export const BookSelection: React.FC<BookSelectionProps> = ({ books, lang }) => 
                 <Link 
                   key={canonicalNameForDisplay} 
                   href={`/${lang}/bible/${slug}`} 
-                  className="block text-sm text-muted-foreground hover:text-primary transition-colors"
+                  className="block text-base text-muted-foreground hover:text-primary transition-colors" {/* Alterado para text-base */}
                 >
                   {index + 1}. {translatedName}
                 </Link>
@@ -122,7 +122,7 @@ export const BookSelection: React.FC<BookSelectionProps> = ({ books, lang }) => 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-x-4 gap-y-2">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-2"> {/* Alterado para grid-cols-2 fixo */}
             {ntBooks.map((book, index) => {
               // Usa o nome canônico em inglês para obter a tradução, com fallback
               const canonicalNameForDisplay = book.canonicalEnglishName || book.book;
@@ -132,7 +132,7 @@ export const BookSelection: React.FC<BookSelectionProps> = ({ books, lang }) => 
                 <Link 
                   key={canonicalNameForDisplay} 
                   href={`/${lang}/bible/${slug}`} 
-                  className="block text-sm text-muted-foreground hover:text-primary transition-colors"
+                  className="block text-base text-muted-foreground hover:text-primary transition-colors" {/* Alterado para text-base */}
                 >
                   {index + 1}. {translatedName}
                 </Link>
