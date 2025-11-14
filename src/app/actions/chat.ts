@@ -21,7 +21,6 @@ async function getBibleVerse(book: string, chapter: number, verse_number: number
   console.log(`Buscando versículo: ${book} ${chapter}:${verse_number} em ${lang}`);
   const supabase = createSupabaseServerClient();
   
-  // A IA pode fornecer o nome do livro em qualquer idioma. Precisamos do nome canônico em inglês.
   const englishBookName = getEnglishBookName(book, lang);
 
   if (!englishBookName) {
@@ -49,6 +48,33 @@ export async function getAiChatResponse(
   history: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
   lang: Locale
 ) {
+  const supabase = createSupabaseServerClient();
+  
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: 'Autenticação necessária.' };
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  // Apenas usuários não-admin têm limite
+  if (profile?.role !== 'admin') {
+    const { data: allowed, error: rpcError } = await supabase.rpc('increment_chat_message_count');
+
+    if (rpcError) {
+      console.error('Erro ao verificar limite de mensagens:', rpcError);
+      return { error: 'Não foi possível verificar seu limite de uso. Tente novamente.' };
+    }
+
+    if (!allowed) {
+      return { error: 'Você atingiu seu limite diário de 5 mensagens. Por favor, volte amanhã para continuar a conversa.' };
+    }
+  }
+
   try {
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
@@ -85,7 +111,7 @@ export async function getAiChatResponse(
     const toolCalls = responseMessage.tool_calls;
 
     if (toolCalls) {
-      messages.push(responseMessage); // Adiciona a resposta da IA com a chamada da ferramenta
+      messages.push(responseMessage);
 
       for (const toolCall of toolCalls) {
         const functionName = toolCall.function.name;

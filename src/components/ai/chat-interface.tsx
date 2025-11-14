@@ -1,13 +1,12 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Brain, Send, User, Loader2 } from 'lucide-react';
+import { Brain, Send, User, Loader2, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent } from '@/components/ui/card';
 import { getAiChatResponse } from '@/app/actions/chat';
-import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Locale } from '@/lib/i18n/config';
 
@@ -32,6 +31,7 @@ export function ChatInterface({ lang }: ChatInterfaceProps) {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isLimitReached, setIsLimitReached] = useState(false);
   const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export function ChatInterface({ lang }: ChatInterfaceProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || isLimitReached) return;
 
     const userMessage: Message = { role: 'user', content: input };
     setMessages((prev) => [...prev, userMessage]);
@@ -60,8 +60,12 @@ export function ChatInterface({ lang }: ChatInterfaceProps) {
     const result = await getAiChatResponse(historyForApi, lang);
 
     if (result.error) {
-      toast.error(result.error);
-      setMessages(prev => prev.slice(0, -1)); // Remove user message on error
+      const errorMessage: Message = { role: 'assistant', content: result.error };
+      setMessages((prev) => [...prev, errorMessage]);
+      // Verifica se o erro é de limite atingido para desativar o input
+      if (result.error.includes('limite diário')) {
+        setIsLimitReached(true);
+      }
     } else if (result.content) {
       const assistantMessage: Message = { role: 'assistant', content: result.content };
       setMessages((prev) => [...prev, assistantMessage]);
@@ -117,20 +121,27 @@ export function ChatInterface({ lang }: ChatInterfaceProps) {
         </div>
       </ScrollArea>
       <CardContent className="p-4 border-t">
-        <form onSubmit={handleSubmit} className="flex items-center gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Digite sua pergunta sobre a Bíblia..."
-            disabled={isLoading}
-            className="flex-grow"
-            autoComplete="off"
-          />
-          <Button type="submit" disabled={isLoading || !input.trim()} size="icon">
-            <Send className="h-5 w-5" />
-            <span className="sr-only">Enviar</span>
-          </Button>
-        </form>
+        {isLimitReached ? (
+          <div className="flex items-center justify-center text-center text-sm text-muted-foreground p-3 bg-muted rounded-lg">
+            <MicOff className="h-5 w-5 mr-2" />
+            Você atingiu seu limite diário. Volte amanhã!
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex items-center gap-2">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Digite sua pergunta sobre a Bíblia..."
+              disabled={isLoading}
+              className="flex-grow"
+              autoComplete="off"
+            />
+            <Button type="submit" disabled={isLoading || !input.trim()} size="icon">
+              <Send className="h-5 w-5" />
+              <span className="sr-only">Enviar</span>
+            </Button>
+          </form>
+        )}
       </CardContent>
     </Card>
   );
