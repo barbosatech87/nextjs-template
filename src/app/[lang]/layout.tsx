@@ -1,29 +1,25 @@
-import { SessionContextProvider } from "@/components/auth/session-context-provider";
-import { i18n, Locale } from "@/lib/i18n/config";
-import { Toaster } from "@/components/ui/sonner";
-import { LangSetter } from "@/components/i18n/lang-setter";
-import { MainLayout } from "@/components/layout/main-layout";
-import { ReactNode } from "react";
+import { ReactNode } from 'react';
+import { Locale } from '@/lib/i18n/config';
+import { LangSetter } from '@/components/i18n/lang-setter';
+import { SessionContextProvider } from '@/components/auth/session-context-provider';
+import { Toaster } from '@/components/ui/sonner';
 
-export function generateStaticParams() {
-  return i18n.locales.map((lang) => ({ lang }));
+interface RootLayoutProps {
+  children: ReactNode;
+  params: { lang: Locale };
 }
 
-export default function RootLangLayout({
-  children,
-  params,
-}: { children: ReactNode; params: { lang: Locale } }) {
+export default function RootLayout({ children, params }: RootLayoutProps) {
   const { lang } = params;
-  
+
   return (
-    <>
-      <LangSetter lang={lang} />
-      <SessionContextProvider>
-        <MainLayout lang={lang}>
+    <html lang={lang} suppressHydrationWarning>
+      <body>
+        <SessionContextProvider>
+          <LangSetter lang={lang} />
           {children}
-        </MainLayout>
-        <Toaster />
-      </SessionContextProvider>
-    </>
+          <Toaster />
+        </SessionContextProvider>
+      </body>
+    </html>
   );
-}

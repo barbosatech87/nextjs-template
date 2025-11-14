@@ -1,23 +1,35 @@
-import { createSupabaseServerClient } from "@/integrations/supabase/server";
-import { BlogPostsTable } from "@/components/admin/blog/blog-posts-table";
-import { Locale } from "@/lib/i18n/config";
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { PlusCircle } from 'lucide-react';
+import { Locale } from '@/lib/i18n/config';
+import { BlogPostsTable } from '@/components/admin/blog/blog-posts-table';
 
-export default async function AdminBlogPage({ 
-  params, 
-  searchParams 
-}: {
+interface ManageBlogPageProps {
   params: { lang: Locale };
-  searchParams: { [key: string]: string | string[] | undefined } | undefined;
-}) {
+}
+
+export default function ManageBlogPage({ params }: ManageBlogPageProps) {
   const { lang } = params;
-  const supabase = createSupabaseServerClient();
-  
-  const { data: posts, error } = await supabase.rpc('get_admin_blog_posts');
 
-  if (error) {
-    console.error("Error fetching blog posts:", error);
-    return <div>Erro ao carregar os posts. Tente novamente mais tarde.</div>;
-  }
-
-  return <BlogPostsTable posts={posts || []} lang={lang} />;
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">
+            {lang === 'pt' ? 'Gerenciar Blog' : 'Manage Blog'}
+          </h1>
+          <p className="text-muted-foreground">
+            {lang === 'pt' ? 'Crie, edite e gerencie suas postagens.' : 'Create, edit, and manage your posts.'}
+          </p>
+        </div>
+        <Button asChild>
+          <Link href={`/${lang}/admin/blog/new`}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            {lang === 'pt' ? 'Novo Post' : 'New Post'}
+          </Link>
+        </Button>
+      </div>
+      <BlogPostsTable />
+    </div>
+  );
 }

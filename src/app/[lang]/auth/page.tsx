@@ -9,7 +9,7 @@ import { Locale } from '@/lib/i18n/config';
 import { useEffect } from 'react';
 
 interface AuthPageProps {
-  params: Awaited<{ lang: Locale }>;
+  params: { lang: Locale };
 }
 
 export default function AuthPage({ params }: AuthPageProps) {

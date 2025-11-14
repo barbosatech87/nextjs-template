@@ -1,33 +1,17 @@
-import { Locale } from "@/lib/i18n/config";
-
-const texts = {
-  pt: {
-    title: "Painel Administrativo",
-    welcome: "Bem-vindo ao painel de administração. Use a barra lateral para navegar.",
-  },
-  en: {
-    title: "Admin Dashboard",
-    welcome: "Welcome to the admin panel. Use the sidebar to navigate.",
-  },
-  es: {
-    title: "Panel de Administración",
-    welcome: "Bienvenido al panel de administración. Utilice la barra lateral para navegar.",
-  },
-};
+import { Locale } from '@/lib/i18n/config';
 
 interface AdminDashboardPageProps {
   params: { lang: Locale };
-  searchParams: { [key: string]: string | string[] | undefined } | undefined;
 }
 
-export default async function AdminDashboardPage({ params }: AdminDashboardPageProps) {
+export default function AdminDashboardPage({ params }: AdminDashboardPageProps) {
   const { lang } = params;
-  const t = texts[lang] || texts.pt;
-
   return (
-    <div className="space-y-4">
-      <h1 className="text-2xl font-bold">{t.title}</h1>
-      <p>{t.welcome}</p>
+    <div>
+      <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+      <p className="text-muted-foreground">
+        {lang === 'pt' ? 'Bem-vindo ao painel de administração.' : 'Welcome to the admin dashboard.'}
+      </p>
     </div>
   );
 }
