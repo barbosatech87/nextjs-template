@@ -82,7 +82,6 @@ export function AiImageGeneratorModalForm({ lang, initialPrompt, onImageSave }: 
     },
   });
 
-  // Atualiza o prompt inicial se ele mudar (ex: ao abrir o modal)
   useEffect(() => {
     if (initialPrompt) {
       form.setValue('prompt', initialPrompt);
@@ -90,7 +89,7 @@ export function AiImageGeneratorModalForm({ lang, initialPrompt, onImageSave }: 
   }, [initialPrompt, form]);
 
   const onSubmit = (values: ImageFormValues) => {
-    setGeneratedImageUrl(null); // Limpa a imagem anterior
+    setGeneratedImageUrl(null);
     setCurrentPrompt(values.prompt);
     
     startTransition(async () => {
@@ -104,6 +103,11 @@ export function AiImageGeneratorModalForm({ lang, initialPrompt, onImageSave }: 
     });
   };
 
+  const handleGenerateClick = () => {
+    // Usa a validação do RHF sem submeter um <form>, evitando submit do PostForm pai
+    form.handleSubmit(onSubmit)();
+  };
+
   const handleSave = () => {
     if (!generatedImageUrl || !currentPrompt) return;
 
@@ -111,7 +115,6 @@ export function AiImageGeneratorModalForm({ lang, initialPrompt, onImageSave }: 
       const result = await saveGeneratedImage(currentPrompt, generatedImageUrl);
       if (result.success) {
         toast.success(t.saveSuccess);
-        // Chama o callback de seleção e fecha o modal (implícito pelo onSelectImage no ImageSelectorDialog)
         onImageSave(generatedImageUrl);
       } else {
         toast.error(result.message || t.saveError);
@@ -122,12 +125,11 @@ export function AiImageGeneratorModalForm({ lang, initialPrompt, onImageSave }: 
   const handleDiscard = () => {
     setGeneratedImageUrl(null);
     setCurrentPrompt('');
-    // Não reseta o prompt do formulário para que o usuário possa tentar novamente facilmente
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <div className="space-y-6">
         <FormField
           control={form.control}
           name="prompt"
@@ -153,8 +155,8 @@ export function AiImageGeneratorModalForm({ lang, initialPrompt, onImageSave }: 
               <Image 
                 src={generatedImageUrl} 
                 alt={currentPrompt} 
-                layout="fill" 
-                objectFit="cover" 
+                fill 
+                style={{ objectFit: 'cover' }} 
                 unoptimized
               />
             </div>
@@ -186,7 +188,7 @@ export function AiImageGeneratorModalForm({ lang, initialPrompt, onImageSave }: 
         )}
 
         {!generatedImageUrl && (
-          <Button type="submit" disabled={isPending} className="w-full">
+          <Button type="button" onClick={handleGenerateClick} disabled={isPending} className="w-full">
             {isPending ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -200,7 +202,7 @@ export function AiImageGeneratorModalForm({ lang, initialPrompt, onImageSave }: 
             )}
           </Button>
         )}
-      </form>
+      </div>
     </Form>
   );
 }
