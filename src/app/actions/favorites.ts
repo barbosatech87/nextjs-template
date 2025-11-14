@@ -16,7 +16,7 @@ export async function getFavoriteVerseIds(userId: string): Promise<Set<string>> 
         return new Set();
     }
 
-    return new Set(data.map(fav => fav.verse_id));
+    return new Set(data.map(fav => fav.verse_id).filter(Boolean) as string[]);
 }
 
 export async function toggleFavoriteVerse(verse: Verse, isFavorited: boolean): Promise<{ success: boolean; message: string }> {
@@ -60,4 +60,64 @@ export async function toggleFavoriteVerse(verse: Verse, isFavorited: boolean): P
         revalidatePath('/profile');
         return { success: true, message: "Versículo adicionado aos favoritos!" };
     }
+}
+
+export type HydratedFavorite = {
+  id: string; // favorite id
+  verse_id: string;
+  book: string;
+  chapter: number;
+  verse_number: number;
+  text: string;
+  language_code: string;
+  created_at: string | null;
+  verse: Verse;
+};
+
+export async function getHydratedFavorites(): Promise<HydratedFavorite[]> {
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from('user_favorites')
+    .select(`
+      id,
+      verse_id,
+      book,
+      chapter,
+      verse_number,
+      language_code,
+      created_at,
+      verses ( * )
+    `)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error("Error fetching hydrated favorites:", error);
+    return [];
+  }
+
+  if (!data) {
+    return [];
+  }
+
+  return data.map(fav => {
+    const verseData = Array.isArray(fav.verses) ? fav.verses[0] : fav.verses;
+    return {
+      id: fav.id,
+      verse_id: fav.verse_id,
+      book: fav.book,
+      chapter: fav.chapter,
+      verse_number: fav.verse_number,
+      language_code: fav.language_code,
+      created_at: fav.created_at,
+      text: verseData?.text || 'Texto do versículo não encontrado.',
+      verse: verseData as Verse,
+    };
+  }).filter(fav => fav.verse);
 }

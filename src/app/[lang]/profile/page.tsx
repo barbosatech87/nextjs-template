@@ -5,6 +5,7 @@ import { User, Heart, Bell, CalendarCheck } from 'lucide-react';
 import { UserDataTab } from '@/components/profile/user-data-tab';
 import { FavoritesTab } from '@/components/profile/favorites-tab';
 import { ReadingPlansTab } from '@/components/profile/reading-plans-tab';
+import { getHydratedFavorites } from '@/app/actions/favorites';
 
 interface ProfilePageProps {
   params: { lang: Locale };
@@ -34,9 +35,11 @@ const pageTexts = {
   },
 };
 
-export default function ProfilePage({ params }: ProfilePageProps) {
+export default async function ProfilePage({ params }: ProfilePageProps) {
   const { lang } = params;
   const t = pageTexts[lang] || pageTexts.pt;
+
+  const favorites = await getHydratedFavorites();
 
   return (
     <div className="container mx-auto max-w-4xl py-12">
@@ -67,7 +70,7 @@ export default function ProfilePage({ params }: ProfilePageProps) {
         </TabsContent>
         
         <TabsContent value="favorites" className="mt-6">
-          <FavoritesTab lang={lang} />
+          <FavoritesTab lang={lang} favorites={favorites} />
         </TabsContent>
         
         <TabsContent value="notifications" className="mt-6">
