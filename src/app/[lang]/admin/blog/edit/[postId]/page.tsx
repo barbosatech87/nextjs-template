@@ -3,6 +3,7 @@ import { Locale } from "@/lib/i18n/config";
 import { LocalizedPageProps } from "@/types/next-app";
 import { getPostById, EditablePostData } from "@/app/actions/blog";
 import { notFound } from "next/navigation";
+import { AIResponse } from "@/app/actions/ai"; // Import necessário para o tipo
 
 const texts = {
   pt: {
@@ -22,6 +23,13 @@ const texts = {
   },
 };
 
+// Definindo o tipo InitialPostData localmente para evitar importação circular
+type PostStatus = 'draft' | 'published' | 'archived';
+type InitialPostData = Partial<Omit<EditablePostData, 'status'>> & Partial<AIResponse> & {
+  status?: PostStatus;
+  category_ids?: string[];
+};
+
 interface EditPostPageProps extends LocalizedPageProps<{ postId: string }> {}
 
 export default async function EditPostPage({ params }: EditPostPageProps) {
@@ -34,13 +42,16 @@ export default async function EditPostPage({ params }: EditPostPageProps) {
     notFound();
   }
 
+  // Força a atribuição do tipo para resolver o erro de compatibilidade de null/undefined
+  const typedInitialData: InitialPostData = initialData as InitialPostData;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">{t.title}</h1>
         <p className="text-muted-foreground">{t.description}</p>
       </div>
-      <PostForm lang={lang} initialData={initialData} isEditing={true} postId={postId} />
+      <PostForm lang={lang} initialData={typedInitialData} isEditing={true} postId={postId} />
     </div>
   );
 }

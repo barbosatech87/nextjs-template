@@ -6,9 +6,10 @@ export interface LocalizedParams {
   lang: Locale;
 }
 
+// Usando tipos simples para evitar que o Next.js infira Promise<any>
 export interface LocalizedPageProps<P = {}> {
   params: LocalizedParams & P;
-  searchParams?: { [key: string]: string | string[] | undefined };
+  searchParams: { [key: string]: string | string[] | undefined } | undefined;
 }
 
 export interface LocalizedLayoutProps<P = {}> {

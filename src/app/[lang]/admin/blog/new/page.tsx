@@ -2,6 +2,14 @@ import { PostForm } from "@/components/admin/blog/post-form";
 import { Locale } from "@/lib/i18n/config";
 import { AIResponse } from "@/app/actions/ai";
 import { LocalizedPageProps } from "@/types/next-app";
+import { EditablePostData } from "@/app/actions/blog"; // Import necessário
+
+// Definindo o tipo InitialPostData localmente para evitar importação circular
+type PostStatus = 'draft' | 'published' | 'archived';
+type InitialPostData = Partial<Omit<EditablePostData, 'status'>> & Partial<AIResponse> & {
+  status?: PostStatus;
+  category_ids?: string[];
+};
 
 export default async function NewPostPage({
   params,
@@ -19,6 +27,9 @@ export default async function NewPostPage({
     }
   }
 
+  // Força a atribuição do tipo para resolver o erro de compatibilidade
+  const typedInitialData: InitialPostData | null = initialData as InitialPostData | null;
+
   return (
     <div className="space-y-6">
       <div>
@@ -31,7 +42,7 @@ export default async function NewPostPage({
             : "Preencha os detalhes abaixo para criar uma nova postagem no blog."}
         </p>
       </div>
-      <PostForm lang={lang} initialData={initialData} />
+      <PostForm lang={lang} initialData={typedInitialData} />
     </div>
   );
 }

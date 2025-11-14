@@ -24,13 +24,12 @@ import { AIResponse } from '@/app/actions/ai';
 // Tipo unificado para dados iniciais (AIResponse é um subconjunto de EditablePostData)
 // Usamos Partial<EditablePostData> para cobrir todos os campos do DB, e & Partial<AIResponse>
 // para garantir que os campos da IA (que podem ser mais restritivos) sejam aceitos.
-// O problema é que o TS está vendo a união de tipos de 'summary' e 'seo_title' como incompatível.
-// Vamos usar um tipo utilitário para garantir que todos os campos de string sejam string | null | undefined.
-type NullableStringFields<T> = {
-    [K in keyof T]: T[K] extends string | null ? string | null | undefined : T[K];
-};
+type PostStatus = 'draft' | 'published' | 'archived';
 
-type InitialPostData = NullableStringFields<EditablePostData> & Partial<AIResponse>;
+type InitialPostData = Partial<Omit<EditablePostData, 'status'>> & Partial<AIResponse> & {
+  status?: PostStatus;
+  category_ids?: string[];
+};
 
 
 interface PostFormProps {
@@ -165,10 +164,10 @@ export function PostForm({ lang, initialData, isEditing = false, postId }: PostF
     image_url: initialData?.image_url || null,
     seo_title: initialData?.seo_title || null,
     seo_description: initialData?.seo_description || null,
-    status: initialData?.status || 'draft',
+    status: (initialData?.status as PostStatus) || 'draft', // <-- Correção do Erro 1
     published_at: initialData?.published_at || null,
     scheduled_for: initialData?.scheduled_for || null,
-    category_ids: (initialData as EditablePostData)?.category_ids || [],
+    category_ids: initialData?.category_ids || [],
   };
 
   const form = useForm<PostFormValues>({
