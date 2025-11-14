@@ -26,7 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { deletePost } from "@/app/actions/blog";
 import { Locale } from "@/lib/i18n/config";
-import { MoreHorizontal, PlusCircle, Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 type Post = {
@@ -45,8 +45,6 @@ interface BlogPostsTableProps {
 
 const texts = {
   pt: {
-    title: "Gerenciar Posts",
-    newPost: "Nova Postagem",
     tableTitle: "Título",
     author: "Autor",
     status: "Status",
@@ -62,8 +60,6 @@ const texts = {
     deleteError: "Erro ao deletar o post.",
   },
   en: {
-    title: "Manage Posts",
-    newPost: "New Post",
     tableTitle: "Title",
     author: "Author",
     status: "Status",
@@ -79,8 +75,6 @@ const texts = {
     deleteError: "Error deleting post.",
   },
   es: {
-    title: "Gestionar Entradas",
-    newPost: "Nueva Entrada",
     tableTitle: "Título",
     author: "Autor",
     status: "Estado",
@@ -123,15 +117,6 @@ export function BlogPostsTable({ posts, lang }: BlogPostsTableProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t.title}</h1>
-        <Button asChild>
-          <Link href={`/${lang}/admin/blog/new`}>
-            <PlusCircle className="mr-2" />
-            {t.newPost}
-          </Link>
-        </Button>
-      </div>
       <div className="border rounded-lg">
         <Table>
           <TableHeader>

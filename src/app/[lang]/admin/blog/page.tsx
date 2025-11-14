@@ -13,21 +13,41 @@ export default async function ManageBlogPage({ params }: ManageBlogPageProps) {
   const { lang } = params;
   const posts = await getAdminPosts();
 
+  const texts = {
+    pt: {
+      title: 'Gerenciar Blog',
+      description: 'Crie, edite e gerencie suas postagens.',
+      newPost: 'Novo Post',
+    },
+    en: {
+      title: 'Manage Blog',
+      description: 'Create, edit, and manage your posts.',
+      newPost: 'New Post',
+    },
+    es: {
+      title: 'Gestionar Blog',
+      description: 'Crea, edita y gestiona tus entradas.',
+      newPost: 'Nueva Entrada',
+    },
+  };
+
+  const t = texts[lang] || texts.pt;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">
-            {lang === 'pt' ? 'Gerenciar Blog' : 'Manage Blog'}
+            {t.title}
           </h1>
           <p className="text-muted-foreground">
-            {lang === 'pt' ? 'Crie, edite e gerencie suas postagens.' : 'Create, edit, and manage your posts.'}
+            {t.description}
           </p>
         </div>
         <Button asChild>
           <Link href={`/${lang}/admin/blog/new`}>
             <PlusCircle className="mr-2 h-4 w-4" />
-            {lang === 'pt' ? 'Novo Post' : 'New Post'}
+            {t.newPost}
           </Link>
         </Button>
       </div>
