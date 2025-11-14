@@ -29,7 +29,7 @@ export default function IaExplicaPage({ params: paramsProp }: IaExplicaPageProps
   const texts = pageTexts[params.lang] || pageTexts.pt;
 
   return (
-    <div className="container mx-auto px-4 py-8 h-[calc(100vh-8rem)]">
+    <div className="container mx-auto px-4 py-8 flex flex-col h-[calc(100vh-8rem)]">
       <div className="text-center mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-primary sm:text-4xl">
           {texts.title}
@@ -38,7 +38,9 @@ export default function IaExplicaPage({ params: paramsProp }: IaExplicaPageProps
           {texts.description}
         </p>
       </div>
-      <ChatInterface lang={params.lang} />
+      <div className="flex-grow min-h-0">
+        <ChatInterface lang={params.lang} />
+      </div>
     </div>
   );
 }
