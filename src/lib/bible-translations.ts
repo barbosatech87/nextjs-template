@@ -71,6 +71,12 @@ const bookNameTranslations: Record<string, Record<"pt" | "es", string>> = {
   "Revelation": { "pt": "Apocalipse", "es": "Apocalipsis" },
 };
 
+// Cria um mapa de nomes em inglês em minúsculas para os nomes canônicos
+const englishNameMap = new Map<string, string>();
+Object.keys(bookNameTranslations).forEach(bookName => {
+    englishNameMap.set(bookName.toLowerCase(), bookName);
+});
+
 const slugToBookMap = new Map<string, string>();
 Object.keys(bookNameTranslations).forEach(bookName => {
     const slug = bookName.toLowerCase().replace(/\s+/g, '-');
@@ -115,13 +121,17 @@ export function getTranslatedBookName(englishName: string, lang: Locale): string
   if (lang === 'en') {
     return englishName;
   }
-  return bookNameTranslations[englishName]?.[lang as 'pt' | 'es'] || englishName;
+  
+  // Tenta encontrar a chave canônica (com capitalização correta)
+  const canonicalEnglishName = englishNameMap.get(englishName.toLowerCase()) || englishName;
+
+  return bookNameTranslations[canonicalEnglishName as keyof typeof bookNameTranslations]?.[lang as 'pt' | 'es'] || englishName;
 }
 
 export function getEnglishBookName(translatedName: string, lang: Locale): string | undefined {
   if (lang === 'en') {
     // Se o idioma for inglês, verifica se o nome já é um nome canônico
-    return bookNameTranslations[translatedName] ? translatedName : undefined;
+    return englishNameMap.get(translatedName.toLowerCase());
   }
   
   // Normaliza a entrada do usuário antes de buscar no mapa reverso
