@@ -6,7 +6,8 @@ import { Locale } from "@/lib/i18n/config";
 import { revalidatePath } from "next/cache";
 import { addDays } from "date-fns";
 import { createPlanSchema, CreatePlanData } from "@/lib/schemas/plans";
-import { UserReadingPlan } from "@/types/supabase";
+import { UserReadingPlan, Verse } from "@/types/supabase";
+import { notFound } from "next/navigation";
 
 interface ChapterReference {
   book: string;
@@ -35,6 +36,97 @@ export async function getUserActiveReadingPlans(): Promise<UserReadingPlan[]> {
   return data as UserReadingPlan[];
 }
 
+export async function getPlanAndProgress(planId: string): Promise<{ plan: UserReadingPlan; completedDays: Set<number> }> {
+    const supabase = createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) notFound();
+
+    const { data: plan, error: planError } = await supabase
+        .from("user_reading_plans")
+        .select("*")
+        .eq("id", planId)
+        .eq("user_id", user.id)
+        .single();
+
+    if (planError || !plan) {
+        console.error("Plano não encontrado ou erro:", planError);
+        notFound();
+    }
+
+    const { data: progress, error: progressError } = await supabase
+        .from("user_reading_progress")
+        .select("day_number")
+        .eq("user_plan_id", planId);
+
+    if (progressError) {
+        console.error("Erro ao buscar progresso:", progressError);
+        // Continua mesmo com erro, o progresso será 0
+    }
+
+    const completedDays = new Set(progress?.map(p => p.day_number) || []);
+
+    return { plan, completedDays };
+}
+
+export async function getChaptersText(chapters: ChapterReference[], lang: Locale): Promise<Verse[]> {
+    const supabase = createSupabaseServerClient();
+    const queries = chapters.map(c => 
+        supabase.from("verses")
+            .select("id, book, chapter, verse_number, text")
+            .eq("language_code", lang)
+            .eq("book", c.book)
+            .eq("chapter", c.chapter)
+            .order("verse_number", { ascending: true })
+    );
+
+    const results = await Promise.all(queries);
+    const verses: Verse[] = [];
+
+    results.forEach(res => {
+        if (res.data) {
+            verses.push(...res.data as Verse[]);
+        }
+    });
+
+    return verses;
+}
+
+export async function updateReadingProgress(planId: string, dayNumber: number, isCompleted: boolean, lang: Locale) {
+    const supabase = createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, message: "Usuário não autenticado." };
+    }
+
+    if (isCompleted) {
+        const { error } = await supabase.from("user_reading_progress").insert({
+            user_plan_id: planId,
+            user_id: user.id,
+            day_number: dayNumber,
+        });
+        if (error && error.code !== '23505') { // Ignora erro de duplicata
+             console.error("Erro ao marcar como lido:", error);
+             return { success: false, message: error.message };
+        }
+    } else {
+        const { error } = await supabase.from("user_reading_progress")
+            .delete()
+            .eq("user_plan_id", planId)
+            .eq("day_number", dayNumber);
+        if (error) {
+            console.error("Erro ao desmarcar como lido:", error);
+            return { success: false, message: error.message };
+        }
+    }
+
+    revalidatePath(`/${lang}/plans/${planId}`);
+    revalidatePath(`/${lang}/plans`); // Revalida a página principal para atualizar a barra de progresso
+    return { success: true };
+}
+
+
 export async function createUserReadingPlan(
   data: CreatePlanData
 ): Promise<{ success: boolean; message: string }> {
@@ -51,15 +143,13 @@ export async function createUserReadingPlan(
   }
 
   try {
-    const { name, description, books, duration, lang } = data;
+    const { name, books, duration, lang } = data;
 
-    // 1. Buscar metadados da Bíblia para saber quantos capítulos cada livro tem
     const bibleMetadata = await getBibleMetadata(lang);
     if (!bibleMetadata || bibleMetadata.length === 0) {
       return { success: false, message: "Não foi possível carregar os dados da Bíblia para criar o plano." };
     }
 
-    // 2. Criar uma lista plana de todos os capítulos na ordem selecionada
     const allChapters: ChapterReference[] = [];
     for (const bookName of books) {
       const bookMeta = bibleMetadata.find(b => b.book === bookName);
@@ -74,14 +164,12 @@ export async function createUserReadingPlan(
         return { success: false, message: "Nenhum capítulo encontrado para os livros selecionados." };
     }
 
-    // 3. Calcular a distribuição de capítulos por dia
     const totalChapters = allChapters.length;
     const dailyReadingSchedule: Record<string, ChapterReference[]> = {};
     let chapterIndex = 0;
 
     for (let day = 1; day <= duration; day++) {
       const chaptersForThisDay: ChapterReference[] = [];
-      // Calcula quantos capítulos alocar para o dia atual para uma distribuição uniforme
       const chaptersToReadCount = Math.ceil((totalChapters - chapterIndex) / (duration - day + 1));
       
       for (let i = 0; i < chaptersToReadCount && chapterIndex < totalChapters; i++) {
@@ -94,7 +182,6 @@ export async function createUserReadingPlan(
       }
     }
 
-    // 4. Salvar o plano do usuário no banco de dados
     const startDate = new Date();
     const endDate = addDays(startDate, duration - 1);
 
@@ -104,15 +191,13 @@ export async function createUserReadingPlan(
       start_date: startDate.toISOString().split('T')[0],
       end_date: endDate.toISOString().split('T')[0],
       daily_reading_schedule: dailyReadingSchedule,
-      // plan_id é nulo porque é um plano customizado
     });
 
     if (error) {
       throw new Error(error.message);
     }
 
-    // 5. Revalidar o path para que a lista de planos seja atualizada
-    revalidatePath(`/${lang}/plans/dashboard`);
+    revalidatePath(`/${lang}/plans`);
 
     return { success: true, message: "Plano de leitura criado com sucesso!" };
   } catch (error) {
