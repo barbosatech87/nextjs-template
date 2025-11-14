@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
@@ -27,7 +28,11 @@ interface TranslationRequest {
 
 // Função para chamar a API da OpenAI
 async function getTranslation(text: string, targetLang: string, type: 'title' | 'summary' | 'content') {
-  const systemPrompt = `You are a professional translator. Translate the following ${type} from ${SOURCE_LANGUAGE} to ${targetLang}. Maintain the original formatting (Markdown/HTML) for the content. Only return the translated text, nothing else.`;
+  let systemPrompt = `You are a professional translator. Translate the following ${type} from ${SOURCE_LANGUAGE} to ${targetLang}. Maintain the original formatting (Markdown/HTML) for the content. Only return the translated text, nothing else.`;
+  
+  if (type === 'content') {
+    systemPrompt = `You are a professional translator. Translate the following content from ${SOURCE_LANGUAGE} to ${targetLang}. The content is in Markdown format. IMPORTANT: Do NOT include the main title (H1) in the translated content. Use H2, H3, lists, etc., as needed. Only return the translated text, nothing else.`;
+  }
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",

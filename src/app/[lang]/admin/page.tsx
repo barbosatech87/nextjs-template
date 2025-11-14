@@ -1,4 +1,5 @@
 import { Locale } from "@/lib/i18n/config";
+import { LocalizedPageProps } from "@/types/next-app";
 
 const texts = {
   pt: {
@@ -15,11 +16,7 @@ const texts = {
   },
 };
 
-interface AdminDashboardPageProps {
-  params: { lang: Locale }; // Corrigido
-}
-
-export default async function AdminDashboardPage({ params }: AdminDashboardPageProps) {
+export default async function AdminDashboardPage({ params }: LocalizedPageProps) {
   const { lang } = params;
   const t = texts[lang as keyof typeof texts] || texts.pt;
 

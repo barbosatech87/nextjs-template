@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { Locale } from '@/lib/i18n/config';
 import { BookSelection } from '@/components/bible/book-selection';
+import { LocalizedPageProps } from '@/types/next-app';
 
 const pageTexts = {
   pt: {
@@ -20,9 +21,7 @@ const pageTexts = {
   }
 }
 
-interface BiblePageProps {
-  params: Awaited<{ lang: Locale }>;
-}
+interface BiblePageProps extends LocalizedPageProps {}
 
 export default async function BiblePage({ params }: BiblePageProps) {
   const { lang } = params;

@@ -4,6 +4,7 @@ import ProfileFormWrapper from "@/components/profile/profile-form-wrapper";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import PasswordChangeForm from "@/components/profile/password-change-form";
 import { Locale } from "@/lib/i18n/config";
+import { LocalizedPageProps } from "@/types/next-app";
 
 const texts = {
   pt: {
@@ -26,11 +27,7 @@ const texts = {
   },
 };
 
-interface ProfilePageProps {
-  params: { lang: Locale }; // Corrigido
-}
-
-export default async function ProfilePage({ params }: ProfilePageProps) {
+export default async function ProfilePage({ params }: LocalizedPageProps) {
   const { lang } = params;
   const t = texts[lang] || texts.pt;
   

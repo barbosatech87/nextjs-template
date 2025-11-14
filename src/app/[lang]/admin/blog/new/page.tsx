@@ -1,16 +1,12 @@
 import { PostForm } from "@/components/admin/blog/post-form";
 import { Locale } from "@/lib/i18n/config";
 import { AIResponse } from "@/app/actions/ai";
-
-interface NewPostPageProps {
-  params: { lang: Locale }; // Corrigido
-  searchParams?: { [key: string]: string | string[] | undefined };
-}
+import { LocalizedPageProps } from "@/types/next-app";
 
 export default async function NewPostPage({
   params,
   searchParams,
-}: NewPostPageProps) {
+}: LocalizedPageProps) {
   const { lang } = params;
   let initialData: Partial<AIResponse> | null = null;
 

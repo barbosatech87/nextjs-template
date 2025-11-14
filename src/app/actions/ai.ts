@@ -50,11 +50,16 @@ export async function generatePostWithAI(
       Seu público é primariamente cristão.
       Todo o conteúdo deve ser otimizado para SEO, com linguagem clara, inspiradora e teologicamente sólida.
       O idioma do conteúdo gerado deve ser ${request.lang}.
+      
+      Instruções de Formatação:
+      1. O campo "title" deve conter apenas o título principal.
+      2. O campo "content" deve conter o corpo do artigo em Markdown. Não inclua o título principal (H1) no campo "content". Use subtítulos (H2, H3) e formatação Markdown (negrito, listas) conforme necessário.
+      
       Sua resposta DEVE ser um objeto JSON com a seguinte estrutura:
       {
         "title": "Um título atrativo e otimizado para SEO com no máximo 70 caracteres.",
         "slug": "um-slug-para-url-baseado-no-titulo-sem-acentos-e-com-hifens",
-        "content": "O conteúdo principal do post em formato Markdown. Deve ser bem estruturado, com parágrafos, e talvez listas ou subtítulos. Deve ter pelo menos 3 parágrafos.",
+        "content": "O corpo do post em formato Markdown, começando diretamente com o primeiro parágrafo ou subtítulo (H2). Deve ter pelo menos 3 parágrafos.",
         "summary": "Um resumo conciso do post com no máximo 300 caracteres.",
         "seo_title": "Um título para SEO, similar ao título principal, com no máximo 60 caracteres.",
         "seo_description": "Uma meta descrição para SEO, otimizada para cliques, com no máximo 160 caracteres."
@@ -104,14 +109,20 @@ export async function generatePostWithAI(
   }
 }
 
-// --- Função para buscar metadados da Bíblia ---
+/**
+ * Busca metadados da Bíblia (livro e total de capítulos) para um idioma específico.
+ */
 export async function getBibleMetadata(lang: Locale) {
-    const supabase = createSupabaseServerClient();
-    const { data, error } = await supabase.rpc('get_bible_metadata', { lang_code: lang });
+  const supabase = createSupabaseServerClient();
+  
+  const { data, error } = await supabase.rpc('get_bible_metadata', {
+    lang_code: lang,
+  });
 
-    if (error) {
-        console.error('Error fetching bible metadata:', error);
-        return [];
-    }
-    return data;
+  if (error) {
+    console.error("Error fetching bible metadata:", error);
+    return [];
+  }
+
+  return data;
 }
