@@ -1,11 +1,11 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useSession } from '@/components/auth/session-context-provider';
 import { Locale } from '@/lib/i18n/config';
 import { Button } from '@/components/ui/button';
-import { User, BookOpen, Brain, Calendar, Rss, Shield, LogOut, Bell } from 'lucide-react';
+import { User, BookOpen, Brain, Calendar, Rss, Shield, LogOut, Bell, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LanguageSwitcher } from '@/components/i18n/language-switcher';
 import { useProfile } from '@/hooks/use-profile';
@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { supabase } from '@/integrations/supabase/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 
 interface HeaderProps {
   lang: Locale;
@@ -68,6 +69,7 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
   const { unreadCount } = useNotifications();
   const texts = navTexts[lang] || navTexts.pt;
   const router = useRouter();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -111,7 +113,7 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
           ))}
         </nav>
 
-        {/* Auth / Perfil */}
+        {/* Auth / Perfil e Menu Mobile */}
         <div className="flex items-center space-x-2">
           {isLoading ? (
             <div className="h-8 w-24 animate-pulse bg-muted rounded-md" />
@@ -160,6 +162,40 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
             </Link>
           )}
           <LanguageSwitcher lang={lang} />
+
+          {/* Menu Mobile */}
+          <div className="md:hidden">
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Abrir menu">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-full max-w-xs">
+                <SheetHeader>
+                  <SheetTitle>
+                    <Link href={`/${lang}`} className="flex items-center space-x-2" onClick={() => setIsMobileMenuOpen(false)}>
+                      <BookOpen className="h-6 w-6 text-primary" />
+                      <span className="font-bold text-lg">{texts.appName}</span>
+                    </Link>
+                  </SheetTitle>
+                </SheetHeader>
+                <div className="flex flex-col space-y-2 py-6">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center rounded-md p-3 text-base font-medium hover:bg-accent"
+                    >
+                      <item.icon className="mr-3 h-5 w-5 text-muted-foreground" />
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              </SheetContent>
+            </Sheet>
+          </div>
         </div>
       </div>
     </header>
