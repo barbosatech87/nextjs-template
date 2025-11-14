@@ -47,7 +47,8 @@ const homeTexts = {
 
 export default async function Home({ 
   params, 
-}: LocalizedPageProps) {
+  searchParams,
+}: { params: { lang: Locale }; searchParams?: { [key: string]: string | string[] | undefined } }) {
   const { lang } = params;
   const texts = homeTexts[lang] || homeTexts.pt;
   

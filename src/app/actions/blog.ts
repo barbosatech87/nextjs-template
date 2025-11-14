@@ -29,7 +29,17 @@ export type NewPostData = Omit<BlogPost, 'id' | 'author_id' | 'created_at' | 'up
   scheduled_for: string | null;
 };
 
-export async function createPost(postData: NewPostData, lang: string) {
+// Tipo de retorno para criação bem-sucedida (necessário para o diálogo de tradução)
+type CreatePostSuccess = {
+  success: true;
+  message: string;
+  postId: string;
+  postContent: { title: string; summary: string | null; content: string };
+};
+
+type ActionResponse = CreatePostSuccess | { success: false; message: string; };
+
+export async function createPost(postData: NewPostData, lang: string): Promise<ActionResponse> {
   const supabase = createSupabaseServerClient();
   
   // 1. Verificar autenticação e permissão
@@ -92,6 +102,83 @@ export async function createPost(postData: NewPostData, lang: string) {
       content: newPost.content,
     }
   };
+}
+
+export async function updatePost(postId: string, postData: NewPostData, lang: string) {
+  const supabase = createSupabaseServerClient();
+  
+  // 1. Verificar autenticação e permissão
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, message: "Usuário não autenticado." };
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  // Permite que admins editem qualquer post, e writers editem seus próprios posts.
+  if (profile?.role === 'writer') {
+    const { data: post, error: fetchError } = await supabase
+      .from('blog_posts')
+      .select('author_id')
+      .eq('id', postId)
+      .single();
+      
+    if (fetchError || post?.author_id !== user.id) {
+      return { success: false, message: "Acesso negado ou post não encontrado." };
+    }
+  } else if (profile?.role !== 'admin') {
+    return { success: false, message: "Acesso negado." };
+  }
+
+  const { category_ids, ...postDetails } = postData;
+
+  // 2. Atualizar o post principal
+  const { error: postError } = await supabase
+    .from("blog_posts")
+    .update({
+      ...postDetails,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', postId);
+
+  if (postError) {
+    console.error("Error updating post:", postError);
+    return { success: false, message: "Falha ao atualizar o post principal." };
+  }
+
+  // 3. Atualizar as categorias (Deleta todas e insere as novas)
+  // Deletar categorias existentes
+  const { error: deleteError } = await supabase
+    .from('blog_post_categories')
+    .delete()
+    .eq('post_id', postId);
+
+  if (deleteError) {
+    console.error("Error deleting existing categories:", deleteError);
+    // Continua, mas loga o erro
+  }
+
+  // Inserir novas categorias
+  if (category_ids && category_ids.length > 0) {
+    const postCategories = category_ids.map(categoryId => ({
+      post_id: postId,
+      category_id: categoryId,
+    }));
+
+    const { error: categoryError } = await supabase
+      .from('blog_post_categories')
+      .insert(postCategories);
+
+    if (categoryError) {
+      console.error("Error inserting new post categories:", categoryError);
+    }
+  }
+
+  revalidatePath(`/${lang}/admin/blog`);
+  revalidatePath(`/${lang}/blog/${postDetails.slug}`);
+  return { success: true, message: "Post atualizado com sucesso." };
 }
 
 export async function deletePost(postId: string, lang: string) {
@@ -162,6 +249,51 @@ export type PostDetail = {
   content: string;
   language_code: string;
 };
+
+export type EditablePostData = Omit<BlogPost, 'author_id' | 'created_at' | 'updated_at'> & {
+  category_ids: string[];
+};
+
+/**
+ * Busca um post específico por ID, incluindo categorias, para edição.
+ */
+export async function getPostById(postId: string): Promise<EditablePostData | null> {
+  const supabase = createSupabaseServerClient();
+
+  // 1. Buscar o post principal
+  const { data: post, error: postError } = await supabase
+    .from('blog_posts')
+    .select('*')
+    .eq('id', postId)
+    .single();
+
+  if (postError || !post) {
+    console.error("Error fetching post by ID:", postError);
+    return null;
+  }
+
+  // 2. Buscar as categorias associadas
+  const { data: postCategories, error: categoryError } = await supabase
+    .from('blog_post_categories')
+    .select('category_id')
+    .eq('post_id', postId);
+
+  if (categoryError) {
+    console.error("Error fetching post categories:", categoryError);
+    // Continua, mas sem categorias
+  }
+
+  const category_ids = postCategories ? postCategories.map(pc => pc.category_id) : [];
+
+  // Remove campos que não são necessários no formulário ou que são gerenciados automaticamente
+  const { author_id, created_at, updated_at, ...rest } = post;
+
+  return {
+    ...rest,
+    category_ids,
+  } as EditablePostData;
+}
+
 
 /**
  * Busca posts publicados com paginação, priorizando a tradução para o idioma solicitado.
@@ -292,7 +424,7 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
       .from('blog_post_translations')
       .select('translated_title, translated_summary, translated_content')
       .eq('post_id', post.id)
-      .eq('language_code', lang)
+      .eq('language_id', lang)
       .single();
 
     if (transError && transError.code !== 'PGRST116') { // PGRST116 = No rows found

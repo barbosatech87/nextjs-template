@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Save } from 'lucide-react';
 import { Locale } from '@/lib/i18n/config';
-import { NewPostData, createPost } from '@/app/actions/blog';
+import { NewPostData, createPost, updatePost, EditablePostData } from '@/app/actions/blog';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { ImageUpload } from './image-upload';
@@ -21,9 +21,15 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { TranslationDialog } from './translation-dialog';
 import { AIResponse } from '@/app/actions/ai';
 
+// Tipo unificado para dados iniciais (AIResponse é um subconjunto de EditablePostData)
+type InitialPostData = Partial<EditablePostData> & Partial<AIResponse>;
+
 interface PostFormProps {
   lang: Locale;
-  initialData?: Partial<AIResponse> | null;
+  // Permitindo InitialPostData ou null
+  initialData?: InitialPostData | null;
+  isEditing?: boolean;
+  postId?: string; // Necessário apenas no modo de edição
 }
 
 // --- Schema de Validação ---
@@ -31,12 +37,12 @@ const postSchema = z.object({
   title: z.string().min(5, { message: "O título deve ter pelo menos 5 caracteres." }).max(100),
   slug: z.string().min(5, { message: "O slug deve ter pelo menos 5 caracteres." }).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "O slug deve ser em minúsculas e usar hífens."),
   content: z.string().min(50, { message: "O conteúdo deve ter pelo menos 50 caracteres." }),
-  summary: z.string().max(300, { message: "O resumo deve ter no máximo 300 caracteres." }).optional().or(z.literal('')),
-  image_url: z.string().url({ message: "URL de imagem inválida." }).optional().or(z.literal('')),
+  summary: z.string().max(300, { message: "O resumo deve ter no máximo 300 caracteres." }).nullable().optional(), // Permitindo null
+  image_url: z.string().url({ message: "URL de imagem inválida." }).nullable().optional(), // Permitindo null
   
   // SEO
-  seo_title: z.string().max(70, { message: "Máximo de 70 caracteres." }).optional().or(z.literal('')),
-  seo_description: z.string().max(160, { message: "Máximo de 160 caracteres." }).optional().or(z.literal('')),
+  seo_title: z.string().max(70, { message: "Máximo de 70 caracteres." }).nullable().optional(),
+  seo_description: z.string().max(160, { message: "Máximo de 160 caracteres." }).nullable().optional(),
 
   // Status e Datas
   status: z.enum(['draft', 'published', 'archived']),
@@ -50,7 +56,8 @@ type PostFormValues = z.infer<typeof postSchema>;
 // --- Textos I18n ---
 const texts = {
   pt: {
-    title: "Criar Nova Postagem",
+    titleCreate: "Criar Nova Postagem",
+    titleEdit: "Editar Postagem",
     general: "Informações Gerais",
     seo: "Otimização para Buscadores (SEO)",
     image: "Imagem de Capa",
@@ -64,16 +71,20 @@ const texts = {
     seoDescriptionLabel: "Descrição SEO",
     save: "Criar Postagem",
     saving: "Criando...",
-    success: "Postagem criada com sucesso!",
-    error: "Erro ao criar postagem. Verifique os campos.",
+    successCreate: "Postagem criada com sucesso!",
+    successEdit: "Postagem atualizada com sucesso!",
+    error: "Erro ao salvar postagem. Verifique os campos.",
     draft: "Rascunho",
     published: "Publicado",
     archived: "Arquivado",
     slugHelp: "Usado na URL. Ex: 'meu-primeiro-post'",
     categoryHelp: "Selecione as categorias relevantes.",
+    saveEdit: "Salvar Alterações",
+    savingEdit: "Salvando...",
   },
   en: {
-    title: "Create New Post",
+    titleCreate: "Create New Post",
+    titleEdit: "Edit Post",
     general: "General Information",
     seo: "Search Engine Optimization (SEO)",
     image: "Cover Image",
@@ -87,16 +98,20 @@ const texts = {
     seoDescriptionLabel: "SEO Description",
     save: "Create Post",
     saving: "Creating...",
-    success: "Post created successfully!",
-    error: "Error creating post. Please check the fields.",
+    successCreate: "Post created successfully!",
+    successEdit: "Post updated successfully!",
+    error: "Error saving post. Please check the fields.",
     draft: "Draft",
     published: "Published",
     archived: "Archived",
     slugHelp: "Used in the URL. Ex: 'my-first-post'",
     categoryHelp: "Select relevant categories.",
+    saveEdit: "Save Changes",
+    savingEdit: "Saving...",
   },
   es: {
-    title: "Crear Nueva Entrada",
+    titleCreate: "Crear Nueva Entrada",
+    titleEdit: "Editar Entrada",
     general: "Información General",
     seo: "Optimización para Motores de Búsqueda (SEO)",
     image: "Imagen de Portada",
@@ -110,17 +125,20 @@ const texts = {
     seoDescriptionLabel: "Descripción SEO",
     save: "Crear Entrada",
     saving: "Creando...",
-    success: "¡Entrada creada con éxito!",
-    error: "Error al crear la entrada. Verifica los campos.",
+    successCreate: "¡Entrada creada con éxito!",
+    successEdit: "¡Entrada actualizada con éxito!",
+    error: "Error al guardar la entrada. Verifica los campos.",
     draft: "Borrador",
     published: "Publicado",
     archived: "Archivado",
     slugHelp: "Utilizado en la URL. Ej: 'mi-primera-entrada'",
     categoryHelp: "Selecciona las categorías relevantes.",
+    saveEdit: "Guardar Cambios",
+    savingEdit: "Guardando...",
   },
 };
 
-export function PostForm({ lang, initialData }: PostFormProps) {
+export function PostForm({ lang, initialData, isEditing = false, postId }: PostFormProps) {
   const t = texts[lang] || texts.pt;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -130,21 +148,23 @@ export function PostForm({ lang, initialData }: PostFormProps) {
   const [newPostData, setNewPostData] = useState<{ postId: string, postContent: { title: string, summary: string | null, content: string } } | null>(null);
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(!!initialData?.slug);
 
+  const defaultValues: PostFormValues = {
+    title: initialData?.title || '',
+    slug: initialData?.slug || '',
+    content: initialData?.content || '',
+    summary: initialData?.summary || null,
+    image_url: initialData?.image_url || null,
+    seo_title: initialData?.seo_title || null,
+    seo_description: initialData?.seo_description || null,
+    status: initialData?.status || 'draft',
+    published_at: initialData?.published_at || null,
+    scheduled_for: initialData?.scheduled_for || null,
+    category_ids: (initialData as EditablePostData)?.category_ids || [],
+  };
+
   const form = useForm<PostFormValues>({
     resolver: zodResolver(postSchema),
-    defaultValues: {
-      title: initialData?.title || '',
-      slug: initialData?.slug || '',
-      content: initialData?.content || '',
-      summary: initialData?.summary || '',
-      image_url: '',
-      seo_title: initialData?.seo_title || '',
-      seo_description: initialData?.seo_description || '',
-      status: 'draft',
-      published_at: null,
-      scheduled_for: null,
-      category_ids: [],
-    },
+    defaultValues,
   });
 
   const titleValue = form.watch('title');
@@ -177,7 +197,7 @@ export function PostForm({ lang, initialData }: PostFormProps) {
   };
 
   const handleImageRemove = () => {
-    form.setValue('image_url', '', { shouldValidate: true });
+    form.setValue('image_url', null, { shouldValidate: true });
   };
 
   async function onSubmit(values: PostFormValues) {
@@ -193,16 +213,28 @@ export function PostForm({ lang, initialData }: PostFormProps) {
         category_ids: values.category_ids || [],
       };
 
-      const result = await createPost(postData, lang);
+      const result = isEditing && postId 
+        ? await updatePost(postId, postData, lang)
+        : await createPost(postData, lang);
 
-      if (result.success && result.postId && result.postContent) {
-        toast.success(t.success);
+      if (result.success) {
+        toast.success(isEditing ? t.successEdit : t.successCreate);
         
-        setNewPostData({
-          postId: result.postId,
-          postContent: result.postContent,
-        });
-        setIsTranslationDialogOpen(true);
+        // Corrigindo erros 1 e 2: Usando type assertion para garantir que o resultado
+        // contenha as propriedades de CreatePostSuccess quando !isEditing for true.
+        if (!isEditing && 'postId' in result && 'postContent' in result) {
+          const creationResult = result as { postId: string, postContent: { title: string, summary: string | null, content: string } };
+          
+          // Modo Criação: Abre o diálogo de tradução
+          setNewPostData({
+            postId: creationResult.postId,
+            postContent: creationResult.postContent,
+          });
+          setIsTranslationDialogOpen(true);
+        } else if (isEditing) {
+          // Modo Edição: Redireciona para a lista
+          router.push(`/${lang}/admin/blog`);
+        }
         
       } else {
         toast.error(result.message || t.error);
@@ -266,7 +298,7 @@ export function PostForm({ lang, initialData }: PostFormProps) {
                       <FormItem>
                         <FormLabel>{t.summaryLabel}</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="Um breve resumo do conteúdo..." rows={3} {...field} />
+                          <Textarea placeholder="Um breve resumo do conteúdo..." rows={3} {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -301,7 +333,7 @@ export function PostForm({ lang, initialData }: PostFormProps) {
                       <FormItem>
                         <FormLabel>{t.seoTitleLabel}</FormLabel>
                         <FormControl>
-                          <Input placeholder="Título para SEO" {...field} />
+                          <Input placeholder="Título para SEO" {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -314,7 +346,7 @@ export function PostForm({ lang, initialData }: PostFormProps) {
                       <FormItem>
                         <FormLabel>{t.seoDescriptionLabel}</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="Descrição para SEO" rows={3} {...field} />
+                          <Textarea placeholder="Descrição para SEO" rows={3} {...field} value={field.value || ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -432,12 +464,12 @@ export function PostForm({ lang, initialData }: PostFormProps) {
               {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t.saving}
+                  {isEditing ? t.savingEdit : t.saving}
                 </>
               ) : (
                 <>
                   <Save className="mr-2 h-4 w-4" />
-                  {t.save}
+                  {isEditing ? t.saveEdit : t.save}
                 </>
               )}
             </Button>
