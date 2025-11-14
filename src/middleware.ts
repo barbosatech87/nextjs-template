@@ -3,7 +3,7 @@ import type { NextRequest } from 'next/server';
 import { i18n } from '@/lib/i18n/config';
 import Negotiator from 'negotiator';
 
-// Função para obter o local correspondente com base nos cabeçalhos da solicitação
+// Função para obter o locale com base nos cabeçalhos da solicitação
 function getLocale(request: NextRequest): string {
   const negotiatorHeaders: Record<string, string> = {};
   request.headers.forEach((value, key) => (negotiatorHeaders[key] = value));
@@ -17,26 +17,34 @@ function getLocale(request: NextRequest): string {
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
+  // Ignora rotas internas do Next, API e arquivos estáticos
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.includes('/_next/') ||
+    pathname.startsWith('/__next') ||
+    pathname.startsWith('/api') ||
+    pathname === '/favicon.ico' ||
+    /\.[^/]+$/.test(pathname) // qualquer arquivo com extensão
+  ) {
+    return NextResponse.next();
+  }
+
   // Verifica se o caminho atual não possui um prefixo de localidade (ex: /pt, /en)
   const pathnameIsMissingLocale = i18n.locales.every(
     (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
   );
 
-  // Redireciona se não houver localidade no caminho
+  // Redireciona para o locale detectado se não houver localidade no caminho
   if (pathnameIsMissingLocale) {
     const locale = getLocale(request);
-
-    // Reconstrói a URL com a localidade detectada
     const newPath = pathname === '/' ? `/${locale}` : `/${locale}${pathname}`;
     return NextResponse.redirect(new URL(newPath, request.url));
   }
+
+  return NextResponse.next();
 }
 
-// Configura o middleware para ser executado em caminhos específicos
+// Executa em todas as rotas — o próprio middleware ignora as internas/estáticas acima
 export const config = {
-  // O matcher evita que o middleware seja executado em rotas de API, arquivos estáticos, etc.
-  matcher: [
-    // Importante: ignore qualquer rota interna do Next (/ _next/...), além de arquivos estáticos e APIs.
-    '/((?!api|_next/|favicon.ico|.*\\..*).*)',
-  ],
+  matcher: ['/:path*'],
 };
