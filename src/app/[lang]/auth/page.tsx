@@ -7,14 +7,13 @@ import { useSession } from '@/components/auth/session-context-provider';
 import { redirect } from 'next/navigation';
 import { Locale } from '@/lib/i18n/config';
 import { useEffect } from 'react';
-import React from 'react'; // Importar React para usar React.use()
 
 interface AuthPageProps {
-  params: Promise<{ lang: Locale }>; // Atualizar o tipo para refletir que params é uma Promise
+  params: { lang: Locale };
 }
 
 export default function AuthPage({ params }: AuthPageProps) {
-  const { lang } = React.use(params); // Desembrulhar a Promise para acessar 'lang'
+  const { lang } = params;
 
   const { user, isLoading } = useSession();
 

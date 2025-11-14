@@ -1,6 +1,5 @@
 "use client";
 
-import { use } from 'react';
 import { ChatInterface } from '@/components/ai/chat-interface';
 import { Locale } from '@/lib/i18n/config';
 import { useSession } from '@/components/auth/session-context-provider';
@@ -11,8 +10,7 @@ interface IaExplicaPageProps {
   params: { lang: Locale };
 }
 
-export default function IaExplicaPage({ params: paramsProp }: IaExplicaPageProps) {
-  const params = use(paramsProp);
+export default function IaExplicaPage({ params }: IaExplicaPageProps) {
   const { user, isLoading } = useSession();
 
   const pageTexts = {
