@@ -45,8 +45,8 @@ export default async function HomePage({ params }: HomePageProps) {
   // Posts Devocionais (3 mais recentes da categoria 'devocional')
   const devotionalPosts = await getRecentPosts({ lang, limit: 3, includeCategorySlug: 'devocional' });
 
-  // Outros Posts Recentes (3 mais recentes, excluindo 'devocional')
-  const recentPosts = await getRecentPosts({ lang, limit: 3, excludeCategorySlug: 'devocional' });
+  // Outros Posts Recentes (6 mais recentes, excluindo 'devocional')
+  const recentPosts = await getRecentPosts({ lang, limit: 6, excludeCategorySlug: 'devocional' });
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -61,7 +61,7 @@ export default async function HomePage({ params }: HomePageProps) {
           lang={lang} 
           posts={devotionalPosts} 
           title={t.postSection.devotional.title} 
-          viewAllLink={`/${lang}/blog?category=devocional`} // Assumindo que a rota de blog pode filtrar por categoria
+          viewAllLink={`/${lang}/blog?category=devocional`}
           viewAllText={t.postSection.devotional.viewAll}
         />
 
