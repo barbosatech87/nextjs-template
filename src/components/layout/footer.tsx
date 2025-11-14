@@ -1,17 +1,19 @@
 import React from 'react';
+import Link from 'next/link';
 import { Locale } from '@/lib/i18n/config';
 
 interface FooterProps {
   lang: Locale;
 }
 
-// Simulação de textos de rodapé
+// Textos do rodapé atualizados
 const footerTexts = {
   pt: {
     copyright: "© 2024 PaxWord. Todos os direitos reservados.",
     links: {
       privacy: "Política de Privacidade",
       terms: "Termos de Serviço",
+      about: "Sobre Nós",
       contact: "Contato",
     }
   },
@@ -20,6 +22,7 @@ const footerTexts = {
     links: {
       privacy: "Privacy Policy",
       terms: "Terms of Service",
+      about: "About Us",
       contact: "Contact",
     }
   },
@@ -28,6 +31,7 @@ const footerTexts = {
     links: {
       privacy: "Política de Privacidad",
       terms: "Términos de Servicio",
+      about: "Sobre Nosotros",
       contact: "Contacto",
     }
   },
@@ -43,13 +47,16 @@ const Footer: React.FC<FooterProps> = ({ lang }) => {
           {texts.copyright}
         </p>
         <div className="flex space-x-4">
-          <a href={`/${lang}/privacy`} className="hover:text-primary transition-colors">
+          <Link href={`/${lang}/p/politica-de-privacidade`} className="hover:text-primary transition-colors">
             {texts.links.privacy}
-          </a>
-          <a href={`/${lang}/terms`} className="hover:text-primary transition-colors">
+          </Link>
+          <Link href={`/${lang}/p/termos-de-servico-paxword`} className="hover:text-primary transition-colors">
             {texts.links.terms}
-          </a>
-          <a href={`/${lang}/contact`} className="hover:text-primary transition-colors">
+          </Link>
+          <Link href={`/${lang}/p/sobre-nos`} className="hover:text-primary transition-colors">
+            {texts.links.about}
+          </Link>
+          <a href="mailto:pax@paxword.com" className="hover:text-primary transition-colors">
             {texts.links.contact}
           </a>
         </div>
