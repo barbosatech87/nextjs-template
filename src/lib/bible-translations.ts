@@ -133,11 +133,15 @@ function normalizeName(name: string): string {
 function generateReverseMap() {
   if (Object.keys(reverseTranslationMap).length > 0) return;
   
-  const locales: Locale[] = ['pt', 'es'];
+  const locales: Locale[] = ['pt', 'en', 'es']; // Incluindo 'en' para segurança
   locales.forEach(lang => {
     const langMap = new Map<string, string>();
     for (const englishName in bookNameTranslations) {
-      const translated = bookNameTranslations[englishName][lang as 'pt' | 'es'];
+      // Usa o nome em inglês como chave para 'en'
+      const translated = lang === 'en' 
+        ? englishName 
+        : bookNameTranslations[englishName as keyof typeof bookNameTranslations]?.[lang as 'pt' | 'es'];
+        
       if (translated) {
         // Armazena a versão normalizada (sem acentos e minúsculas) como chave
         langMap.set(normalizeName(translated), englishName);
@@ -163,13 +167,16 @@ export function getTranslatedBookName(englishName: string, lang: Locale): string
   const canonicalEnglishName = englishNameMap.get(englishName.toLowerCase()) || englishName;
 
   // 2. Busca a tradução usando a chave canônica
-  return bookNameTranslations[canonicalEnglishName as keyof typeof bookNameTranslations]?.[lang as 'pt' | 'es'] || englishName;
+  const translated = bookNameTranslations[canonicalEnglishName as keyof typeof bookNameTranslations]?.[lang as 'pt' | 'es'];
+  
+  // Retorna a tradução ou o nome original em inglês como fallback
+  return translated || englishName;
 }
 
 export function getEnglishBookName(translatedName: string, lang: Locale): string | undefined {
   if (lang === 'en') {
     // Se o idioma for inglês, verifica se o nome já é um nome canônico
-    return englishNameMap.get(translatedName.toLowerCase());
+    return englishNameMap.get(normalizeName(translatedName));
   }
   
   // Normaliza a entrada do usuário antes de buscar no mapa reverso

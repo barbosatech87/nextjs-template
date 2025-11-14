@@ -475,6 +475,8 @@ export async function getDailyVerse(lang: string): Promise<DailyVerseData | null
       console.error("Failed to get fallback verse:", fallbackError);
       return null;
     }
+    // O fallback retorna um objeto com book, chapter, verse_number e version.
+    // Precisamos garantir que o tipo seja compatível com o que esperamos.
     dailyVerseRef = fallbackRef as { book: string; chapter: number; verse_number: number };
   }
 
@@ -492,8 +494,26 @@ export async function getDailyVerse(lang: string): Promise<DailyVerseData | null
     .single();
 
   if (verseError || !verse) {
-    console.error("Failed to fetch verse text for daily verse:", verseError);
-    return null;
+    // Se o versículo não for encontrado no idioma do usuário, tentamos buscar no idioma original (pt)
+    const { data: ptVerse, error: ptVerseError } = await supabase
+      .from('verses')
+      .select('text')
+      .eq('book', dailyVerseRef.book)
+      .eq('chapter', dailyVerseRef.chapter)
+      .eq('verse_number', dailyVerseRef.verse_number)
+      .eq('language_code', 'pt') // Tenta o idioma original
+      .single();
+
+    if (ptVerseError || !ptVerse) {
+      console.error("Failed to fetch verse text even in fallback language (pt):", ptVerseError);
+      return null;
+    }
+    
+    // Retorna o texto em português se o idioma do usuário falhar
+    return {
+      ...dailyVerseRef,
+      text: ptVerse.text,
+    };
   }
 
   return {
