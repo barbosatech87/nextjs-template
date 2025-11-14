@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -18,7 +18,7 @@ import { useRouter } from 'next/navigation';
 import { ImageUpload } from './image-upload';
 import { useBlogCategories } from '@/hooks/use-blog-categories';
 import { Checkbox } from '@/components/ui/checkbox';
-import { TranslationDialog } from './translation-dialog'; // Importando o novo componente
+import { TranslationDialog } from './translation-dialog';
 
 interface PostFormProps {
   lang: Locale;
@@ -36,9 +36,9 @@ const postSchema = z.object({
   seo_title: z.string().max(70, { message: "Máximo de 70 caracteres." }).optional().or(z.literal('')),
   seo_description: z.string().max(160, { message: "Máximo de 160 caracteres." }).optional().or(z.literal('')),
 
-  // Status e Datas (Adicionados para satisfazer NewPostData)
+  // Status e Datas
   status: z.enum(['draft', 'published', 'archived']),
-  published_at: z.string().datetime({ offset: true }).nullable().optional(), // Usamos string/datetime para compatibilidade com DB
+  published_at: z.string().datetime({ offset: true }).nullable().optional(),
   scheduled_for: z.string().datetime({ offset: true }).nullable().optional(),
   category_ids: z.array(z.string()).optional(),
 });
@@ -124,10 +124,9 @@ export function PostForm({ lang }: PostFormProps) {
   const [isPending, startTransition] = useTransition();
   const { categories, isLoading: isLoadingCategories } = useBlogCategories();
   
-  // Estado para o diálogo de tradução
   const [isTranslationDialogOpen, setIsTranslationDialogOpen] = useState(false);
   const [newPostData, setNewPostData] = useState<{ postId: string, postContent: { title: string, summary: string | null, content: string } } | null>(null);
-
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false);
 
   const form = useForm<PostFormValues>({
     resolver: zodResolver(postSchema),
@@ -140,13 +139,36 @@ export function PostForm({ lang }: PostFormProps) {
       seo_title: '',
       seo_description: '',
       status: 'draft',
-      published_at: null, // Adicionado
-      scheduled_for: null, // Adicionado
+      published_at: null,
+      scheduled_for: null,
       category_ids: [],
     },
   });
 
+  const titleValue = form.watch('title');
   const imageUrl = form.watch('image_url');
+
+  // --- Geração automática de slug ---
+  const generateSlug = (text: string) => {
+    if (!text) return '';
+    return text
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w-]+/g, '')
+      .replace(/--+/g, '-');
+  };
+
+  useEffect(() => {
+    if (!isSlugManuallyEdited && titleValue) {
+      const slug = generateSlug(titleValue);
+      form.setValue('slug', slug, { shouldValidate: true });
+    }
+  }, [titleValue, isSlugManuallyEdited, form]);
+  // --- Fim da geração automática de slug ---
 
   const handleImageUploadSuccess = (url: string) => {
     form.setValue('image_url', url, { shouldValidate: true });
@@ -160,13 +182,12 @@ export function PostForm({ lang }: PostFormProps) {
     startTransition(async () => {
       const postData: NewPostData = {
         ...values,
-        // Garante que campos opcionais vazios sejam null ou undefined se o Supabase preferir
         summary: values.summary || null,
         image_url: values.image_url || null,
         seo_title: values.seo_title || null,
         seo_description: values.seo_description || null,
-        published_at: values.published_at || null, // Mapeamento
-        scheduled_for: values.scheduled_for || null, // Mapeamento
+        published_at: values.published_at || null,
+        scheduled_for: values.scheduled_for || null,
         category_ids: values.category_ids || [],
       };
 
@@ -175,7 +196,6 @@ export function PostForm({ lang }: PostFormProps) {
       if (result.success && result.postId && result.postContent) {
         toast.success(t.success);
         
-        // Armazena os dados e abre o diálogo de tradução
         setNewPostData({
           postId: result.postId,
           postContent: result.postContent,
@@ -221,7 +241,16 @@ export function PostForm({ lang }: PostFormProps) {
                       <FormItem>
                         <FormLabel>{t.slugLabel}</FormLabel>
                         <FormControl>
-                          <Input placeholder="slug-da-postagem" {...field} />
+                          <Input 
+                            placeholder="slug-da-postagem" 
+                            {...field}
+                            onChange={(e) => {
+                              if (!isSlugManuallyEdited) {
+                                setIsSlugManuallyEdited(true);
+                              }
+                              field.onChange(e);
+                            }}
+                          />
                         </FormControl>
                         <FormDescription>{t.slugHelp}</FormDescription>
                         <FormMessage />
