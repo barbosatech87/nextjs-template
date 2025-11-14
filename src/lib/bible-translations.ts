@@ -83,7 +83,7 @@ const romanToArabic: Record<string, string> = {
  * para o formato arábico (1, 2, 3) para corresponder às chaves de tradução.
  * Ex: "I Kings" -> "1 Kings"
  */
-function convertRomanToArabic(englishName: string): string {
+export function convertRomanToArabic(englishName: string): string { // Adicionado 'export' aqui
     const parts = englishName.split(' ');
     if (parts.length > 1) {
         const firstPartLower = parts[0].toLowerCase();
