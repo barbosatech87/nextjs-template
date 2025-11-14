@@ -13,7 +13,8 @@ export default function RootPage() {
   
   // Converte o objeto Headers para um objeto simples para o Negotiator
   const negotiatorHeaders: Record<string, string> = {};
-  headersList.forEach((value, key) => {
+  // Usando forEach para garantir a compatibilidade com o objeto Headers
+  (headersList as any).forEach((value: string, key: string) => {
     negotiatorHeaders[key] = value;
   });
 

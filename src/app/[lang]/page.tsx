@@ -31,6 +31,7 @@ export default async function HomePage({ params }: HomePageProps) {
   const { lang } = params;
   const t = homeTexts[lang];
 
+  // Busca de dados
   const dailyVerse = await getDailyVerse(lang);
   const recentPosts = await getRecentPosts({ lang, limit: 3, excludeCategorySlug: 'devocional' });
 
