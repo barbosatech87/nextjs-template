@@ -3,6 +3,7 @@ import { AdminSidebar } from '@/components/admin/admin-sidebar';
 import { Locale } from '@/lib/i18n/config';
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -11,8 +12,22 @@ interface AdminLayoutProps {
 
 export default async function AdminLayout({ children, params }: AdminLayoutProps) {
   const { lang } = params;
-  const supabase = createSupabaseServerClient();
 
+  // Detecta chamadas de Server Actions (POST interno do Next)
+  const hdrs = headers();
+  const isServerActionRequest = Boolean(
+    hdrs.get('next-action') ||
+    hdrs.get('Next-Action') ||
+    hdrs.get('rsc-action') ||
+    hdrs.get('RSC-Action')
+  );
+
+  // Não redireciona durante Server Actions para não quebrar o fetch
+  if (isServerActionRequest) {
+    return <>{children}</>;
+  }
+
+  const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
