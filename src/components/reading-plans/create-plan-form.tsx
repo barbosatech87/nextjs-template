@@ -8,7 +8,8 @@ import { Check, ChevronsUpDown, X } from 'lucide-react';
 
 import { Locale } from '@/lib/i18n/config';
 import { getBibleMetadata } from '@/app/actions/ai';
-import { createPlanSchema, createUserReadingPlan, CreatePlanData } from '@/app/actions/plans';
+import { createUserReadingPlan } from '@/app/actions/plans';
+import { createPlanSchema, CreatePlanData } from '@/lib/schemas/plans';
 import { getTranslatedBookName } from '@/lib/bible-translations';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -99,7 +100,7 @@ export const CreatePlanForm: React.FC<{ lang: Locale }> = ({ lang }) => {
   const [selectedBooks, setSelectedBooks] = useState<string[]>([]);
   const [popoverOpen, setPopoverOpen] = useState(false);
 
-  const form = useForm<z.infer<typeof createPlanSchema>>({
+  const form = useForm<CreatePlanData>({
     resolver: zodResolver(createPlanSchema),
     defaultValues: {
       name: "",
@@ -118,7 +119,7 @@ export const CreatePlanForm: React.FC<{ lang: Locale }> = ({ lang }) => {
     loadData();
   }, [lang]);
 
-  const onSubmit = async (values: z.infer<typeof createPlanSchema>) => {
+  const onSubmit = async (values: CreatePlanData) => {
     setIsPending(true);
     const result = await createUserReadingPlan(values);
     if (result.success) {
