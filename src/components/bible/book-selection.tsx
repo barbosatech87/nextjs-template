@@ -25,16 +25,18 @@ export const BookSelection: React.FC<BookSelectionProps> = ({ books, lang }) => 
         const slug = book.book.toLowerCase().replace(/\s+/g, '-');
 
         return (
-          <Link key={book.book} href={`/${lang}/bible/${slug}`} legacyBehavior>
-            <a className="block">
-              <Card className="h-full transition-all duration-200 ease-in-out hover:shadow-lg hover:border-primary hover:-translate-y-1">
-                <CardHeader>
-                  <CardTitle className="text-base font-medium text-center">
-                    {translatedName}
-                  </CardTitle>
-                </CardHeader>
-              </Card>
-            </a>
+          <Link 
+            key={book.book} 
+            href={`/${lang}/bible/${slug}`} 
+            className="block"
+          >
+            <Card className="h-full transition-all duration-200 ease-in-out hover:shadow-lg hover:border-primary hover:-translate-y-1">
+              <CardHeader>
+                <CardTitle className="text-base font-medium text-center">
+                  {translatedName}
+                </CardTitle>
+              </CardHeader>
+            </Card>
           </Link>
         );
       })}
