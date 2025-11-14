@@ -3,6 +3,9 @@
 import { use } from 'react';
 import { ChatInterface } from '@/components/ai/chat-interface';
 import { Locale } from '@/lib/i18n/config';
+import { useSession } from '@/components/auth/session-context-provider';
+import { ChatLoginPrompt } from '@/components/ai/chat-login-prompt';
+import { Loader2 } from 'lucide-react';
 
 interface IaExplicaPageProps {
   params: { lang: Locale };
@@ -10,6 +13,7 @@ interface IaExplicaPageProps {
 
 export default function IaExplicaPage({ params: paramsProp }: IaExplicaPageProps) {
   const params = use(paramsProp);
+  const { user, isLoading } = useSession();
 
   const pageTexts = {
     pt: {
@@ -28,6 +32,22 @@ export default function IaExplicaPage({ params: paramsProp }: IaExplicaPageProps
 
   const texts = pageTexts[params.lang] || pageTexts.pt;
 
+  const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex h-full w-full items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    if (user) {
+      return <ChatInterface lang={params.lang} />;
+    }
+
+    return <ChatLoginPrompt lang={params.lang} />;
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 flex flex-col h-[calc(100vh-8rem)]">
       <div className="text-center mb-8">
@@ -39,7 +59,7 @@ export default function IaExplicaPage({ params: paramsProp }: IaExplicaPageProps
         </p>
       </div>
       <div className="flex-grow min-h-0">
-        <ChatInterface lang={params.lang} />
+        {renderContent()}
       </div>
     </div>
   );
