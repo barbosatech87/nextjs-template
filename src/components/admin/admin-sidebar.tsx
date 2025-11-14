@@ -13,7 +13,7 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { BookCopy, BotMessageSquare, Image, LayoutDashboard, Users, Bell } from 'lucide-react';
+import { BookCopy, BotMessageSquare, Image, LayoutDashboard, Users, Bell, FileText } from 'lucide-react';
 import Link from 'next/link';
 import { Locale } from '@/lib/i18n/config';
 
@@ -21,6 +21,7 @@ const texts = {
   pt: {
     dashboard: "Painel",
     blogPosts: "Posts do Blog",
+    pages: "Páginas",
     newPost: "Nova Postagem",
     aiPost: "Post com IA",
     aiImage: "Gerador de Imagens",
@@ -31,6 +32,7 @@ const texts = {
   en: {
     dashboard: "Dashboard",
     blogPosts: "Blog Posts",
+    pages: "Pages",
     newPost: "New Post",
     aiPost: "AI Post",
     aiImage: "Image Generator",
@@ -41,6 +43,7 @@ const texts = {
   es: {
     dashboard: "Panel",
     blogPosts: "Entradas del Blog",
+    pages: "Páginas",
     newPost: "Nueva Entrada",
     aiPost: "Entrada con IA",
     aiImage: "Generador de Imágenes",
@@ -62,6 +65,7 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
   const menuItems = [
     { href: `/${lang}/admin`, label: t.dashboard, icon: <LayoutDashboard /> },
     { href: `/${lang}/admin/blog`, label: t.blogPosts, icon: <BookCopy /> },
+    { href: `/${lang}/admin/pages`, label: t.pages, icon: <FileText /> },
     { href: `/${lang}/admin/users`, label: t.users, icon: <Users /> },
     { href: `/${lang}/admin/ai-image-generator`, label: t.aiImage, icon: <Image /> },
     { href: `/${lang}/admin/ai-writer`, label: t.aiPost, icon: <BotMessageSquare /> },
@@ -85,7 +89,7 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
                 <Link href={item.href} passHref>
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname === item.href}
+                    isActive={pathname.startsWith(item.href) && (item.href !== `/${lang}/admin` || pathname === `/${lang}/admin`)}
                     tooltip={item.label}
                   >
                     <span>

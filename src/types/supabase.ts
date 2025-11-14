@@ -10,6 +10,18 @@ export type Profile = {
   updated_at: string | null;
 };
 
+export type Page = {
+  id: string;
+  author_id: string | null;
+  title: string;
+  slug: string;
+  summary: string | null;
+  content: string;
+  status: 'draft' | 'published';
+  created_at: string;
+  updated_at: string;
+};
+
 export type Verse = {
   id: string;
   book: string;
