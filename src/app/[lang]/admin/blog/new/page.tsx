@@ -1,7 +1,6 @@
 import { PostForm } from "@/components/admin/blog/post-form";
 import { Locale } from "@/lib/i18n/config";
 import { AIResponse } from "@/app/actions/ai";
-import { LocalizedPageProps } from "@/types/next-app";
 import { EditablePostData } from "@/app/actions/blog"; // Import necessário
 
 // Definindo o tipo InitialPostData localmente para evitar importação circular
@@ -11,10 +10,15 @@ type InitialPostData = Partial<Omit<EditablePostData, 'status'>> & Partial<AIRes
   category_ids?: string[];
 };
 
+interface NewPostPageProps {
+  params: { lang: Locale };
+  searchParams: { [key: string]: string | string[] | undefined } | undefined;
+}
+
 export default async function NewPostPage({
   params,
   searchParams,
-}: LocalizedPageProps) {
+}: NewPostPageProps) {
   const { lang } = params;
   let initialData: Partial<AIResponse> | null = null;
 

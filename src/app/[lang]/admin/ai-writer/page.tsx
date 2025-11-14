@@ -1,8 +1,12 @@
 import { Locale } from "@/lib/i18n/config";
 import { AiWriterForm } from "@/components/admin/ai-writer/ai-writer-form";
-import { LocalizedPageProps } from "@/types/next-app";
 
-export default async function AiWriterPage({ params }: LocalizedPageProps) {
+interface AiWriterPageProps {
+  params: { lang: Locale };
+  searchParams: { [key: string]: string | string[] | undefined } | undefined;
+}
+
+export default async function AiWriterPage({ params }: AiWriterPageProps) {
   const { lang } = params;
   return (
     <div className="space-y-6">

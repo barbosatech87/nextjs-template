@@ -28,14 +28,25 @@ export async function generateImage(prompt: string, lang: Locale): Promise<Gener
     return { success: false, message: "Usuário não autenticado." };
   }
 
+  // 1. Verificar permissão (apenas admins/writers podem gerar)
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin' && profile?.role !== 'writer') {
+    return { success: false, message: "Acesso negado. Você não tem permissão para gerar imagens." };
+  }
+
   try {
-    // 1. Obter token de acesso para autenticar a chamada da Edge Function
+    // 2. Obter token de acesso para autenticar a chamada da Edge Function
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       return { success: false, message: "Sessão não encontrada." };
     }
 
-    // 2. Chamar a Edge Function
+    // 3. Chamar a Edge Function
     const response = await fetch(EDGE_FUNCTION_URL, {
       method: 'POST',
       headers: {
@@ -54,7 +65,7 @@ export async function generateImage(prompt: string, lang: Locale): Promise<Gener
 
     const { imageUrl: tempImageUrl, model } = data;
 
-    // 3. Fazer o download da imagem temporária da OpenAI
+    // 4. Fazer o download da imagem temporária da OpenAI
     const imageResponse = await fetch(tempImageUrl);
     if (!imageResponse.ok) {
       throw new Error("Falha ao baixar a imagem gerada.");
@@ -62,7 +73,8 @@ export async function generateImage(prompt: string, lang: Locale): Promise<Gener
     const imageBlob = await imageResponse.blob();
     const imageFile = new File([imageBlob], `${uuidv4()}.png`, { type: 'image/png' });
 
-    // 4. Salvar a imagem no Supabase Storage
+    // 5. Salvar a imagem no Supabase Storage
+    // O caminho deve ser único e incluir o user.id para RLS de Storage
     const filePath = `${user.id}/${imageFile.name}`;
     const { error: uploadError } = await supabase.storage
       .from(BUCKET_NAME)
@@ -73,10 +85,11 @@ export async function generateImage(prompt: string, lang: Locale): Promise<Gener
 
     if (uploadError) {
       console.error("Storage Upload Error:", uploadError);
-      return { success: false, message: "Falha ao salvar a imagem no armazenamento." };
+      // Se o erro persistir, é provável que seja a RLS do Storage.
+      return { success: false, message: "Falha ao salvar a imagem no armazenamento. Verifique as permissões do Storage." };
     }
 
-    // 5. Obter URL pública
+    // 6. Obter URL pública
     const { data: publicUrlData } = supabase.storage
       .from(BUCKET_NAME)
       .getPublicUrl(filePath);
@@ -85,7 +98,7 @@ export async function generateImage(prompt: string, lang: Locale): Promise<Gener
       return { success: false, message: "Falha ao obter URL pública após upload." };
     }
 
-    // 6. Salvar metadados no banco de dados (tabela generated_images)
+    // 7. Salvar metadados no banco de dados (tabela generated_images)
     const { error: dbError } = await supabase
       .from('generated_images')
       .insert({
@@ -170,6 +183,7 @@ export async function deleteGeneratedImage(imageId: string, imageUrl: string, la
     // Continua, pois o registro do DB já foi removido
   } else {
     // O caminho é tudo que vem depois do nome do bucket
+    // O caminho deve ser 'user_id/nome_do_arquivo.png'
     const filePath = pathSegments.slice(bucketIndex + 1).join('/');
     
     const { error: storageError } = await supabase.storage

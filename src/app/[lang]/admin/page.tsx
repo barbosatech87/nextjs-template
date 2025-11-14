@@ -1,5 +1,4 @@
 import { Locale } from "@/lib/i18n/config";
-import { LocalizedPageProps } from "@/types/next-app";
 
 const texts = {
   pt: {
@@ -16,9 +15,14 @@ const texts = {
   },
 };
 
-export default async function AdminDashboardPage({ params }: LocalizedPageProps) {
+interface AdminDashboardPageProps {
+  params: { lang: Locale };
+  searchParams: { [key: string]: string | string[] | undefined } | undefined;
+}
+
+export default async function AdminDashboardPage({ params }: AdminDashboardPageProps) {
   const { lang } = params;
-  const t = texts[lang as keyof typeof texts] || texts.pt;
+  const t = texts[lang] || texts.pt;
 
   return (
     <div className="space-y-4">
