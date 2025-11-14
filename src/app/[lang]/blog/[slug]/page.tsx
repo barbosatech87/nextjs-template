@@ -1,9 +1,10 @@
-import { getPostBySlug } from "@/app/actions/blog";
+import { getPostBySlug, getRelatedPosts } from "@/app/actions/blog";
 import { notFound } from "next/navigation";
 import { Calendar, User, Globe } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Locale } from "@/lib/i18n/config";
+import { PostSection } from "@/components/home/post-section";
 
 const texts = {
   pt: {
@@ -11,18 +12,21 @@ const texts = {
     published: "Publicado em",
     language: "Idioma",
     notFound: "Postagem não encontrada.",
+    relatedPosts: "Artigos Relacionados",
   },
   en: {
     author: "By",
     published: "Published on",
     language: "Language",
     notFound: "Post not found.",
+    relatedPosts: "Related Articles",
   },
   es: {
     author: "Por",
     published: "Publicado el",
     language: "Idioma",
     notFound: "Entrada no encontrada.",
+    relatedPosts: "Artículos Relacionados",
   },
 };
 
@@ -43,6 +47,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   if (!post) {
     notFound();
   }
+
+  const relatedPosts = await getRelatedPosts({
+    postId: post.id,
+    categoryIds: post.category_ids,
+    authorId: post.author_id,
+    lang,
+  });
 
   const authorName = post.author_first_name || post.author_last_name 
     ? `${post.author_first_name || ''} ${post.author_last_name || ''}`.trim()
@@ -97,6 +108,19 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           dangerouslySetInnerHTML={{ __html: post.content }}
         />
       </article>
+
+      {relatedPosts.length > 0 && (
+        <div className="max-w-5xl mx-auto mt-16">
+          <Separator />
+          <div className="pt-12">
+            <PostSection
+              title={t.relatedPosts}
+              posts={relatedPosts}
+              lang={lang}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
