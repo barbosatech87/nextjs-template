@@ -11,6 +11,17 @@ import { getTranslatedBookName } from '@/lib/bible-translations';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface FavoritesTabProps {
   lang: Locale;
@@ -25,6 +36,10 @@ const texts = {
     unfavorite: "Remover dos favoritos",
     unfavoriteSuccess: "Removido dos favoritos!",
     unfavoriteError: "Erro ao remover dos favoritos.",
+    deleteConfirmTitle: "Você tem certeza?",
+    deleteConfirmDesc: "Esta ação não pode ser desfeita. O versículo será removido permanentemente dos seus favoritos.",
+    continue: "Continuar",
+    cancel: "Cancelar",
   },
   en: {
     title: "My Favorite Verses",
@@ -33,6 +48,10 @@ const texts = {
     unfavorite: "Remove from favorites",
     unfavoriteSuccess: "Removed from favorites!",
     unfavoriteError: "Error removing from favorites.",
+    deleteConfirmTitle: "Are you sure?",
+    deleteConfirmDesc: "This action cannot be undone. The verse will be permanently removed from your favorites.",
+    continue: "Continue",
+    cancel: "Cancel",
   },
   es: {
     title: "Mis Versículos Favoritos",
@@ -41,6 +60,10 @@ const texts = {
     unfavorite: "Quitar de favoritos",
     unfavoriteSuccess: "¡Quitado de favoritos!",
     unfavoriteError: "Error al quitar de favoritos.",
+    deleteConfirmTitle: "¿Estás seguro?",
+    deleteConfirmDesc: "Esta acción no se puede deshacer. El versículo se eliminará permanentemente de tus favoritos.",
+    continue: "Continuar",
+    cancel: "Cancelar",
   },
 };
 
@@ -92,15 +115,35 @@ export const FavoritesTab: React.FC<FavoritesTabProps> = ({ lang, favorites }) =
                         &ldquo;{fav.text}&rdquo;
                       </blockquote>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleUnfavorite(fav)}
-                      disabled={isPending}
-                      aria-label={t.unfavorite}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          disabled={isPending}
+                          aria-label={t.unfavorite}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>{t.deleteConfirmTitle}</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {t.deleteConfirmDesc}
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>{t.cancel}</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={() => handleUnfavorite(fav)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            {t.continue}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </li>
               );
