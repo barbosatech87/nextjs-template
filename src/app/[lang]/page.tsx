@@ -1,5 +1,4 @@
 import { Locale } from '@/lib/i18n/config';
-import { MainLayout } from '@/components/layout/main-layout';
 import { HeroSearch } from '@/components/home/hero-search';
 import { DailyVerse } from '@/components/home/daily-verse';
 import { PostSection } from '@/components/home/post-section';
@@ -36,20 +35,18 @@ export default async function HomePage({ params }: HomePageProps) {
   const recentPosts = await getRecentPosts({ lang, limit: 3, excludeCategorySlug: 'devocional' });
 
   return (
-    <MainLayout lang={lang}>
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex flex-col items-center text-center gap-12 md:gap-16">
-          <HeroSearch lang={lang} texts={t.hero} />
-          <DailyVerse lang={lang} verse={dailyVerse} texts={t.dailyVerse} />
-          <PostSection 
-            lang={lang} 
-            posts={recentPosts} 
-            title={t.postSection.title} 
-            viewAllLink={`/${lang}/blog`}
-            viewAllText={t.postSection.viewAll}
-          />
-        </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-col items-center text-center gap-12 md:gap-16">
+        <HeroSearch lang={lang} texts={t.hero} />
+        <DailyVerse lang={lang} verse={dailyVerse} texts={t.dailyVerse} />
+        <PostSection 
+          lang={lang} 
+          posts={recentPosts} 
+          title={t.postSection.title} 
+          viewAllLink={`/${lang}/blog`}
+          viewAllText={t.postSection.viewAll}
+        />
       </div>
-    </MainLayout>
+    </div>
   );
 }
