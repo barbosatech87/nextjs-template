@@ -1,7 +1,7 @@
 "use client";
 
 import { z } from "zod";
-import { useTransition } from "react";
+import { useTransition, use } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { sendNotificationToAll } from "@/app/actions/notifications";
@@ -17,7 +17,8 @@ const schema = z.object({
   body: z.string().min(1, { message: "A mensagem é obrigatória." }),
 });
 
-export default function AdminNotificationsPage({ params }: { params: { lang: Locale } }) {
+export default function AdminNotificationsPage({ params: paramsProp }: { params: { lang: Locale } }) {
+  const params = use(paramsProp as any);
   const { lang } = params;
 
   const [isPending, startTransition] = useTransition();

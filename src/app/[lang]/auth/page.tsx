@@ -6,13 +6,14 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/auth/session-context-provider';
 import { redirect } from 'next/navigation';
 import { Locale } from '@/lib/i18n/config';
-import { useEffect } from 'react';
+import { useEffect, use } from 'react';
 
 interface AuthPageProps {
   params: { lang: Locale };
 }
 
-export default function AuthPage({ params }: AuthPageProps) {
+export default function AuthPage({ params: paramsProp }: AuthPageProps) {
+  const params = use(paramsProp as any);
   const { lang } = params;
 
   const { user, isLoading } = useSession();

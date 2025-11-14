@@ -5,12 +5,14 @@ import { Locale } from '@/lib/i18n/config';
 import { useSession } from '@/components/auth/session-context-provider';
 import { ChatLoginPrompt } from '@/components/ai/chat-login-prompt';
 import { Loader2 } from 'lucide-react';
+import { use } from 'react';
 
 interface IaExplicaPageProps {
   params: { lang: Locale };
 }
 
-export default function IaExplicaPage({ params }: IaExplicaPageProps) {
+export default function IaExplicaPage({ params: paramsProp }: IaExplicaPageProps) {
+  const params = use(paramsProp as any);
   const { user, isLoading } = useSession();
 
   const pageTexts = {
