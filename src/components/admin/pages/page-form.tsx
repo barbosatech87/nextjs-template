@@ -89,7 +89,10 @@ export function PageForm({ lang, initialData, isEditing = false, pageId }: PageF
 
   async function onSubmit(values: PageFormValues) {
     startTransition(async () => {
-      const pageData: PageData = values;
+      const pageData: PageData = {
+        ...values,
+        summary: values.summary || null,
+      };
       const result = isEditing && pageId
         ? await updatePage(pageId, pageData, lang)
         : await createPage(pageData, lang);
