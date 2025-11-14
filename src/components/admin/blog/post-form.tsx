@@ -83,6 +83,7 @@ const texts = {
     categoryHelp: "Selecione as categorias relevantes.",
     saveEdit: "Salvar Alterações",
     savingEdit: "Salvando...",
+    coverSet: "Imagem definida como capa.",
   },
   en: {
     titleCreate: "Create New Post",
@@ -110,6 +111,7 @@ const texts = {
     categoryHelp: "Select relevant categories.",
     saveEdit: "Save Changes",
     savingEdit: "Saving...",
+    coverSet: "Cover image set.",
   },
   es: {
     titleCreate: "Crear Nueva Entrada",
@@ -137,6 +139,7 @@ const texts = {
     categoryHelp: "Selecciona las categorías relevantes.",
     saveEdit: "Guardar Cambios",
     savingEdit: "Guardando...",
+    coverSet: "Imagen de portada establecida.",
   },
 };
 
@@ -169,6 +172,11 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
     defaultValues,
   });
 
+  // Garante que o campo image_url esteja registrado e observável
+  useEffect(() => {
+    form.register('image_url');
+  }, [form]);
+
   const titleValue = form.watch('title');
   const imageUrl = form.watch('image_url');
   const summaryValue = form.watch('summary'); // Observando o resumo
@@ -199,11 +207,12 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
   // --- Fim da geração automática de slug ---
 
   const handleImageUploadSuccess = (url: string) => {
-    form.setValue('image_url', url, { shouldValidate: true });
+    form.setValue('image_url', url, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
+    toast.success(t.coverSet);
   };
 
   const handleImageRemove = () => {
-    form.setValue('image_url', null, { shouldValidate: true });
+    form.setValue('image_url', null, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
 
   async function onSubmit(values: PostFormValues) {
