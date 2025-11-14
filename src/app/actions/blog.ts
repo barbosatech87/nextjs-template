@@ -402,21 +402,10 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
   }
 
   const contentWithoutTitle = removeFirstH1(post.content || '');
-  const parsedContent = await marked.parse(contentWithoutTitle);
-
-  const postDetail: PostDetail = {
-    id: post.id,
-    slug: post.slug,
-    image_url: post.image_url,
-    published_at: post.published_at,
-    author_id: post.author_id,
-    author_first_name: authorProfile?.first_name || null,
-    author_last_name: authorProfile?.last_name || null,
-    title: post.title,
-    summary: post.summary,
-    content: parsedContent,
-    language_code: post.language_code,
-  };
+  let contentToParse = contentWithoutTitle;
+  let finalLanguageCode = post.language_code;
+  let finalTitle = post.title;
+  let finalSummary = post.summary;
 
   // 3. Se o idioma solicitado não for o idioma original, buscar tradução
   if (lang !== post.language_code) {
@@ -424,7 +413,7 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
       .from('blog_post_translations')
       .select('translated_title, translated_summary, translated_content')
       .eq('post_id', post.id)
-      .eq('language_id', lang)
+      .eq('language_code', lang) // CORRIGIDO: Usando 'language_code'
       .single();
 
     if (transError && transError.code !== 'PGRST116') { // PGRST116 = No rows found
@@ -432,16 +421,28 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
     }
 
     if (translation) {
-      const translatedContentWithoutTitle = removeFirstH1(translation.translated_content || '');
-      const parsedTranslatedContent = await marked.parse(translatedContentWithoutTitle);
-      postDetail.title = translation.translated_title;
-      postDetail.summary = translation.translated_summary;
-      postDetail.content = parsedTranslatedContent;
-      postDetail.language_code = lang;
+      finalTitle = translation.translated_title;
+      finalSummary = translation.translated_summary;
+      contentToParse = removeFirstH1(translation.translated_content || '');
+      finalLanguageCode = lang;
     }
   }
+  
+  const parsedContent = await marked.parse(contentToParse);
 
-  return postDetail;
+  return {
+    id: post.id,
+    slug: post.slug,
+    image_url: post.image_url,
+    published_at: post.published_at,
+    author_id: post.author_id,
+    author_first_name: authorProfile?.first_name || null,
+    author_last_name: authorProfile?.last_name || null,
+    title: finalTitle,
+    summary: finalSummary,
+    content: parsedContent,
+    language_code: finalLanguageCode,
+  };
 }
 
 // --- Funções para a Página Inicial ---
