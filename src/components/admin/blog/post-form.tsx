@@ -186,6 +186,29 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
   // Estado local para refletir imediatamente na UI do ImageUpload
   const [coverUrl, setCoverUrl] = useState<string | null>(defaultValues.image_url ?? null);
 
+  // SINCRONIZAÇÃO: quando initialData chegar/ mudar (ex: vindo do localStorage), resetar o formulário
+  useEffect(() => {
+    if (initialData) {
+      const newValues: PostFormValues = {
+        title: initialData.title || '',
+        slug: initialData.slug || '',
+        content: initialData.content || '',
+        summary: initialData.summary ?? null,
+        image_url: initialData.image_url ?? null,
+        seo_title: initialData.seo_title ?? null,
+        seo_description: initialData.seo_description ?? null,
+        status: initialData.status ?? 'draft',
+        published_at: initialData.published_at ?? null,
+        scheduled_for: initialData.scheduled_for ?? null,
+        category_ids: initialData.category_ids ?? [],
+        scheduleDate: isoToLocalInput(initialData.scheduled_for ?? initialData.published_at ?? null),
+      };
+      form.reset(newValues);
+      setCoverUrl(newValues.image_url ?? null);
+      setIsSlugManuallyEdited(!!initialData.slug);
+    }
+  }, [initialData, form]);
+
   // Garante registro do campo image_url
   useEffect(() => {
     form.register('image_url');
