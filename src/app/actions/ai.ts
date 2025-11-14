@@ -130,7 +130,7 @@ export async function generateImageAction(prompt: string): Promise<{ success: bo
       quality: "standard",
     });
 
-    const imageUrl = imageResponse.data[0].url;
+    const imageUrl = imageResponse.data?.[0]?.url;
     if (!imageUrl) {
       throw new Error("A API não retornou uma URL de imagem.");
     }
