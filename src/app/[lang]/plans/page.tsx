@@ -4,21 +4,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserActivePlans } from "@/components/reading-plans/user-active-plans";
 import { CreatePlanForm } from "@/components/reading-plans/create-plan-form";
 import { PredefinedPlansList } from "@/components/reading-plans/predefined-plans-list";
+import { createSupabaseServerClient } from "@/integrations/supabase/server";
+import { LoginPrompt } from "@/components/auth/login-prompt";
 
 interface PlansPageProps {
   params: { lang: Locale };
 }
 
-export default async function PlansPage({ params: { lang } }: PlansPageProps) {
-  const userPlans = await getUserActiveReadingPlans();
-
-  const t = {
+const pageTexts = {
     pt: { 
       title: "Planos de Leitura", 
       description: "Gerencie seus planos, crie novos ou explore opções prontas.",
       myPlans: "Meus Planos",
       createPlan: "Criar Plano",
       explorePlans: "Explorar Planos",
+      loginPromptTitle: "Recurso Exclusivo para Membros",
+      loginPromptDescription: "Para criar e acompanhar seus planos de leitura, você precisa estar logado.",
     },
     en: { 
       title: "Reading Plans", 
@@ -26,6 +27,8 @@ export default async function PlansPage({ params: { lang } }: PlansPageProps) {
       myPlans: "My Plans",
       createPlan: "Create Plan",
       explorePlans: "Explore Plans",
+      loginPromptTitle: "Exclusive Member Feature",
+      loginPromptDescription: "To create and track your reading plans, you need to be logged in.",
     },
     es: { 
       title: "Planes de Lectura", 
@@ -33,14 +36,27 @@ export default async function PlansPage({ params: { lang } }: PlansPageProps) {
       myPlans: "Mis Planes",
       createPlan: "Crear Plan",
       explorePlans: "Explorar Planes",
+      loginPromptTitle: "Función Exclusiva para Miembros",
+      loginPromptDescription: "Para crear y seguir tus planes de lectura, necesitas iniciar sesión.",
     },
-  }[lang] || { 
-    title: "Planos de Leitura", 
-    description: "Gerencie seus planos, crie novos ou explore opções prontas.",
-    myPlans: "Meus Planos",
-    createPlan: "Criar Plano",
-    explorePlans: "Explorar Planos",
-  };
+};
+
+export default async function PlansPage({ params: { lang } }: PlansPageProps) {
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const t = pageTexts[lang] || pageTexts.pt;
+
+  if (!user) {
+    return (
+      <LoginPrompt 
+        lang={lang} 
+        title={t.loginPromptTitle} 
+        description={t.loginPromptDescription} 
+      />
+    );
+  }
+
+  const userPlans = await getUserActiveReadingPlans();
 
   return (
     <div className="container mx-auto py-10">

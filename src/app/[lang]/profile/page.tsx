@@ -6,6 +6,8 @@ import { UserDataTab } from '@/components/profile/user-data-tab';
 import { FavoritesTab } from '@/components/profile/favorites-tab';
 import { NotesTab } from '@/components/profile/notes-tab';
 import { getHydratedFavorites } from '@/app/actions/favorites';
+import { createSupabaseServerClient } from '@/integrations/supabase/server';
+import { LoginPrompt } from '@/components/auth/login-prompt';
 
 interface ProfilePageProps {
   params: { lang: Locale };
@@ -18,6 +20,8 @@ const pageTexts = {
     tabFavorites: 'Favoritos',
     tabNotifications: 'Notificações',
     tabNotes: 'Anotações',
+    loginPromptTitle: "Acesse seu Perfil",
+    loginPromptDescription: "Para ver seu perfil, favoritos e notificações, você precisa estar logado.",
   },
   en: {
     title: 'Your Profile',
@@ -25,6 +29,8 @@ const pageTexts = {
     tabFavorites: 'Favorites',
     tabNotifications: 'Notifications',
     tabNotes: 'Notes',
+    loginPromptTitle: "Access your Profile",
+    loginPromptDescription: "To see your profile, favorites, and notifications, you need to be logged in.",
   },
   es: {
     title: 'Tu Perfil',
@@ -32,12 +38,27 @@ const pageTexts = {
     tabFavorites: 'Favoritos',
     tabNotifications: 'Notificaciones',
     tabNotes: 'Anotaciones',
+    loginPromptTitle: "Accede a tu Perfil",
+    loginPromptDescription: "Para ver tu perfil, favoritos y notificaciones, necesitas iniciar sesión.",
   },
 };
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
   const { lang } = params;
   const t = pageTexts[lang] || pageTexts.pt;
+
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return (
+      <LoginPrompt 
+        lang={lang} 
+        title={t.loginPromptTitle} 
+        description={t.loginPromptDescription} 
+      />
+    );
+  }
 
   const favorites = await getHydratedFavorites();
 
