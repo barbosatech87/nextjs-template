@@ -21,7 +21,7 @@ const pageTexts = {
 }
 
 interface BiblePageProps {
-  params: { lang: Locale };
+  params: Awaited<{ lang: Locale }>;
 }
 
 export default async function BiblePage({ params }: BiblePageProps) {

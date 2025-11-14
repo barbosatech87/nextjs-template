@@ -16,10 +16,10 @@ const texts = {
 };
 
 interface AdminDashboardPageProps {
-  params: { lang: Locale };
+  params: Awaited<{ lang: Locale }>;
 }
 
-export default function AdminDashboardPage({ params }: AdminDashboardPageProps) {
+export default async function AdminDashboardPage({ params }: AdminDashboardPageProps) {
   const { lang } = params;
   const t = texts[lang as keyof typeof texts] || texts.pt;
 

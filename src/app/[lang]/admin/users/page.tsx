@@ -1,10 +1,10 @@
 import { Locale } from "@/lib/i18n/config";
 
 interface ManageUsersPageProps {
-  params: { lang: Locale };
+  params: Awaited<{ lang: Locale }>;
 }
 
-export default function ManageUsersPage({ params }: ManageUsersPageProps) {
+export default async function ManageUsersPage({ params }: ManageUsersPageProps) {
   const { lang } = params;
   return (
     <div>

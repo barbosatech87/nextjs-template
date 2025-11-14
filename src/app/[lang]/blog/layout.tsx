@@ -3,10 +3,10 @@ import { ReactNode } from "react";
 
 interface BlogLayoutProps {
   children: ReactNode;
-  params: { lang: Locale };
+  params: Awaited<{ lang: Locale }>;
 }
 
-export default function BlogLayout({
+export default async function BlogLayout({
   children,
   params,
 }: BlogLayoutProps) {

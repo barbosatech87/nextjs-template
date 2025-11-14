@@ -27,7 +27,7 @@ const texts = {
 };
 
 interface ProfilePageProps {
-  params: { lang: Locale };
+  params: Awaited<{ lang: Locale }>;
 }
 
 export default async function ProfilePage({ params }: ProfilePageProps) {

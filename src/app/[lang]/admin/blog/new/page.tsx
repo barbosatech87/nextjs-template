@@ -3,11 +3,11 @@ import { Locale } from "@/lib/i18n/config";
 import { AIResponse } from "@/app/actions/ai";
 
 interface NewPostPageProps {
-  params: { lang: Locale };
+  params: Awaited<{ lang: Locale }>;
   searchParams?: { [key: string]: string | string[] | undefined };
 }
 
-export default function NewPostPage({
+export default async function NewPostPage({
   params,
   searchParams,
 }: NewPostPageProps) {

@@ -6,7 +6,7 @@ import { ReactNode } from 'react';
 
 interface AdminLayoutProps {
   children: ReactNode;
-  params: { lang: Locale };
+  params: Awaited<{ lang: Locale }>;
 }
 
 export default async function AdminLayout({
