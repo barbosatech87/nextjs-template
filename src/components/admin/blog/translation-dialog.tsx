@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,6 +16,7 @@ import { Loader2, Languages } from 'lucide-react';
 import { Locale } from '@/lib/i18n/config';
 import { useAITranslation } from '@/hooks/use-ai-translation';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface PostContent {
   title: string;
@@ -69,20 +70,26 @@ export function TranslationDialog({ lang, postId, postContent, isOpen, onClose }
   const handleTranslate = async () => {
     const success = await triggerTranslation(postId, postContent);
     if (success) {
-      // Após iniciar a tradução, redireciona para a lista de posts
+      toast.success(t.success);
       router.push(`/${lang}/admin/blog`);
+    } else {
+      toast.error(t.error);
     }
     onClose();
   };
 
   const handleSkip = () => {
     onClose();
-    // Redireciona para a lista de posts
     router.push(`/${lang}/admin/blog`);
   };
 
   return (
-    <AlertDialog open={isOpen} onOpenChange={onClose}>
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2">
