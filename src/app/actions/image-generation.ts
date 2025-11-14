@@ -11,25 +11,33 @@ export type GeneratedImageData = {
 };
 
 export async function getGeneratedImages(): Promise<GeneratedImageData[]> {
-    const supabase = createSupabaseServerClient();
-    const { data: { user } } = await supabase.auth.getUser();
+    try {
+        const supabase = createSupabaseServerClient();
+        const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) {
+        if (!user) {
+            // Se não houver usuário, retorna um array vazio sem erro.
+            return [];
+        }
+
+        const { data, error } = await supabase
+            .from('generated_images')
+            .select('id, prompt, image_url, created_at')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error("Error fetching generated images:", error);
+            // Retorna array vazio em caso de erro de DB
+            return [];
+        }
+
+        return data;
+    } catch (e) {
+        console.error("Unexpected error in getGeneratedImages:", e);
+        // Captura erros de rede/serialização e retorna array vazio
         return [];
     }
-
-    const { data, error } = await supabase
-        .from('generated_images')
-        .select('id, prompt, image_url, created_at')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
-
-    if (error) {
-        console.error("Error fetching generated images:", error);
-        return [];
-    }
-
-    return data;
 }
 
 export async function deleteGeneratedImage(id: string) {
