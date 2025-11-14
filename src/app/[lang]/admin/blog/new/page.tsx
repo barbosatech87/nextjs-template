@@ -3,7 +3,7 @@ import { Locale } from "@/lib/i18n/config";
 import { AIResponse } from "@/app/actions/ai";
 
 interface NewPostPageProps {
-  params: Awaited<{ lang: Locale }>;
+  params: { lang: Locale }; // Corrigido
   searchParams?: { [key: string]: string | string[] | undefined };
 }
 

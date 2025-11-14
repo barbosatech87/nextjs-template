@@ -16,7 +16,7 @@ const texts = {
 };
 
 interface AdminDashboardPageProps {
-  params: Awaited<{ lang: Locale }>;
+  params: { lang: Locale }; // Corrigido
 }
 
 export default async function AdminDashboardPage({ params }: AdminDashboardPageProps) {

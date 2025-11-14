@@ -92,7 +92,7 @@ function SearchSkeleton({ lang }: { lang: Locale }) {
 }
 
 interface SearchPageProps {
-  params: Awaited<{ lang: Locale }>;
+  params: { lang: Locale }; // Corrigido
   searchParams?: { q?: string };
 }
 

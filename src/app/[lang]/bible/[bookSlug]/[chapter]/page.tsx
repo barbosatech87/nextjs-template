@@ -24,12 +24,12 @@ const pageTexts = {
 };
 
 interface ChapterPageProps {
-  params: Awaited<{ lang: Locale; bookSlug: string; chapter: string }>;
+  params: { lang: Locale; bookSlug: string; chapter: string }; // Corrigido
 }
 
 export default async function ChapterPage({ params }: ChapterPageProps) {
   const { lang, bookSlug, chapter } = params;
-  const texts = pageTexts[lang] || texts.pt;
+  const texts = pageTexts[lang] || pageTexts.pt;
 
   const bookName = getBookNameFromSlug(bookSlug);
   const chapterNumber = parseInt(chapter, 10);

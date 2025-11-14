@@ -3,7 +3,7 @@ import { BlogPostsTable } from "@/components/admin/blog/blog-posts-table";
 import { Locale } from "@/lib/i18n/config";
 
 interface AdminBlogPageProps {
-  params: Awaited<{ lang: Locale }>;
+  params: { lang: Locale }; // Corrigido
 }
 
 export default async function AdminBlogPage({ params }: AdminBlogPageProps) {

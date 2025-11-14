@@ -3,7 +3,7 @@ import { ReactNode } from "react";
 
 interface BlogLayoutProps {
   children: ReactNode;
-  params: Awaited<{ lang: Locale }>;
+  params: { lang: Locale }; // Corrigido
 }
 
 export default async function BlogLayout({

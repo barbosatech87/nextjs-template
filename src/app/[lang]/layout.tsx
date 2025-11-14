@@ -11,7 +11,7 @@ export function generateStaticParams() {
 
 interface RootLangLayoutProps {
   children: ReactNode;
-  params: Awaited<{ lang: Locale }>;
+  params: { lang: Locale }; // Corrigido: Removido Awaited
 }
 
 export default async function RootLangLayout({

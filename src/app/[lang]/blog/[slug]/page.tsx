@@ -27,7 +27,7 @@ const texts = {
 };
 
 interface BlogPostPageProps {
-  params: Awaited<{ lang: Locale; slug: string }>;
+  params: { lang: Locale; slug: string }; // Corrigido
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
