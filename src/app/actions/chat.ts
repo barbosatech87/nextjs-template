@@ -128,7 +128,6 @@ export async function getAiChatResponse(
             messages.push({
               tool_call_id: toolCall.id,
               role: 'tool',
-              name: functionName,
               content: functionResponse,
             });
           }
