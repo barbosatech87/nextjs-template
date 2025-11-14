@@ -33,6 +33,8 @@ const postSchema = z.object({
   published_at: z.string().datetime({ offset: true }).nullable().optional(),
   scheduled_for: z.string().datetime({ offset: true }).nullable().optional(),
   category_ids: z.array(z.string()).optional(),
+  // Campo de UI para data/hora (datetime-local), usado para decidir published_at ou scheduled_for
+  scheduleDate: z.string().optional(),
 });
 
 type PostFormValues = z.infer<typeof postSchema>;
@@ -74,6 +76,8 @@ const texts = {
     saveEdit: "Salvar Alterações",
     savingEdit: "Salvando...",
     coverSet: "Imagem definida como capa.",
+    scheduleLabel: "Data/Hora de publicação ou agendamento",
+    scheduleHelp: "Se vazio, usaremos a data/hora atual. Se for no futuro, o post será agendado.",
   },
   en: {
     titleCreate: "Create New Post",
@@ -102,6 +106,8 @@ const texts = {
     saveEdit: "Save Changes",
     savingEdit: "Saving...",
     coverSet: "Cover image set.",
+    scheduleLabel: "Publish/Schedule Date & Time",
+    scheduleHelp: "If empty, we'll use the current date/time. If in the future, the post will be scheduled.",
   },
   es: {
     titleCreate: "Crear Nueva Entrada",
@@ -130,8 +136,22 @@ const texts = {
     saveEdit: "Guardar Cambios",
     savingEdit: "Guardando...",
     coverSet: "Imagen de portada establecida.",
+    scheduleLabel: "Fecha/Hora de publicación o programación",
+    scheduleHelp: "Si está vacío, usaremos la fecha/hora actual. Si es en el futuro, se programará la publicación.",
   },
 };
+
+function isoToLocalInput(isoString: string | null | undefined) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const y = d.getFullYear();
+  const m = pad(d.getMonth() + 1);
+  const day = pad(d.getDate());
+  const hh = pad(d.getHours());
+  const mm = pad(d.getMinutes());
+  return `${y}-${m}-${day}T${hh}:${mm}`;
+}
 
 export function PostForm({ lang, initialData, isEditing = false, postId, initialImages }: PostFormProps) {
   const t = texts[lang] || texts.pt;
@@ -154,6 +174,8 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
     published_at: initialData?.published_at || null,
     scheduled_for: initialData?.scheduled_for || null,
     category_ids: initialData?.category_ids || [],
+    // Prefere mostrar o agendamento, senão a data de publicação existente
+    scheduleDate: isoToLocalInput(initialData?.scheduled_for ?? initialData?.published_at ?? null),
   };
 
   const form = useForm<PostFormValues>({
@@ -204,16 +226,43 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
     form.setValue('image_url', null, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
 
+  function toISOFromLocal(localString: string): string {
+    // localString no formato "YYYY-MM-DDTHH:mm"
+    const date = new Date(localString);
+    return date.toISOString();
+    // Mantém o offset como 'Z' (UTC), compatível com schema (offset: true)
+  }
+
   async function onSubmit(values: PostFormValues) {
     startTransition(async () => {
+      // Decide published_at ou scheduled_for, e default se vazio
+      const hasSchedule = !!values.scheduleDate && values.scheduleDate.trim() !== '';
+      let publishedISO: string | null = null;
+      let scheduledISO: string | null = null;
+
+      if (hasSchedule) {
+        const chosen = new Date(values.scheduleDate as string);
+        const now = new Date();
+        if (chosen.getTime() > now.getTime()) {
+          scheduledISO = toISOFromLocal(values.scheduleDate as string);
+        } else {
+          publishedISO = toISOFromLocal(values.scheduleDate as string);
+        }
+      } else {
+        publishedISO = new Date().toISOString();
+      }
+
       const postData: NewPostData = {
-        ...values,
+        title: values.title,
+        slug: values.slug,
+        content: values.content,
         summary: values.summary || null,
         image_url: values.image_url || null,
         seo_title: values.seo_title || null,
         seo_description: values.seo_description || null,
-        published_at: values.published_at || null,
-        scheduled_for: values.scheduled_for || null,
+        status: values.status,
+        published_at: publishedISO,
+        scheduled_for: scheduledISO,
         category_ids: values.category_ids || [],
       };
 
@@ -374,7 +423,7 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
                 <CardHeader>
                   <CardTitle>{t.statusLabel}</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <FormField
                     control={form.control}
                     name="status"
@@ -393,6 +442,25 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
                             <SelectItem value="archived">{t.archived}</SelectItem>
                           </SelectContent>
                         </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="scheduleDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t.scheduleLabel}</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="datetime-local"
+                            value={field.value || ''}
+                            onChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormDescription>{t.scheduleHelp}</FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
