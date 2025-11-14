@@ -48,7 +48,7 @@ const homeTexts = {
 export default async function Home({ 
   params, 
   searchParams,
-}: { params: { lang: Locale }; searchParams?: { [key: string]: string | string[] | undefined } }) {
+}: LocalizedPageProps) { // Usando o tipo importado
   const { lang } = params;
   const texts = homeTexts[lang] || homeTexts.pt;
   

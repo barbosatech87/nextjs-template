@@ -28,7 +28,7 @@ const postOutputSchema = z.object({
   title: z.string(),
   slug: z.string(),
   content: z.string(),
-  summary: z.string(),
+  summary: z.string().nullable(), // Alterado para permitir null
   seo_title: z.string(),
   seo_description: z.string(),
 });
@@ -60,7 +60,7 @@ export async function generatePostWithAI(
         "title": "Um título atrativo e otimizado para SEO com no máximo 70 caracteres.",
         "slug": "um-slug-para-url-baseado-no-titulo-sem-acentos-e-com-hifens",
         "content": "O corpo do post em formato Markdown, começando diretamente com o primeiro parágrafo ou subtítulo (H2). Deve ter pelo menos 3 parágrafos.",
-        "summary": "Um resumo conciso do post com no máximo 300 caracteres.",
+        "summary": "Um resumo conciso do post com no máximo 300 caracteres. Pode ser nulo se não for relevante.",
         "seo_title": "Um título para SEO, similar ao título principal, com no máximo 60 caracteres.",
         "seo_description": "Uma meta descrição para SEO, otimizada para cliques, com no máximo 160 caracteres."
       }

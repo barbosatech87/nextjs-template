@@ -12,7 +12,7 @@ export function generateStaticParams() {
 export default async function RootLangLayout({
   children,
   params,
-}: { children: React.ReactNode; params: { lang: Locale } }) {
+}: LocalizedLayoutProps) { // Usando o tipo importado
   const { lang } = params;
   
   return (

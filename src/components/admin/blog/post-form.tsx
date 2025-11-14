@@ -22,7 +22,16 @@ import { TranslationDialog } from './translation-dialog';
 import { AIResponse } from '@/app/actions/ai';
 
 // Tipo unificado para dados iniciais (AIResponse é um subconjunto de EditablePostData)
-type InitialPostData = Partial<EditablePostData> & Partial<AIResponse>;
+// Usamos Partial<EditablePostData> para cobrir todos os campos do DB, e & Partial<AIResponse>
+// para garantir que os campos da IA (que podem ser mais restritivos) sejam aceitos.
+// O problema é que o TS está vendo a união de tipos de 'summary' e 'seo_title' como incompatível.
+// Vamos usar um tipo utilitário para garantir que todos os campos de string sejam string | null | undefined.
+type NullableStringFields<T> = {
+    [K in keyof T]: T[K] extends string | null ? string | null | undefined : T[K];
+};
+
+type InitialPostData = NullableStringFields<EditablePostData> & Partial<AIResponse>;
+
 
 interface PostFormProps {
   lang: Locale;
