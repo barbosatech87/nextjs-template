@@ -4,6 +4,7 @@ import { getDailyVerse, getRecentPosts } from "@/app/actions/blog";
 import { DailyVerse } from "@/components/home/daily-verse";
 import { PostSection } from "@/components/home/post-section";
 import { Separator } from "@/components/ui/separator";
+import { LocalizedPageProps } from "@/types/next-app";
 
 const homeTexts = {
   pt: {
@@ -46,9 +47,7 @@ const homeTexts = {
 
 export default async function Home({ 
   params, 
-}: {
-  params: { lang: Locale };
-}) {
+}: LocalizedPageProps) {
   const { lang } = params;
   const texts = homeTexts[lang] || homeTexts.pt;
   
