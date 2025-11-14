@@ -22,9 +22,15 @@ export default async function AdminLayout({ children, params }: AdminLayoutProps
     hdrs.get('RSC-Action')
   );
 
-  // Não redireciona durante Server Actions para não quebrar o fetch
+  // Durante Server Actions, não fazer redirects, mas manter o layout com Sidebar.
   if (isServerActionRequest) {
-    return <>{children}</>;
+    return (
+      <div className="flex min-h-screen">
+        <AdminSidebar lang={lang}>
+          <div className="p-6 bg-muted/40 h-full">{children}</div>
+        </AdminSidebar>
+      </div>
+    );
   }
 
   const supabase = createSupabaseServerClient();
