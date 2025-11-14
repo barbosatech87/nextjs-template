@@ -23,35 +23,31 @@ export const UserActivePlans: React.FC<UserActivePlansProps> = ({ lang, plans })
   const t = {
     pt: { 
       title: "Meus Planos Ativos", 
-      empty: "Você não tem nenhum plano de leitura ativo. Que tal começar um?",
-      viewPlan: "Ver Plano",
+      empty: "Você não tem nenhum plano de leitura ativo. Que tal começar um na aba 'Criar Plano'?",
+      viewPlan: "Acompanhar",
       progress: "Progresso",
-      startDate: "Início",
-      endDate: "Término",
+      dateRange: "De {start} a {end}",
     },
     en: { 
       title: "My Active Plans", 
-      empty: "You don't have any active reading plans. How about starting one?",
-      viewPlan: "View Plan",
+      empty: "You don't have any active reading plans. How about starting one in the 'Create Plan' tab?",
+      viewPlan: "Track",
       progress: "Progress",
-      startDate: "Start",
-      endDate: "End",
+      dateRange: "From {start} to {end}",
     },
     es: { 
       title: "Mis Planes Activos", 
-      empty: "No tienes ningún plan de lectura activo. ¿Qué tal si empiezas uno?",
-      viewPlan: "Ver Plan",
+      empty: "No tienes ningún plan de lectura activo. ¿Qué tal si empiezas uno en la pestaña 'Crear Plan'?",
+      viewPlan: "Seguimiento",
       progress: "Progreso",
-      startDate: "Inicio",
-      endDate: "Fin",
+      dateRange: "Del {start} al {end}",
     },
   }[lang] || { 
     title: "Meus Planos Ativos", 
-    empty: "Você não tem nenhum plano de leitura ativo. Que tal começar um?",
-    viewPlan: "Ver Plano",
+    empty: "Você não tem nenhum plano de leitura ativo. Que tal começar um na aba 'Criar Plano'?",
+    viewPlan: "Acompanhar",
     progress: "Progresso",
-    startDate: "Início",
-    endDate: "Término",
+    dateRange: "De {start} a {end}",
   };
 
   // TODO: O cálculo do progresso será implementado no próximo passo
@@ -59,52 +55,45 @@ export const UserActivePlans: React.FC<UserActivePlansProps> = ({ lang, plans })
     return 5; // Valor fixo por enquanto
   };
 
+  if (!plans || plans.length === 0) {
+    return (
+      <div className="text-center py-16 border rounded-lg bg-muted/30">
+        <BookOpen className="mx-auto h-12 w-12 text-muted-foreground" />
+        <h3 className="mt-4 text-lg font-semibold">{t.title}</h3>
+        <p className="mt-2 text-sm text-muted-foreground">{t.empty}</p>
+      </div>
+    );
+  }
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t.title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {plans && plans.length > 0 ? (
-          <div className="space-y-4">
-            {plans.map((plan) => (
-              <Card key={plan.id} className="overflow-hidden">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="h-5 w-5 text-primary" />
-                    {plan.custom_plan_name}
-                  </CardTitle>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2">
-                      <div className="flex items-center gap-1.5">
-                          <Calendar className="h-4 w-4" />
-                          <span>{t.startDate}: {format(new Date(plan.start_date), 'P', { locale: locales[lang] })}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                          <Flag className="h-4 w-4" />
-                          <span>{t.endDate}: {format(new Date(plan.end_date), 'P', { locale: locales[lang] })}</span>
-                      </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-muted-foreground">{t.progress}</p>
-                    <Progress value={calculateProgress(plan)} className="h-2" />
-                  </div>
-                </CardContent>
-                <CardFooter className="bg-muted/50 px-6 py-3">
-                  <Button asChild variant="secondary" size="sm">
-                    <Link href={`/${lang}/plans/${plan.id}`}>{t.viewPlan}</Link>
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-10 border rounded-lg bg-muted/50">
-            <p className="text-sm text-muted-foreground">{t.empty}</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {plans.map((plan) => (
+        <Card key={plan.id} className="flex flex-col">
+          <CardHeader>
+            <CardTitle className="text-lg">{plan.custom_plan_name}</CardTitle>
+            <CardDescription>
+              {t.dateRange
+                .replace('{start}', format(new Date(plan.start_date), 'P', { locale: locales[lang] }))
+                .replace('{end}', format(new Date(plan.end_date), 'P', { locale: locales[lang] }))
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex-grow">
+            <div className="space-y-1">
+              <div className="flex justify-between text-sm font-medium">
+                <span className="text-muted-foreground">{t.progress}</span>
+                <span>{calculateProgress(plan)}%</span>
+              </div>
+              <Progress value={calculateProgress(plan)} className="h-2" />
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button asChild variant="outline" size="sm" className="w-full">
+              <Link href={`/${lang}/plans/${plan.id}`}>{t.viewPlan}</Link>
+            </Button>
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
   );
 };
