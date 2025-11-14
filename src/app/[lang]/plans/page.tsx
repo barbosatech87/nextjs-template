@@ -5,7 +5,7 @@ import { UserActivePlans } from "@/components/reading-plans/user-active-plans";
 import { CreatePlanForm } from "@/components/reading-plans/create-plan-form";
 import { PredefinedPlansList } from "@/components/reading-plans/predefined-plans-list";
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
-import { LoginPrompt } from "@/components/auth/login-prompt";
+import { PlansLoginPrompt } from "@/components/reading-plans/plans-login-prompt";
 
 interface PlansPageProps {
   params: { lang: Locale };
@@ -18,8 +18,6 @@ const pageTexts = {
       myPlans: "Meus Planos",
       createPlan: "Criar Plano",
       explorePlans: "Explorar Planos",
-      loginPromptTitle: "Recurso Exclusivo para Membros",
-      loginPromptDescription: "Para criar e acompanhar seus planos de leitura, você precisa estar logado.",
     },
     en: { 
       title: "Reading Plans", 
@@ -27,8 +25,6 @@ const pageTexts = {
       myPlans: "My Plans",
       createPlan: "Create Plan",
       explorePlans: "Explore Plans",
-      loginPromptTitle: "Exclusive Member Feature",
-      loginPromptDescription: "To create and track your reading plans, you need to be logged in.",
     },
     es: { 
       title: "Planes de Lectura", 
@@ -36,8 +32,6 @@ const pageTexts = {
       myPlans: "Mis Planes",
       createPlan: "Crear Plan",
       explorePlans: "Explorar Planes",
-      loginPromptTitle: "Función Exclusiva para Miembros",
-      loginPromptDescription: "Para crear y seguir tus planes de lectura, necesitas iniciar sesión.",
     },
 };
 
@@ -47,13 +41,7 @@ export default async function PlansPage({ params: { lang } }: PlansPageProps) {
   const t = pageTexts[lang] || pageTexts.pt;
 
   if (!user) {
-    return (
-      <LoginPrompt 
-        lang={lang} 
-        title={t.loginPromptTitle} 
-        description={t.loginPromptDescription} 
-      />
-    );
+    return <PlansLoginPrompt lang={lang} />;
   }
 
   const userPlans = await getUserActiveReadingPlans();
