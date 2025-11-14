@@ -12,17 +12,26 @@ const homeTexts = {
   pt: {
     hero: { placeholder: 'Buscar na Bíblia...', button: 'Buscar' },
     dailyVerse: { title: 'Versículo do Dia', readChapter: 'Ler o capítulo', verseUnavailable: 'Versículo do dia indisponível no momento.' },
-    postSection: { title: 'Últimas Postagens', viewAll: 'Ver todos' }
+    postSection: { 
+      latest: { title: 'Últimas Postagens', viewAll: 'Ver todos' },
+      devotional: { title: 'Devocional', viewAll: 'Ver todos devocionais' }
+    }
   },
   en: {
     hero: { placeholder: 'Search the Bible...', button: 'Search' },
     dailyVerse: { title: 'Verse of the Day', readChapter: 'Read chapter', verseUnavailable: 'Verse of the day is currently unavailable.' },
-    postSection: { title: 'Latest Posts', viewAll: 'View all' }
+    postSection: { 
+      latest: { title: 'Latest Posts', viewAll: 'View all' },
+      devotional: { title: 'Devotional', viewAll: 'View all devotionals' }
+    }
   },
   es: {
     hero: { placeholder: 'Buscar en la Biblia...', button: 'Buscar' },
     dailyVerse: { title: 'Versículo del Día', readChapter: 'Leer el capítulo', verseUnavailable: 'El versículo del día no está disponible actualmente.' },
-    postSection: { title: 'Últimas Publicaciones', viewAll: 'Ver todos' }
+    postSection: { 
+      latest: { title: 'Últimas Publicaciones', viewAll: 'Ver todos' },
+      devotional: { title: 'Devotional', viewAll: 'Ver todos los devocionales' }
+    }
   }
 };
 
@@ -32,6 +41,11 @@ export default async function HomePage({ params }: HomePageProps) {
 
   // Busca de dados
   const dailyVerse = await getDailyVerse(lang);
+  
+  // Posts Devocionais (3 mais recentes da categoria 'devocional')
+  const devotionalPosts = await getRecentPosts({ lang, limit: 3, includeCategorySlug: 'devocional' });
+
+  // Outros Posts Recentes (3 mais recentes, excluindo 'devocional')
   const recentPosts = await getRecentPosts({ lang, limit: 3, excludeCategorySlug: 'devocional' });
 
   return (
@@ -39,12 +53,25 @@ export default async function HomePage({ params }: HomePageProps) {
       <div className="flex flex-col items-center text-center gap-12 md:gap-16">
         <HeroSearch lang={lang} texts={t.hero} />
         <DailyVerse lang={lang} verse={dailyVerse} texts={t.dailyVerse} />
+      </div>
+
+      <div className="mt-12 md:mt-16">
+        {/* Seção Devocional */}
+        <PostSection 
+          lang={lang} 
+          posts={devotionalPosts} 
+          title={t.postSection.devotional.title} 
+          viewAllLink={`/${lang}/blog?category=devocional`} // Assumindo que a rota de blog pode filtrar por categoria
+          viewAllText={t.postSection.devotional.viewAll}
+        />
+
+        {/* Seção Últimas Postagens */}
         <PostSection 
           lang={lang} 
           posts={recentPosts} 
-          title={t.postSection.title} 
+          title={t.postSection.latest.title} 
           viewAllLink={`/${lang}/blog`}
-          viewAllText={t.postSection.viewAll}
+          viewAllText={t.postSection.latest.viewAll}
         />
       </div>
     </div>
