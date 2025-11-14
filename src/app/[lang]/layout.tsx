@@ -9,15 +9,14 @@ export function generateStaticParams() {
   return i18n.locales.map((lang) => ({ lang }));
 }
 
-interface RootLangLayoutProps {
-  children: ReactNode;
-  params: { lang: Locale }; // Corrigido: Removido Awaited
-}
-
+// Usando a tipagem mais simples possível para evitar conflitos com os tipos gerados pelo Next.js
 export default async function RootLangLayout({
   children,
   params,
-}: RootLangLayoutProps) {
+}: {
+  children: ReactNode;
+  params: { lang: Locale };
+}) {
   const { lang } = params;
   
   return (

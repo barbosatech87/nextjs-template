@@ -44,13 +44,11 @@ const homeTexts = {
   },
 };
 
-interface HomePageProps {
-  params: { lang: Locale }; // Corrigido: Removido Awaited
-}
-
 export default async function Home({ 
   params, 
-}: HomePageProps) {
+}: {
+  params: { lang: Locale };
+}) {
   const { lang } = params;
   const texts = homeTexts[lang] || homeTexts.pt;
   
