@@ -7,6 +7,13 @@ import { marked } from 'marked';
 
 export type PageData = Omit<Page, 'id' | 'author_id' | 'created_at' | 'updated_at' | 'language_code'>;
 
+type CreatePageSuccess = {
+  success: true;
+  message: string;
+  pageId: string;
+};
+type ActionResponse = CreatePageSuccess | { success: false; message: string; };
+
 async function checkAdmin() {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -24,12 +31,16 @@ async function checkAdmin() {
   return user.id;
 }
 
-export async function createPage(pageData: PageData, lang: string) {
+export async function createPage(pageData: PageData, lang: string): Promise<ActionResponse> {
   try {
     const author_id = await checkAdmin();
     const supabase = createSupabaseServerClient();
 
-    const { error } = await supabase.from("pages").insert({ ...pageData, author_id, language_code: lang });
+    const { data: newPage, error } = await supabase
+      .from("pages")
+      .insert({ ...pageData, author_id, language_code: lang })
+      .select('id')
+      .single();
 
     if (error) throw new Error(error.message);
 
@@ -38,7 +49,7 @@ export async function createPage(pageData: PageData, lang: string) {
       revalidatePath(`/${lang}/p/${pageData.slug}`);
     }
 
-    return { success: true, message: "Página criada com sucesso." };
+    return { success: true, message: "Página criada com sucesso.", pageId: newPage.id };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Ocorreu um erro inesperado.";
     return { success: false, message };
