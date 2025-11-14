@@ -1,71 +1,36 @@
-import { Locale } from '@/lib/i18n/config';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BookMarked, PlusCircle, Compass } from 'lucide-react';
-import { UserActivePlans } from '@/components/reading-plans/user-active-plans';
-import { CreatePlanForm } from '@/components/reading-plans/create-plan-form';
-import { PredefinedPlansList } from '@/components/reading-plans/predefined-plans-list';
+import { Locale } from "@/lib/i18n/config";
+import { CreatePlanForm } from "@/components/reading-plans/create-plan-form";
+import { UserActivePlans } from "@/components/reading-plans/user-active-plans";
+import { getUserActiveReadingPlans } from "@/app/actions/plans";
 
 interface PlansDashboardPageProps {
   params: { lang: Locale };
 }
 
-const pageTexts = {
-  pt: {
-    title: 'Meus Planos de Leitura',
-    tabMyPlans: 'Meus Planos',
-    tabCreate: 'Criar Plano',
-    tabExplore: 'Explorar Planos',
-  },
-  en: {
-    title: 'My Reading Plans',
-    tabMyPlans: 'My Plans',
-    tabCreate: 'Create Plan',
-    tabExplore: 'Explore Plans',
-  },
-  es: {
-    title: 'Mis Planes de Lectura',
-    tabMyPlans: 'Mis Planes',
-    tabCreate: 'Crear Plan',
-    tabExplore: 'Explorar Planes',
-  },
-};
+export default async function PlansDashboardPage({ params: { lang } }: PlansDashboardPageProps) {
+  const userPlans = await getUserActiveReadingPlans();
 
-export default function PlansDashboardPage({ params }: PlansDashboardPageProps) {
-  const { lang } = params;
-  const t = pageTexts[lang] || pageTexts.pt;
+  const t = {
+    pt: { title: "Painel de Leitura", description: "Gerencie seus planos de leitura e acompanhe seu progresso." },
+    en: { title: "Reading Dashboard", description: "Manage your reading plans and track your progress." },
+    es: { title: "Panel de Lectura", description: "Gestiona tus planes de lectura y sigue tu progreso." },
+  }[lang] || { title: "Painel de Leitura", description: "Gerencie seus planos de leitura e acompanhe seu progresso." };
 
   return (
-    <div className="container mx-auto max-w-5xl py-12">
-      <h1 className="text-3xl font-bold mb-8">{t.title}</h1>
-      
-      <Tabs defaultValue="my-plans" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-auto">
-          <TabsTrigger value="my-plans" className="flex items-center gap-2 py-2">
-            <BookMarked className="h-4 w-4" />
-            {t.tabMyPlans}
-          </TabsTrigger>
-          <TabsTrigger value="create" className="flex items-center gap-2 py-2">
-            <PlusCircle className="h-4 w-4" />
-            {t.tabCreate}
-          </TabsTrigger>
-          <TabsTrigger value="explore" className="flex items-center gap-2 py-2">
-            <Compass className="h-4 w-4" />
-            {t.tabExplore}
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="my-plans" className="mt-6">
-          <UserActivePlans lang={lang} />
-        </TabsContent>
-        
-        <TabsContent value="create" className="mt-6">
+    <div className="container mx-auto py-10">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">{t.title}</h1>
+        <p className="text-muted-foreground">{t.description}</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          <UserActivePlans lang={lang} plans={userPlans} />
+        </div>
+        <div>
           <CreatePlanForm lang={lang} />
-        </TabsContent>
-        
-        <TabsContent value="explore" className="mt-6">
-          <PredefinedPlansList lang={lang} />
-        </TabsContent>
-      </Tabs>
+        </div>
+      </div>
     </div>
   );
 }

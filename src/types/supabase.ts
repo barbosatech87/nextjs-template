@@ -71,6 +71,18 @@ export type Notification = {
   metadata: Record<string, unknown> | null;
 };
 
+export type UserReadingPlan = {
+  id: string;
+  user_id: string;
+  plan_id: string | null;
+  custom_plan_name: string | null;
+  start_date: string;
+  end_date: string;
+  status: 'active' | 'completed' | 'paused';
+  daily_reading_schedule: Record<string, { book: string; chapter: number; }[]>;
+  created_at: string | null;
+};
+
 // Tipos combinados para uso no frontend
 export interface UserWithProfile extends User {
   profile: Profile | null;

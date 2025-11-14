@@ -6,10 +6,33 @@ import { Locale } from "@/lib/i18n/config";
 import { revalidatePath } from "next/cache";
 import { addDays } from "date-fns";
 import { createPlanSchema, CreatePlanData } from "@/lib/schemas/plans";
+import { UserReadingPlan } from "@/types/supabase";
 
 interface ChapterReference {
   book: string;
   chapter: number;
+}
+
+export async function getUserActiveReadingPlans(): Promise<UserReadingPlan[]> {
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("user_reading_plans")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Erro ao buscar planos de leitura:", error);
+    return [];
+  }
+
+  return data as UserReadingPlan[];
 }
 
 export async function createUserReadingPlan(
