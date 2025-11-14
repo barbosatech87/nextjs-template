@@ -17,6 +17,12 @@ function getLocale(request: NextRequest): string {
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
+  // Importante: só processar navegações GET.
+  // Server Actions e uploads usam POST/PUT/PATCH/DELETE e não devem passar por lógica de redirecionamento.
+  if (request.method !== 'GET') {
+    return NextResponse.next();
+  }
+
   // Ignora rotas internas do Next, API e arquivos estáticos
   if (
     pathname.startsWith('/_next') ||
