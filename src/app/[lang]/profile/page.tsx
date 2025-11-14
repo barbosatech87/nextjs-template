@@ -1,10 +1,10 @@
 import { Locale } from '@/lib/i18n/config';
 import NotificationsList from '@/components/notifications/notifications-list';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, Heart, Bell, CalendarCheck } from 'lucide-react';
+import { User, Heart, Bell, FileText } from 'lucide-react';
 import { UserDataTab } from '@/components/profile/user-data-tab';
 import { FavoritesTab } from '@/components/profile/favorites-tab';
-import { ReadingPlansTab } from '@/components/profile/reading-plans-tab';
+import { NotesTab } from '@/components/profile/notes-tab';
 import { getHydratedFavorites } from '@/app/actions/favorites';
 
 interface ProfilePageProps {
@@ -17,21 +17,21 @@ const pageTexts = {
     tabData: 'Dados do Usuário',
     tabFavorites: 'Favoritos',
     tabNotifications: 'Notificações',
-    tabPlans: 'Meus Planos',
+    tabNotes: 'Anotações',
   },
   en: {
     title: 'Your Profile',
     tabData: 'User Data',
     tabFavorites: 'Favorites',
     tabNotifications: 'Notifications',
-    tabPlans: 'My Plans',
+    tabNotes: 'Notes',
   },
   es: {
     title: 'Tu Perfil',
     tabData: 'Datos de Usuario',
     tabFavorites: 'Favoritos',
     tabNotifications: 'Notificaciones',
-    tabPlans: 'Mis Planes',
+    tabNotes: 'Anotaciones',
   },
 };
 
@@ -59,9 +59,9 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             <Bell className="h-4 w-4" />
             {t.tabNotifications}
           </TabsTrigger>
-          <TabsTrigger value="plans" className="flex items-center gap-2 py-2">
-            <CalendarCheck className="h-4 w-4" />
-            {t.tabPlans}
+          <TabsTrigger value="notes" className="flex items-center gap-2 py-2">
+            <FileText className="h-4 w-4" />
+            {t.tabNotes}
           </TabsTrigger>
         </TabsList>
         
@@ -77,8 +77,8 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           <NotificationsList lang={lang} />
         </TabsContent>
         
-        <TabsContent value="plans" className="mt-6">
-          <ReadingPlansTab lang={lang} />
+        <TabsContent value="notes" className="mt-6">
+          <NotesTab lang={lang} />
         </TabsContent>
       </Tabs>
     </div>
