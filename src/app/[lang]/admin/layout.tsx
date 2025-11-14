@@ -30,8 +30,10 @@ export default async function AdminLayout({ children, params }: AdminLayoutProps
   }
 
   return (
-    <AdminSidebar lang={lang}>
-      <div className="p-6 bg-muted/40 h-full">{children}</div>
-    </AdminSidebar>
+    <div className="flex min-h-screen">
+      <AdminSidebar lang={lang}>
+        <div className="p-6 bg-muted/40 h-full">{children}</div>
+      </AdminSidebar>
+    </div>
   );
 }

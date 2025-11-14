@@ -12,7 +12,8 @@ export function MainLayout({ children, lang }: MainLayoutProps) {
   return (
     <div className="flex flex-col min-h-screen">
       <Header lang={lang} />
-      <main className="flex-grow">
+      {/* Adicionando pt-16 para compensar o Header (h-16) */}
+      <main className="flex-grow pt-16">
         {children}
       </main>
       <Footer lang={lang} />

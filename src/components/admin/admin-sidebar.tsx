@@ -66,7 +66,8 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
 
   return (
     <SidebarProvider>
-      <Sidebar>
+      {/* Adicionando 'h-screen' e 'sticky top-0' ao Sidebar para garantir que ele seja fixo e ocupe a altura total */}
+      <Sidebar className="h-screen sticky top-0">
         <SidebarHeader>
           <div className="flex items-center gap-2">
             <SidebarTrigger />
@@ -94,7 +95,8 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
           </SidebarMenu>
         </SidebarContent>
       </Sidebar>
-      <SidebarInset>
+      {/* O SidebarInset precisa de um padding superior para compensar o Header principal (h-16) */}
+      <SidebarInset className="pt-16 flex-1 overflow-y-auto">
         {children}
       </SidebarInset>
     </SidebarProvider>
