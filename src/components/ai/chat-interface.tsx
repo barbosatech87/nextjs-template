@@ -32,12 +32,12 @@ export function ChatInterface({ lang }: ChatInterfaceProps) {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const scrollAreaViewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({
-        top: scrollAreaRef.current.scrollHeight,
+    if (scrollAreaViewportRef.current) {
+      scrollAreaViewportRef.current.scrollTo({
+        top: scrollAreaViewportRef.current.scrollHeight,
         behavior: 'smooth',
       });
     }
@@ -72,7 +72,7 @@ export function ChatInterface({ lang }: ChatInterfaceProps) {
 
   return (
     <Card className="h-full flex flex-col shadow-lg">
-      <ScrollArea className="flex-grow p-4" viewportRef={scrollAreaRef}>
+      <ScrollArea className="flex-grow p-4" viewportRef={scrollAreaViewportRef}>
         <div className="space-y-6">
           {messages.map((message, index) => (
             <div
