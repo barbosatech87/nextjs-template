@@ -19,6 +19,7 @@ import { ImageUpload } from './image-upload';
 import { useBlogCategories } from '@/hooks/use-blog-categories';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TranslationDialog } from './translation-dialog';
+import { GeneratedImageData } from '@/app/actions/image-generation'; // Importar o tipo
 
 // --- Schema de Validação ---
 const postSchema = z.object({
@@ -51,6 +52,7 @@ interface PostFormProps {
   initialData?: InitialPostData | null;
   isEditing?: boolean;
   postId?: string;
+  initialImages: GeneratedImageData[]; // Nova prop
 }
 
 // --- Textos I18n ---
@@ -138,7 +140,7 @@ const texts = {
   },
 };
 
-export function PostForm({ lang, initialData, isEditing = false, postId }: PostFormProps) {
+export function PostForm({ lang, initialData, isEditing = false, postId, initialImages }: PostFormProps) {
   const t = texts[lang] || texts.pt;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -368,7 +370,8 @@ export function PostForm({ lang, initialData, isEditing = false, postId }: PostF
                     onUploadSuccess={handleImageUploadSuccess} 
                     initialImageUrl={imageUrl}
                     onRemove={handleImageRemove}
-                    postSummary={safeSummaryValue} // Usando o valor seguro
+                    postSummary={safeSummaryValue}
+                    initialImages={initialImages} // Passando as imagens iniciais
                   />
                 </CardContent>
               </Card>

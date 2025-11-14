@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, Upload, X, Sparkles, GalleryHorizontal } from 'lucide-react';
@@ -16,8 +16,8 @@ interface ImageUploadProps {
   onUploadSuccess: (url: string) => void;
   initialImageUrl?: string | null;
   onRemove: () => void;
-  // Novo: Resumo do post para pré-preencher o prompt da IA
   postSummary: string | null;
+  initialImages: GeneratedImageData[]; // Nova prop
 }
 
 const texts = {
@@ -31,6 +31,7 @@ const texts = {
     fileTooLarge: "O arquivo é muito grande. O tamanho máximo é 5MB.",
     generateOrSelect: "Gerar / Galeria",
     summaryRequired: "Preencha o Resumo do Post para gerar uma imagem com IA.",
+    fetchingGallery: "Carregando galeria...",
   },
   en: {
     upload: "Manual Upload",
@@ -42,6 +43,7 @@ const texts = {
     fileTooLarge: "File is too large. Maximum size is 5MB.",
     generateOrSelect: "Generate / Gallery",
     summaryRequired: "Fill in the Post Summary to generate an image with AI.",
+    fetchingGallery: "Fetching gallery...",
   },
   es: {
     upload: "Subir Manualmente",
@@ -53,29 +55,36 @@ const texts = {
     fileTooLarge: "El archivo es demasiado grande. El tamaño máximo es 5MB.",
     generateOrSelect: "Generar / Galería",
     summaryRequired: "Rellena el Resumen de la Entrada para generar una imagen con IA.",
+    fetchingGallery: "Cargando galería...",
   },
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-export function ImageUpload({ lang, onUploadSuccess, initialImageUrl, onRemove, postSummary }: ImageUploadProps) {
+export function ImageUpload({ lang, onUploadSuccess, initialImageUrl, onRemove, postSummary, initialImages }: ImageUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [generatedImages, setGeneratedImages] = useState<GeneratedImageData[]>([]);
+  // Usamos o estado local para a galeria, inicializado com a prop do servidor
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImageData[]>(initialImages);
+  const [isGalleryLoading, setIsGalleryLoading] = useState(false);
+  
   const t = texts[lang] || texts.pt;
 
   const isSummaryValid = !!postSummary && postSummary.length > 10;
 
-  // Recarrega a galeria sempre que o diálogo é aberto
-  const fetchImages = async () => {
+  // Função para recarregar a galeria (usada ao abrir o modal ou após salvar uma nova imagem)
+  const fetchImages = useCallback(async () => {
+    setIsGalleryLoading(true);
     const images = await getGeneratedImages();
     setGeneratedImages(images);
-  };
+    setIsGalleryLoading(false);
+  }, []);
 
   const handleOpenChange = (open: boolean) => {
     setIsDialogOpen(open);
     if (open) {
+      // Recarrega a galeria apenas se estiver abrindo
       fetchImages();
     }
   };
@@ -146,9 +155,14 @@ export function ImageUpload({ lang, onUploadSuccess, initialImageUrl, onRemove, 
           <ImageSelectorDialog
             lang={lang}
             initialPrompt={postSummary || undefined}
-            onSelectImage={onUploadSuccess}
+            onSelectImage={(url) => {
+              onUploadSuccess(url);
+              // Após selecionar/salvar, recarrega a galeria para incluir a nova imagem
+              fetchImages(); 
+            }}
             onOpenChange={handleOpenChange}
             images={generatedImages}
+            isGalleryLoading={isGalleryLoading} // Passando o estado de loading
             trigger={
               <Button 
                 type="button" 

@@ -10,11 +10,11 @@ import {
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Image, Sparkles, GalleryHorizontal } from 'lucide-react';
+import { Image, Sparkles, GalleryHorizontal, Loader2 } from 'lucide-react';
 import { Locale } from '@/lib/i18n/config';
 import { ImageGallerySelector } from './image-gallery-selector';
 import { GeneratedImageData } from '@/app/actions/image-generation';
-import { AiImageGeneratorModalForm } from '../ai-image-generator/ai-image-generator-modal-form'; // Import corrigido
+import { AiImageGeneratorModalForm } from '../ai-image-generator/ai-image-generator-modal-form';
 
 interface ImageSelectorDialogProps {
   lang: Locale;
@@ -23,6 +23,7 @@ interface ImageSelectorDialogProps {
   onSelectImage: (url: string) => void;
   onOpenChange: (open: boolean) => void;
   images: GeneratedImageData[];
+  isGalleryLoading: boolean; // Nova prop
 }
 
 const texts = {
@@ -50,6 +51,7 @@ export function ImageSelectorDialog({
   onSelectImage, 
   onOpenChange,
   images,
+  isGalleryLoading, // Usando a nova prop
 }: ImageSelectorDialogProps) {
   const t = texts[lang] || texts.pt;
   const [open, setOpen] = useState(false);
@@ -80,7 +82,7 @@ export function ImageSelectorDialog({
               <Sparkles className="h-4 w-4" />
               {t.tabGenerate}
             </TabsTrigger>
-            <TabsTrigger value="gallery" className="flex items-center gap-2">
+            <TabsTrigger value="gallery" className="flex items-center gap-2" disabled={isGalleryLoading}>
               <GalleryHorizontal className="h-4 w-4" />
               {t.tabGallery}
             </TabsTrigger>
@@ -95,11 +97,18 @@ export function ImageSelectorDialog({
           </TabsContent>
           
           <TabsContent value="gallery" className="mt-4">
-            <ImageGallerySelector 
-              images={images} 
-              lang={lang} 
-              onSelectImage={handleSelect} 
-            />
+            {isGalleryLoading ? (
+                <div className="text-center py-10 text-muted-foreground">
+                    <Loader2 className="h-8 w-8 mx-auto mb-2 animate-spin" />
+                    <p>{texts.pt.tabGallery}...</p>
+                </div>
+            ) : (
+                <ImageGallerySelector 
+                    images={images} 
+                    lang={lang} 
+                    onSelectImage={handleSelect} 
+                />
+            )}
           </TabsContent>
         </Tabs>
       </DialogContent>
