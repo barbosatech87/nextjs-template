@@ -19,23 +19,16 @@ import { ImageUpload } from './image-upload';
 import { useBlogCategories } from '@/hooks/use-blog-categories';
 import { Checkbox } from '@/components/ui/checkbox';
 import { TranslationDialog } from './translation-dialog';
-import { GeneratedImageData } from '@/app/actions/image-generation'; // Importar o tipo
+import { GeneratedImageData } from '@/app/actions/image-generation';
 
-// --- Schema de Validação ---
 const postSchema = z.object({
   title: z.string().min(5, { message: "O título deve ter pelo menos 5 caracteres." }).max(100),
   slug: z.string().min(5, { message: "O slug deve ter pelo menos 5 caracteres." }).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "O slug deve ser em minúsculas e usar hífens."),
   content: z.string().min(50, { message: "O conteúdo deve ter pelo menos 50 caracteres." }),
-  // O resumo agora é obrigatório para a geração de imagem, mas opcional para o DB.
-  // Vamos torná-lo obrigatório no formulário para forçar o preenchimento antes de gerar a imagem.
   summary: z.string().min(10, { message: "O resumo deve ter pelo menos 10 caracteres para ser usado na geração de imagem." }).max(300, { message: "O resumo deve ter no máximo 300 caracteres." }).nullable().optional(),
   image_url: z.string().url({ message: "URL de imagem inválida." }).nullable().optional(),
-  
-  // SEO
   seo_title: z.string().max(70, { message: "Máximo de 70 caracteres." }).nullable().optional(),
   seo_description: z.string().max(160, { message: "Máximo de 160 caracteres." }).nullable().optional(),
-
-  // Status e Datas
   status: z.enum(['draft', 'published', 'archived']),
   published_at: z.string().datetime({ offset: true }).nullable().optional(),
   scheduled_for: z.string().datetime({ offset: true }).nullable().optional(),
@@ -43,8 +36,6 @@ const postSchema = z.object({
 });
 
 type PostFormValues = z.infer<typeof postSchema>;
-
-// Tipo simplificado para dados iniciais, aceitando um subconjunto dos valores do formulário.
 type InitialPostData = Partial<PostFormValues>;
 
 interface PostFormProps {
@@ -52,10 +43,9 @@ interface PostFormProps {
   initialData?: InitialPostData | null;
   isEditing?: boolean;
   postId?: string;
-  initialImages: GeneratedImageData[]; // Nova prop
+  initialImages: GeneratedImageData[];
 }
 
-// --- Textos I18n ---
 const texts = {
   pt: {
     titleCreate: "Criar Nova Postagem",
@@ -148,7 +138,6 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const { categories, isLoading: isLoadingCategories } = useBlogCategories();
-  
   const [isTranslationDialogOpen, setIsTranslationDialogOpen] = useState(false);
   const [newPostData, setNewPostData] = useState<{ postId: string, postContent: { title: string, summary: string | null, content: string } } | null>(null);
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(!!initialData?.slug);
@@ -172,19 +161,18 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
     defaultValues,
   });
 
-  // Garante que o campo image_url esteja registrado e observável
+  // Estado local para refletir imediatamente na UI do ImageUpload
+  const [coverUrl, setCoverUrl] = useState<string | null>(defaultValues.image_url ?? null);
+
+  // Garante registro do campo image_url
   useEffect(() => {
     form.register('image_url');
   }, [form]);
 
   const titleValue = form.watch('title');
-  const imageUrl = form.watch('image_url');
-  const summaryValue = form.watch('summary'); // Observando o resumo
-
-  // Garante que summaryValue seja string | null
+  const summaryValue = form.watch('summary');
   const safeSummaryValue: string | null = summaryValue ?? null;
 
-  // --- Geração automática de slug ---
   const generateSlug = (text: string) => {
     if (!text) return '';
     return text
@@ -204,14 +192,15 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
       form.setValue('slug', slug, { shouldValidate: true });
     }
   }, [titleValue, isSlugManuallyEdited, form]);
-  // --- Fim da geração automática de slug ---
 
   const handleImageUploadSuccess = (url: string) => {
+    setCoverUrl(url);
     form.setValue('image_url', url, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     toast.success(t.coverSet);
   };
 
   const handleImageRemove = () => {
+    setCoverUrl(null);
     form.setValue('image_url', null, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
   };
 
@@ -237,7 +226,6 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
         
         if (!isEditing && 'postId' in result && 'postContent' in result) {
           const creationResult = result as { postId: string, postContent: { title: string, summary: string | null, content: string } };
-          
           setNewPostData({
             postId: creationResult.postId,
             postContent: creationResult.postContent,
@@ -246,9 +234,8 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
         } else if (isEditing) {
           router.push(`/${lang}/admin/blog`);
         }
-        
       } else {
-        toast.error(result.message || t.error);
+        toast.error((result as { message?: string }).message || t.error);
       }
     });
   }
@@ -258,7 +245,6 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
           <div className="grid gap-6 lg:grid-cols-3">
-            {/* Coluna Principal (Conteúdo) */}
             <div className="lg:col-span-2 space-y-6">
               <Card>
                 <CardHeader>
@@ -367,7 +353,6 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
               </Card>
             </div>
 
-            {/* Coluna Lateral (Metadados) */}
             <div className="lg:col-span-1 space-y-6">
               <Card>
                 <CardHeader>
@@ -377,10 +362,10 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
                   <ImageUpload 
                     lang={lang} 
                     onUploadSuccess={handleImageUploadSuccess} 
-                    initialImageUrl={imageUrl}
+                    initialImageUrl={coverUrl}
                     onRemove={handleImageRemove}
                     postSummary={safeSummaryValue}
-                    initialImages={initialImages} // Passando as imagens iniciais
+                    initialImages={initialImages}
                   />
                 </CardContent>
               </Card>
