@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Locale } from '@/lib/i18n/config';
-import { getTranslatedBookName } from '@/lib/bible-translations';
+import { getTranslatedBookName, convertRomanToArabic } from '@/lib/bible-translations'; // Importa convertRomanToArabic
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 interface Book {
@@ -51,9 +51,12 @@ export const BookSelection: React.FC<BookSelectionProps> = ({ books, lang }) => 
   const otBooks: Book[] = [];
   const ntBooks: Book[] = [];
 
-  // Mapeia os livros recebidos para facilitar a busca
+  // Mapeia os livros recebidos para facilitar a busca, normalizando os nomes
   const bookMap = new Map<string, Book>();
-  books.forEach(book => bookMap.set(book.book, book));
+  books.forEach(book => {
+    const canonicalBookName = convertRomanToArabic(book.book); // Normaliza o nome do livro do DB
+    bookMap.set(canonicalBookName, book);
+  });
 
   // Preenche os arrays de AT e NT na ordem canônica
   OT_ORDER.forEach(bookName => {
@@ -78,7 +81,7 @@ export const BookSelection: React.FC<BookSelectionProps> = ({ books, lang }) => 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-2">
             {otBooks.map((book, index) => {
               const translatedName = getTranslatedBookName(book.book, lang);
               const slug = book.book.toLowerCase().replace(/\s+/g, '-');
@@ -104,7 +107,7 @@ export const BookSelection: React.FC<BookSelectionProps> = ({ books, lang }) => 
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-x-4 gap-y-2">
             {ntBooks.map((book, index) => {
               const translatedName = getTranslatedBookName(book.book, lang);
               const slug = book.book.toLowerCase().replace(/\s+/g, '-');
