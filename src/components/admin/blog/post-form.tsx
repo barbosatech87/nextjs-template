@@ -25,7 +25,9 @@ const postSchema = z.object({
   title: z.string().min(5, { message: "O título deve ter pelo menos 5 caracteres." }).max(100),
   slug: z.string().min(5, { message: "O slug deve ter pelo menos 5 caracteres." }).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "O slug deve ser em minúsculas e usar hífens."),
   content: z.string().min(50, { message: "O conteúdo deve ter pelo menos 50 caracteres." }),
-  summary: z.string().max(300, { message: "O resumo deve ter no máximo 300 caracteres." }).nullable().optional(),
+  // O resumo agora é obrigatório para a geração de imagem, mas opcional para o DB.
+  // Vamos torná-lo obrigatório no formulário para forçar o preenchimento antes de gerar a imagem.
+  summary: z.string().min(10, { message: "O resumo deve ter pelo menos 10 caracteres para ser usado na geração de imagem." }).max(300, { message: "O resumo deve ter no máximo 300 caracteres." }).nullable().optional(),
   image_url: z.string().url({ message: "URL de imagem inválida." }).nullable().optional(),
   
   // SEO
@@ -167,6 +169,10 @@ export function PostForm({ lang, initialData, isEditing = false, postId }: PostF
 
   const titleValue = form.watch('title');
   const imageUrl = form.watch('image_url');
+  const summaryValue = form.watch('summary'); // Observando o resumo
+
+  // Garante que summaryValue seja string | null
+  const safeSummaryValue: string | null = summaryValue ?? null;
 
   // --- Geração automática de slug ---
   const generateSlug = (text: string) => {
@@ -362,6 +368,7 @@ export function PostForm({ lang, initialData, isEditing = false, postId }: PostF
                     onUploadSuccess={handleImageUploadSuccess} 
                     initialImageUrl={imageUrl}
                     onRemove={handleImageRemove}
+                    postSummary={safeSummaryValue} // Usando o valor seguro
                   />
                 </CardContent>
               </Card>

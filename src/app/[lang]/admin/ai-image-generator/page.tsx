@@ -9,6 +9,7 @@ interface AiImageGeneratorPageProps {
 
 export default async function AiImageGeneratorPage({ params }: AiImageGeneratorPageProps) {
     const { lang } = params;
+    // Recarrega as imagens a cada visita
     const images = await getGeneratedImages();
 
     return (
@@ -19,6 +20,7 @@ export default async function AiImageGeneratorPage({ params }: AiImageGeneratorP
                     {lang === 'pt' ? 'Gere imagens únicas usando IA para seus posts.' : 'Generate unique images using AI for your posts.'}
                 </p>
             </div>
+            {/* Aqui, o formulário é usado no modo padrão (não modal), sem onImageSave */}
             <AiImageGeneratorForm lang={lang} />
             <ImageGallery images={images} lang={lang} />
         </div>

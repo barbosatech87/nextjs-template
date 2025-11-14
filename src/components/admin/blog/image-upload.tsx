@@ -3,55 +3,88 @@
 import React, { useState, useTransition } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Loader2, Upload, X } from 'lucide-react';
+import { Loader2, Upload, X, Sparkles, GalleryHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { Locale } from '@/lib/i18n/config';
 import { cn } from '@/lib/utils';
 import { uploadImage } from '@/app/actions/storage';
+import { ImageSelectorDialog } from './image-selector-dialog';
+import { getGeneratedImages, GeneratedImageData } from '@/app/actions/image-generation';
 
 interface ImageUploadProps {
   lang: Locale;
   onUploadSuccess: (url: string) => void;
   initialImageUrl?: string | null;
   onRemove: () => void;
+  // Novo: Resumo do post para pré-preencher o prompt da IA
+  postSummary: string | null;
 }
 
 const texts = {
   pt: {
-    upload: "Fazer Upload",
+    upload: "Fazer Upload Manual",
     uploading: "Enviando...",
     selectFile: "Selecione uma imagem (máx 5MB)",
     uploadSuccess: "Imagem enviada com sucesso!",
     uploadError: "Falha no upload da imagem.",
     remove: "Remover Imagem",
     fileTooLarge: "O arquivo é muito grande. O tamanho máximo é 5MB.",
+    generateOrSelect: "Gerar / Galeria",
+    summaryRequired: "Preencha o Resumo do Post para gerar uma imagem com IA.",
   },
   en: {
-    upload: "Upload",
+    upload: "Manual Upload",
     uploading: "Uploading...",
     selectFile: "Select an image (max 5MB)",
     uploadSuccess: "Image uploaded successfully!",
     uploadError: "Failed to upload image.",
     remove: "Remove Image",
     fileTooLarge: "File is too large. Maximum size is 5MB.",
+    generateOrSelect: "Generate / Gallery",
+    summaryRequired: "Fill in the Post Summary to generate an image with AI.",
   },
   es: {
-    upload: "Subir",
+    upload: "Subir Manualmente",
     uploading: "Subiendo...",
     selectFile: "Selecciona una imagen (máx 5MB)",
     uploadSuccess: "¡Imagen subida con éxito!",
     uploadError: "Error al subir la imagen.",
     remove: "Eliminar Imagen",
     fileTooLarge: "El archivo es demasiado grande. El tamaño máximo es 5MB.",
+    generateOrSelect: "Generar / Galería",
+    summaryRequired: "Rellena el Resumen de la Entrada para generar una imagen con IA.",
   },
 };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-export function ImageUpload({ lang, onUploadSuccess, initialImageUrl, onRemove }: ImageUploadProps) {
+export function ImageUpload({ lang, onUploadSuccess, initialImageUrl, onRemove, postSummary }: ImageUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImageData[]>([]);
   const t = texts[lang] || texts.pt;
+
+  const isSummaryValid = !!postSummary && postSummary.length > 10;
+
+  // Recarrega a galeria sempre que o diálogo é aberto
+  const fetchImages = async () => {
+    const images = await getGeneratedImages();
+    setGeneratedImages(images);
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (open) {
+      fetchImages();
+    }
+  };
+
+  const handleGenerateOrSelectClick = () => {
+    if (!isSummaryValid) {
+      toast.warning(t.summaryRequired);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -108,30 +141,57 @@ export function ImageUpload({ lang, onUploadSuccess, initialImageUrl, onRemove }
           </Button>
         </div>
       ) : (
-        <div className={cn("flex flex-col sm:flex-row gap-2", currentImageUrl && "hidden")}>
-          <Input 
-            type="file" 
-            accept="image/*" 
-            onChange={handleFileChange} 
-            className="flex-1"
-            disabled={isPending}
+        <>
+          {/* Botão Gerar/Galeria */}
+          <ImageSelectorDialog
+            lang={lang}
+            initialPrompt={postSummary || undefined}
+            onSelectImage={onUploadSuccess}
+            onOpenChange={handleOpenChange}
+            images={generatedImages}
+            trigger={
+              <Button 
+                type="button" 
+                variant="secondary" 
+                className="w-full"
+                disabled={!isSummaryValid}
+                onClick={handleGenerateOrSelectClick}
+              >
+                <Sparkles className="mr-2 h-4 w-4" />
+                {t.generateOrSelect}
+              </Button>
+            }
           />
-          <Button 
-            onClick={handleUpload} 
-            disabled={!file || isPending}
-            className="w-full sm:w-auto"
-          >
-            {isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Upload className="mr-2 h-4 w-4" />
-            )}
-            {isPending ? t.uploading : t.upload}
-          </Button>
-        </div>
-      )}
-      {!currentImageUrl && (
-        <p className="text-sm text-muted-foreground">{t.selectFile}</p>
+          
+          <div className="flex items-center justify-center my-2">
+            <span className="text-xs text-muted-foreground">OU</span>
+          </div>
+
+          {/* Upload Manual */}
+          <div className={cn("flex flex-col sm:flex-row gap-2", currentImageUrl && "hidden")}>
+            <Input 
+              type="file" 
+              accept="image/*" 
+              onChange={handleFileChange} 
+              className="flex-1"
+              disabled={isPending}
+            />
+            <Button 
+              onClick={handleUpload} 
+              disabled={!file || isPending}
+              className="w-full sm:w-auto"
+            >
+              {isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="mr-2 h-4 w-4" />
+              )}
+              {isPending ? t.uploading : t.upload}
+            </Button>
+          </div>
+          
+          <p className="text-sm text-muted-foreground">{t.selectFile}</p>
+        </>
       )}
     </div>
   );

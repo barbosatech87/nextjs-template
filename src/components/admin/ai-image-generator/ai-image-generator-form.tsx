@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useTransition, useState } from 'react';
+import React, { useTransition, useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -30,10 +30,10 @@ const texts = {
     generating: "Gerando...",
     success: "Imagem gerada com sucesso! Revise e salve.",
     error: "Falha ao gerar imagem. Tente novamente.",
-    save: "Salvar na Galeria",
+    save: "Salvar e Selecionar", // Alterado para refletir a seleção
     saving: "Salvando...",
     discard: "Descartar e Gerar Nova",
-    saveSuccess: "Imagem salva com sucesso na galeria!",
+    saveSuccess: "Imagem salva e selecionada com sucesso!",
     saveError: "Falha ao salvar imagem.",
   },
   en: {
@@ -45,10 +45,10 @@ const texts = {
     generating: "Generating...",
     success: "Image generated successfully! Review and save.",
     error: "Failed to generate image. Please try again.",
-    save: "Save to Gallery",
+    save: "Save and Select",
     saving: "Saving...",
     discard: "Discard and Generate New",
-    saveSuccess: "Image successfully saved to the gallery!",
+    saveSuccess: "Image successfully saved and selected!",
     saveError: "Failed to save image.",
   },
   es: {
@@ -60,19 +60,22 @@ const texts = {
     generating: "Generando...",
     success: "¡Imagen generada con éxito! Revisa y guarda.",
     error: "Error al generar la imagen. Inténtalo de nuevo.",
-    save: "Guardar en la Galería",
+    save: "Guardar y Seleccionar",
     saving: "Guardando...",
     discard: "Descartar y Generar Nueva",
-    saveSuccess: "¡Imagen guardada con éxito en la galería!",
+    saveSuccess: "¡Imagen guardada y seleccionada con éxito!",
     saveError: "Error al guardar la imagen.",
   }
 };
 
 interface AiImageGeneratorFormProps {
   lang: Locale;
+  // Novo: Para uso dentro do modal de seleção
+  initialPrompt?: string;
+  onImageSave?: (url: string) => void;
 }
 
-export function AiImageGeneratorForm({ lang }: AiImageGeneratorFormProps) {
+export function AiImageGeneratorForm({ lang, initialPrompt, onImageSave }: AiImageGeneratorFormProps) {
   const [isPending, startTransition] = useTransition();
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
   const [currentPrompt, setCurrentPrompt] = useState<string>('');
@@ -83,9 +86,16 @@ export function AiImageGeneratorForm({ lang }: AiImageGeneratorFormProps) {
   const form = useForm<ImageFormValues>({
     resolver: zodResolver(imageSchema),
     defaultValues: {
-      prompt: '',
+      prompt: initialPrompt || '',
     },
   });
+
+  // Atualiza o prompt inicial se ele mudar (ex: ao abrir o modal)
+  useEffect(() => {
+    if (initialPrompt) {
+      form.setValue('prompt', initialPrompt);
+    }
+  }, [initialPrompt, form]);
 
   const onSubmit = (values: ImageFormValues) => {
     setGeneratedImageUrl(null); // Limpa a imagem anterior
@@ -109,9 +119,16 @@ export function AiImageGeneratorForm({ lang }: AiImageGeneratorFormProps) {
       const result = await saveGeneratedImage(currentPrompt, generatedImageUrl);
       if (result.success) {
         toast.success(t.saveSuccess);
-        setGeneratedImageUrl(null);
-        setCurrentPrompt('');
-        form.reset();
+        
+        // Se estiver sendo usado dentro do modal de seleção, chama o callback
+        if (onImageSave) {
+          onImageSave(generatedImageUrl);
+        } else {
+          // Se estiver na página de galeria, apenas limpa e revalida
+          setGeneratedImageUrl(null);
+          setCurrentPrompt('');
+          form.reset();
+        }
       } else {
         toast.error(result.message || t.saveError);
       }
@@ -124,13 +141,18 @@ export function AiImageGeneratorForm({ lang }: AiImageGeneratorFormProps) {
     // Não reseta o prompt do formulário para que o usuário possa tentar novamente facilmente
   };
 
+  // Se estiver no modo de seleção (dentro do modal), remove o CardHeader e CardDescription
+  const isModalMode = !!onImageSave;
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t.title}</CardTitle>
-        <CardDescription>{t.description}</CardDescription>
-      </CardHeader>
-      <CardContent>
+    <Card className={isModalMode ? "border-none shadow-none" : ""}>
+      {!isModalMode && (
+        <CardHeader>
+          <CardTitle>{t.title}</CardTitle>
+          <CardDescription>{t.description}</CardDescription>
+        </CardHeader>
+      )}
+      <CardContent className={isModalMode ? "p-0" : ""}>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
@@ -153,8 +175,8 @@ export function AiImageGeneratorForm({ lang }: AiImageGeneratorFormProps) {
             />
             
             {generatedImageUrl && (
-              <div className="space-y-4 flex flex-col items-center"> {/* Adicionado flex-col e items-center */}
-                <div className="relative w-full max-w-md aspect-square rounded-lg overflow-hidden border"> {/* Adicionado max-w-md */}
+              <div className="space-y-4 flex flex-col items-center">
+                <div className="relative w-full max-w-md aspect-square rounded-lg overflow-hidden border">
                   <Image 
                     src={generatedImageUrl} 
                     alt={currentPrompt} 
@@ -163,7 +185,7 @@ export function AiImageGeneratorForm({ lang }: AiImageGeneratorFormProps) {
                     unoptimized
                   />
                 </div>
-                <div className="flex gap-2 w-full max-w-md"> {/* Limitando a largura dos botões também */}
+                <div className="flex gap-2 w-full max-w-md">
                   <Button 
                     type="button" 
                     onClick={handleSave} 
