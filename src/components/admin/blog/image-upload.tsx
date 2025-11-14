@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useTransition, useCallback } from 'react';
+import Image from 'next/image';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Loader2, Upload, X, Sparkles } from 'lucide-react';
@@ -127,10 +128,12 @@ export function ImageUpload({ lang, onUploadSuccess, initialImageUrl, onRemove, 
     <div className="space-y-4">
       {currentImageUrl && (
         <div className="relative w-full h-48 border rounded-lg overflow-hidden">
-          <img 
-            src={currentImageUrl} 
-            alt="Post cover" 
-            className="w-full h-full object-cover" 
+          <Image
+            src={currentImageUrl}
+            alt="Post cover"
+            fill
+            style={{ objectFit: 'cover' }}
+            unoptimized
           />
         </div>
       )}
