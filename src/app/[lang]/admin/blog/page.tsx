@@ -6,11 +6,11 @@ import { BlogPostsTable } from '@/components/admin/blog/blog-posts-table';
 import { getAdminPosts } from '@/app/actions/blog';
 
 interface ManageBlogPageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 export default async function ManageBlogPage({ params }: ManageBlogPageProps) {
-  const { lang } = params;
+  const { lang } = await params;
   const posts = await getAdminPosts();
 
   const texts = {

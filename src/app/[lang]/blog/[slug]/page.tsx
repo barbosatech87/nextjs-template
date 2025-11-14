@@ -27,11 +27,11 @@ const texts = {
 };
 
 interface BlogPostPageProps {
-  params: { lang: Locale; slug: string }; // Corrigido
+  params: Promise<{ lang: Locale; slug: string }>;
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const { lang, slug } = params;
+  const { lang, slug } = await params;
   const t = texts[lang] || texts.pt;
 
   if (Array.isArray(slug) || !slug) {

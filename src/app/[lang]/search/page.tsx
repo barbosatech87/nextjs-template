@@ -92,16 +92,17 @@ function SearchSkeleton({ lang }: { lang: Locale }) {
 }
 
 interface SearchPageProps {
-  params: { lang: Locale }; // Corrigido
-  searchParams?: { q?: string };
+  params: Promise<{ lang: Locale }>;
+  searchParams?: Promise<{ q?: string }>;
 }
 
-export default function SearchPage({
+export default async function SearchPage({
   params,
   searchParams,
 }: SearchPageProps) {
-  const { lang } = params;
-  const query = searchParams?.q || '';
+  const { lang } = await params;
+  const sp = searchParams ? await searchParams : undefined;
+  const query = sp?.q || '';
   const texts = searchPageTexts[lang] || searchPageTexts.pt;
 
   return (

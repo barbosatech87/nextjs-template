@@ -5,7 +5,7 @@ import { PostSection } from '@/components/home/post-section';
 import { getDailyVerse, getRecentPosts } from '@/app/actions/blog';
 
 interface HomePageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 const homeTexts = {
@@ -36,17 +36,11 @@ const homeTexts = {
 };
 
 export default async function HomePage({ params }: HomePageProps) {
-  const { lang } = params;
-  // Garante que 't' seja o objeto de texto correto, usando 'pt' como fallback seguro.
+  const { lang } = await params;
   const t = homeTexts[lang] || homeTexts.pt;
 
-  // Busca de dados
   const dailyVerse = await getDailyVerse(lang);
-  
-  // Posts Devocionais (3 mais recentes da categoria 'devocional')
   const devotionalPosts = await getRecentPosts({ lang, limit: 3, includeCategorySlug: 'devocional' });
-
-  // Outros Posts Recentes (6 mais recentes, excluindo 'devocional')
   const recentPosts = await getRecentPosts({ lang, limit: 6, excludeCategorySlug: 'devocional' });
 
   return (
@@ -60,7 +54,6 @@ export default async function HomePage({ params }: HomePageProps) {
       </div>
 
       <div className="mt-12 md:mt-16">
-        {/* Seção Devocional */}
         <PostSection 
           lang={lang} 
           posts={devotionalPosts} 
@@ -68,8 +61,6 @@ export default async function HomePage({ params }: HomePageProps) {
           viewAllLink={`/${lang}/blog?category=devocional`}
           viewAllText={t.postSection.devotional.viewAll}
         />
-
-        {/* Seção Últimas Postagens */}
         <PostSection 
           lang={lang} 
           posts={recentPosts} 

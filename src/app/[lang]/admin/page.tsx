@@ -1,11 +1,11 @@
 import { Locale } from '@/lib/i18n/config';
 
 interface AdminDashboardPageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
-export default function AdminDashboardPage({ params }: AdminDashboardPageProps) {
-  const { lang } = params;
+export default async function AdminDashboardPage({ params }: AdminDashboardPageProps) {
+  const { lang } = await params;
   return (
     <div>
       <h1 className="text-3xl font-bold">Admin Dashboard</h1>

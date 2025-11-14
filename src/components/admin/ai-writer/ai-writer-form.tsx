@@ -78,7 +78,6 @@ export function AiWriterForm({ lang }: AiWriterFormProps) {
 
   const onSubmit = (values: FormValues) => {
     startTransition(async () => {
-      // Garante que apenas valores definidos sejam passados para o contexto
       const context: GenerationRequest['context'] = {};
       if (values.theme) context.theme = values.theme;
       if (values.book) context.book = values.book;
@@ -94,11 +93,14 @@ export function AiWriterForm({ lang }: AiWriterFormProps) {
       const result = await generatePostWithAI(request);
 
       if (result.success && result.data) {
+        // Salva localmente para evitar URL enorme (previne 431)
+        try {
+          window.localStorage.setItem('ai_writer_initial_post', JSON.stringify(result.data as AIResponse));
+        } catch (e) {
+          console.warn('Falha ao salvar initial post no localStorage', e);
+        }
         toast.success("Conteúdo gerado com sucesso! Redirecionando...");
-        const query = new URLSearchParams({
-          initialData: JSON.stringify(result.data),
-        });
-        router.push(`/${lang}/admin/blog/new?${query.toString()}`);
+        router.push(`/${lang}/admin/blog/new`);
       } else {
         toast.error(result.message || "Ocorreu um erro desconhecido.");
       }
@@ -145,7 +147,6 @@ export function AiWriterForm({ lang }: AiWriterFormProps) {
                     type="number" 
                     placeholder="Nº do versículo" 
                     {...field} 
-                    // Garante que o valor seja tratado como string para evitar problemas com type="number" e valor vazio
                     value={field.value}
                   />
                 </FormControl>

@@ -22,13 +22,15 @@ export default async function BlogListPage({
   params,
   searchParams,
 }: {
-  params: { lang: Locale };
-  searchParams?: { page?: string };
+  params: Promise<{ lang: Locale }>;
+  searchParams?: Promise<{ page?: string }>;
 }) {
-  const { lang } = params;
+  const { lang } = await params;
+  const sp = searchParams ? await searchParams : undefined;
+
   const t = texts[lang] || texts.pt;
 
-  const pageParam = searchParams?.page;
+  const pageParam = sp?.page;
   const pageStr = Array.isArray(pageParam) ? pageParam[0] : pageParam;
   const currentPage = parseInt(pageStr || '1', 10);
 
