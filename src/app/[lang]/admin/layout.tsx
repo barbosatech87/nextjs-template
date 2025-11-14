@@ -7,11 +7,9 @@ import { ReactNode } from 'react';
 export default async function AdminLayout({
   children,
   params,
-  searchParams,
 }: {
   children: ReactNode;
   params: { lang: Locale };
-  searchParams: { [key: string]: string | string[] | undefined } | undefined;
 }) {
   const { lang } = params;
   const supabase = createSupabaseServerClient();
