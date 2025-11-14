@@ -124,8 +124,20 @@ export function getBookNameFromSlug(slug: string): string | undefined {
 
     // Tenta encontrar o nome canônico em inglês a partir do nome normalizado do slug
     for (const englishName in bookNameTranslations) {
+        const bookData = bookNameTranslations[englishName];
+
+        // 1. Verifica se o slug normalizado corresponde ao nome canônico em inglês (normalizado)
         if (normalizeName(englishName) === normalizedSlugName) {
             return englishName;
+        }
+
+        // 2. Verifica se o slug normalizado corresponde a algum alias em inglês (normalizado)
+        if (bookData.englishAliases) {
+            for (const alias of bookData.englishAliases) {
+                if (normalizeName(alias) === normalizedSlugName) {
+                    return englishName;
+                }
+            }
         }
     }
     return undefined;
