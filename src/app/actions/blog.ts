@@ -40,184 +40,199 @@ type CreatePostSuccess = {
 type ActionResponse = CreatePostSuccess | { success: false; message: string; };
 
 export async function createPost(postData: NewPostData, lang: string): Promise<ActionResponse> {
-  const supabase = createSupabaseServerClient();
-  
-  // 1. Verificar autenticação e permissão
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, message: "Usuário não autenticado." };
+  try {
+    const supabase = createSupabaseServerClient();
+    
+    // 1. Verificar autenticação e permissão
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Usuário não autenticado." };
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
 
-  if (profile?.role !== 'admin' && profile?.role !== 'writer') {
-    return { success: false, message: "Acesso negado." };
-  }
-
-  const { category_ids, ...postDetails } = postData;
-
-  // 2. Inserir o post principal
-  const { data: newPost, error: postError } = await supabase
-    .from("blog_posts")
-    .insert({
-      ...postDetails,
-      author_id: user.id,
-      language_code: lang, // Garante que o código do idioma seja salvo
-    })
-    .select('id, title, summary, content') // Seleciona o conteúdo para a tradução
-    .single();
-
-  if (postError) {
-    console.error("Error creating post:", postError);
-    return { success: false, message: "Falha ao criar o post principal." };
-  }
-
-  // 3. Inserir as categorias
-  if (category_ids && category_ids.length > 0) {
-    const postCategories = category_ids.map(categoryId => ({
-      post_id: newPost.id,
-      category_id: categoryId,
-    }));
-
-    const { error: categoryError } = await supabase
-      .from('blog_post_categories')
-      .insert(postCategories);
-
-    if (categoryError) {
-      console.error("Error inserting post categories:", categoryError);
-      // Nota: Não falhamos a operação inteira, mas logamos o erro.
+    if (profile?.role !== 'admin' && profile?.role !== 'writer') {
+      return { success: false, message: "Acesso negado." };
     }
-  }
 
-  revalidatePath(`/${lang}/admin/blog`);
-  return { 
-    success: true, 
-    message: "Post criado com sucesso.", 
-    postId: newPost.id,
-    postContent: {
-      title: newPost.title,
-      summary: newPost.summary,
-      content: newPost.content,
+    const { category_ids, ...postDetails } = postData;
+
+    // 2. Inserir o post principal
+    const { data: newPost, error: postError } = await supabase
+      .from("blog_posts")
+      .insert({
+        ...postDetails,
+        author_id: user.id,
+        language_code: lang, // Garante que o código do idioma seja salvo
+      })
+      .select('id, title, summary, content') // Seleciona o conteúdo para a tradução
+      .single();
+
+    if (postError) {
+      console.error("Error creating post:", postError);
+      return { success: false, message: `Falha ao criar o post principal: ${postError.message}` };
     }
-  };
+
+    // 3. Inserir as categorias
+    if (category_ids && category_ids.length > 0) {
+      const postCategories = category_ids.map(categoryId => ({
+        post_id: newPost.id,
+        category_id: categoryId,
+      }));
+
+      const { error: categoryError } = await supabase
+        .from('blog_post_categories')
+        .insert(postCategories);
+
+      if (categoryError) {
+        console.error("Error inserting post categories:", categoryError);
+        // Nota: Não falhamos a operação inteira, mas logamos o erro.
+      }
+    }
+
+    revalidatePath(`/${lang}/admin/blog`);
+    return { 
+      success: true, 
+      message: "Post criado com sucesso.", 
+      postId: newPost.id,
+      postContent: {
+        title: newPost.title,
+        summary: newPost.summary,
+        content: newPost.content,
+      }
+    };
+  } catch (e) {
+    console.error("Unexpected error in createPost:", e);
+    return { success: false, message: "Ocorreu um erro inesperado ao criar o post." };
+  }
 }
 
 export async function updatePost(postId: string, postData: NewPostData, lang: string) {
-  const supabase = createSupabaseServerClient();
-  
-  // 1. Verificar autenticação e permissão
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, message: "Usuário não autenticado." };
+  try {
+    const supabase = createSupabaseServerClient();
+    
+    // 1. Verificar autenticação e permissão
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Usuário não autenticado." };
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  // Permite que admins editem qualquer post, e writers editem seus próprios posts.
-  if (profile?.role === 'writer') {
-    const { data: post, error: fetchError } = await supabase
-      .from('blog_posts')
-      .select('author_id')
-      .eq('id', postId)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
       .single();
-      
-    if (fetchError || post?.author_id !== user.id) {
-      return { success: false, message: "Acesso negado ou post não encontrado." };
+
+    // Permite que admins editem qualquer post, e writers editem seus próprios posts.
+    if (profile?.role === 'writer') {
+      const { data: post, error: fetchError } = await supabase
+        .from('blog_posts')
+        .select('author_id')
+        .eq('id', postId)
+        .single();
+        
+      if (fetchError || post?.author_id !== user.id) {
+        return { success: false, message: "Acesso negado ou post não encontrado." };
+      }
+    } else if (profile?.role !== 'admin') {
+      return { success: false, message: "Acesso negado." };
     }
-  } else if (profile?.role !== 'admin') {
-    return { success: false, message: "Acesso negado." };
-  }
 
-  const { category_ids, ...postDetails } = postData;
+    const { category_ids, ...postDetails } = postData;
 
-  // 2. Atualizar o post principal
-  const { error: postError } = await supabase
-    .from("blog_posts")
-    .update({
-      ...postDetails,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', postId);
+    // 2. Atualizar o post principal
+    const { error: postError } = await supabase
+      .from("blog_posts")
+      .update({
+        ...postDetails,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', postId);
 
-  if (postError) {
-    console.error("Error updating post:", postError);
-    return { success: false, message: "Falha ao atualizar o post principal." };
-  }
+    if (postError) {
+      console.error("Error updating post:", postError);
+      return { success: false, message: `Falha ao atualizar o post principal: ${postError.message}` };
+    }
 
-  // 3. Atualizar as categorias (Deleta todas e insere as novas)
-  // Deletar categorias existentes
-  const { error: deleteError } = await supabase
-    .from('blog_post_categories')
-    .delete()
-    .eq('post_id', postId);
-
-  if (deleteError) {
-    console.error("Error deleting existing categories:", deleteError);
-    // Continua, mas loga o erro
-  }
-
-  // Inserir novas categorias
-  if (category_ids && category_ids.length > 0) {
-    const postCategories = category_ids.map(categoryId => ({
-      post_id: postId,
-      category_id: categoryId,
-    }));
-
-    const { error: categoryError } = await supabase
+    // 3. Atualizar as categorias (Deleta todas e insere as novas)
+    // Deletar categorias existentes
+    const { error: deleteError } = await supabase
       .from('blog_post_categories')
-      .insert(postCategories);
+      .delete()
+      .eq('post_id', postId);
 
-    if (categoryError) {
-      console.error("Error inserting new post categories:", categoryError);
+    if (deleteError) {
+      console.error("Error deleting existing categories:", deleteError);
+      // Continua, mas loga o erro
     }
-  }
 
-  revalidatePath(`/${lang}/admin/blog`);
-  revalidatePath(`/${lang}/blog/${postDetails.slug}`);
-  return { success: true, message: "Post atualizado com sucesso." };
+    // Inserir novas categorias
+    if (category_ids && category_ids.length > 0) {
+      const postCategories = category_ids.map(categoryId => ({
+        post_id: postId,
+        category_id: categoryId,
+      }));
+
+      const { error: categoryError } = await supabase
+        .from('blog_post_categories')
+        .insert(postCategories);
+
+      if (categoryError) {
+        console.error("Error inserting new post categories:", categoryError);
+      }
+    }
+
+    revalidatePath(`/${lang}/admin/blog`);
+    revalidatePath(`/${lang}/blog/${postDetails.slug}`);
+    return { success: true, message: "Post atualizado com sucesso." };
+  } catch (e) {
+    console.error("Unexpected error in updatePost:", e);
+    return { success: false, message: "Ocorreu um erro inesperado ao atualizar o post." };
+  }
 }
 
 export async function deletePost(postId: string, lang: string) {
-  const supabase = createSupabaseServerClient();
-  
-  // Adicionar verificação de permissão de administrador/writer
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { success: false, message: "Usuário não autenticado." };
+  try {
+    const supabase = createSupabaseServerClient();
+    
+    // Adicionar verificação de permissão de administrador/writer
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: "Usuário não autenticado." };
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  // Permite que admins deletem qualquer post, e writers deletem seus próprios posts.
-  if (profile?.role === 'writer') {
-    const { data: post, error: fetchError } = await supabase
-      .from('blog_posts')
-      .select('author_id')
-      .eq('id', postId)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
       .single();
-      
-    if (fetchError || post?.author_id !== user.id) {
-      return { success: false, message: "Acesso negado ou post não encontrado." };
+
+    // Permite que admins deletem qualquer post, e writers deletem seus próprios posts.
+    if (profile?.role === 'writer') {
+      const { data: post, error: fetchError } = await supabase
+        .from('blog_posts')
+        .select('author_id')
+        .eq('id', postId)
+        .single();
+        
+      if (fetchError || post?.author_id !== user.id) {
+        return { success: false, message: "Acesso negado ou post não encontrado." };
+      }
+    } else if (profile?.role !== 'admin') {
+      return { success: false, message: "Acesso negado." };
     }
-  } else if (profile?.role !== 'admin') {
-    return { success: false, message: "Acesso negado." };
+
+    const { error } = await supabase.from("blog_posts").delete().eq("id", postId);
+
+    if (error) {
+      console.error("Error deleting post:", error);
+      return { success: false, message: `Falha ao deletar o post: ${error.message}` };
+    }
+
+    revalidatePath(`/${lang}/admin/blog`);
+    return { success: true, message: "Post deletado com sucesso." };
+  } catch (e) {
+    console.error("Unexpected error in deletePost:", e);
+    return { success: false, message: "Ocorreu um erro inesperado ao deletar o post." };
   }
-
-  const { error } = await supabase.from("blog_posts").delete().eq("id", postId);
-
-  if (error) {
-    console.error("Error deleting post:", error);
-    return { success: false, message: "Falha ao deletar o post." };
-  }
-
-  revalidatePath(`/${lang}/admin/blog`);
-  return { success: true, message: "Post deletado com sucesso." };
 }
 
 // --- Funções para o Blog Público ---

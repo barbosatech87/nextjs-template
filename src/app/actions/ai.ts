@@ -137,12 +137,15 @@ export async function generateImageAction(prompt: string): Promise<{ success: bo
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || "Failed to generate image.");
+      // Se a resposta não for OK, o erro está no corpo da resposta JSON
+      const errorMessage = data.error || "Failed to generate image.";
+      console.error("Edge Function Error Response:", errorMessage);
+      return { success: false, message: `Falha ao gerar imagem: ${errorMessage}` };
     }
 
     const imageUrl = data.imageUrl;
     if (!imageUrl) {
-      throw new Error("A Edge Function não retornou uma URL de imagem.");
+      return { success: false, message: "A Edge Function não retornou uma URL de imagem." };
     }
 
     return { success: true, url: imageUrl };
@@ -150,7 +153,7 @@ export async function generateImageAction(prompt: string): Promise<{ success: bo
   } catch (error) {
     console.error("Erro ao gerar imagem com IA:", error);
     const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro desconhecido.";
-    return { success: false, message: `Falha ao gerar imagem: ${errorMessage}` };
+    return { success: false, message: `Falha ao comunicar com o gerador de imagem: ${errorMessage}` };
   }
 }
 
@@ -158,14 +161,14 @@ export async function generateImageAction(prompt: string): Promise<{ success: bo
  * Salva a imagem gerada no banco de dados após a confirmação do usuário.
  */
 export async function saveGeneratedImage(prompt: string, imageUrl: string): Promise<{ success: boolean; message?: string }> {
-  const supabase = createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    return { success: false, message: "Usuário não autenticado." };
-  }
-
   try {
+    const supabase = createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return { success: false, message: "Usuário não autenticado." };
+    }
+
     // Salvar no banco de dados
     const { error: dbError } = await supabase
       .from('generated_images')
