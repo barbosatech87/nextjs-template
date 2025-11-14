@@ -13,8 +13,7 @@ interface AuthPageProps {
 }
 
 export default function AuthPage({ params: paramsProp }: AuthPageProps) {
-  const params = use(paramsProp as any);
-  const { lang } = params;
+  const { lang } = use(paramsProp as any) as { lang: Locale };
 
   const { user, isLoading } = useSession();
 

@@ -18,8 +18,7 @@ const schema = z.object({
 });
 
 export default function AdminNotificationsPage({ params: paramsProp }: { params: { lang: Locale } }) {
-  const params = use(paramsProp as any);
-  const { lang } = params;
+  const { lang } = use(paramsProp as any) as { lang: Locale };
 
   const [isPending, startTransition] = useTransition();
 

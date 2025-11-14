@@ -12,7 +12,7 @@ interface IaExplicaPageProps {
 }
 
 export default function IaExplicaPage({ params: paramsProp }: IaExplicaPageProps) {
-  const params = use(paramsProp as any);
+  const params = use(paramsProp as any) as { lang: Locale };
   const { user, isLoading } = useSession();
 
   const pageTexts = {
