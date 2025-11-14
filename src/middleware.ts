@@ -36,6 +36,7 @@ export function middleware(request: NextRequest) {
 export const config = {
   // O matcher evita que o middleware seja executado em rotas de API, arquivos estáticos, etc.
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
+    // Importante: ignore qualquer rota interna do Next (/ _next/...), além de arquivos estáticos e APIs.
+    '/((?!api|_next/|favicon.ico|.*\\..*).*)',
   ],
 };
