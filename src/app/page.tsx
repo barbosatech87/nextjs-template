@@ -10,13 +10,12 @@ import { i18n } from '@/lib/i18n/config';
 export default function RootPage() {
   // 1. Obter os idiomas do navegador a partir dos cabeçalhos
   const headersList = headers();
-  const negotiatorHeaders: Record<string, string> = {};
   
-  // Usando for...of loop com type assertion para iterar sobre ReadonlyHeaders,
-  // contornando a inferência incorreta de 'Promise' e resolvendo 'implicit any'.
-  for (const [key, value] of headersList as unknown as Iterable<[string, string]>) {
+  // Converte o objeto Headers para um objeto simples para o Negotiator
+  const negotiatorHeaders: Record<string, string> = {};
+  headersList.forEach((value, key) => {
     negotiatorHeaders[key] = value;
-  }
+  });
 
   // 2. Encontrar a melhor localidade correspondente
   const locales: string[] = [...i18n.locales];
