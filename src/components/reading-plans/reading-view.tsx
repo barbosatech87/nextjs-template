@@ -1,15 +1,16 @@
 "use client";
 
-import React, { useTransition } from 'react';
+import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, CheckCircle, Circle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, Circle, Star } from 'lucide-react';
 
 import { Locale } from '@/lib/i18n/config';
 import { UserReadingPlan, Verse } from '@/types/supabase';
 import { getTranslatedBookName } from '@/lib/bible-translations';
 import { updateReadingProgress } from '@/app/actions/plans';
+import { toggleFavoriteVerse } from '@/app/actions/favorites';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +24,7 @@ interface ReadingViewProps {
     totalDays: number;
     completedDays: Set<number>;
     chaptersToRead: { book: string; chapter: number }[];
+    initialFavoriteVerseIds: Set<string>;
 }
 
 const t = {
@@ -35,6 +37,11 @@ const t = {
         readingOf: "Leitura de",
         updateSuccess: "Progresso atualizado!",
         updateError: "Erro ao atualizar progresso.",
+        favorite: "Favoritar",
+        unfavorite: "Remover dos favoritos",
+        favoriteSuccess: "Adicionado aos favoritos!",
+        unfavoriteSuccess: "Removido dos favoritos!",
+        favoriteError: "Erro ao gerenciar favoritos.",
     },
     en: {
         day: "Day",
@@ -45,6 +52,11 @@ const t = {
         readingOf: "Reading of",
         updateSuccess: "Progress updated!",
         updateError: "Error updating progress.",
+        favorite: "Favorite",
+        unfavorite: "Remove from favorites",
+        favoriteSuccess: "Added to favorites!",
+        unfavoriteSuccess: "Removed from favorites!",
+        favoriteError: "Error managing favorites.",
     },
     es: {
         day: "Día",
@@ -53,8 +65,13 @@ const t = {
         nextDay: "Día siguiente",
         prevDay: "Día anterior",
         readingOf: "Lectura de",
-        updateSuccess: "¡Progreso actualizado!",
+        updateSuccess: "¡Progresso actualizado!",
         updateError: "Error al actualizar el progreso.",
+        favorite: "Marcar como favorito",
+        unfavorite: "Quitar de favoritos",
+        favoriteSuccess: "¡Añadido a favoritos!",
+        unfavoriteSuccess: "¡Quitado de favoritos!",
+        favoriteError: "Error al gestionar favoritos.",
     }
 };
 
@@ -65,22 +82,49 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
     currentDay,
     totalDays,
     completedDays,
-    chaptersToRead
+    chaptersToRead,
+    initialFavoriteVerseIds
 }) => {
-    const router = useRouter();
-    const [isPending, startTransition] = useTransition();
+    const [isProgressPending, startProgressTransition] = useTransition();
+    const [isFavoritePending, startFavoriteTransition] = useTransition();
+    const [optimisticFavorites, setOptimisticFavorites] = useState(initialFavoriteVerseIds);
     const locale = t[lang] || t.pt;
 
     const isCurrentDayCompleted = completedDays.has(currentDay);
 
     const handleToggleComplete = () => {
-        startTransition(async () => {
+        startProgressTransition(async () => {
             const result = await updateReadingProgress(plan.id, currentDay, !isCurrentDayCompleted, lang);
             if (result.success) {
                 toast.success(locale.updateSuccess);
-                // A revalidação do path no server action cuida da atualização da UI
             } else {
                 toast.error(locale.updateError);
+            }
+        });
+    };
+
+    const handleToggleFavorite = (verse: Verse) => {
+        const isFavorited = optimisticFavorites.has(verse.id);
+        
+        // Optimistic update
+        setOptimisticFavorites(prev => {
+            const newSet = new Set(prev);
+            if (isFavorited) {
+                newSet.delete(verse.id);
+            } else {
+                newSet.add(verse.id);
+            }
+            return newSet;
+        });
+
+        startFavoriteTransition(async () => {
+            const result = await toggleFavoriteVerse(verse, isFavorited);
+            if (result.success) {
+                toast.success(isFavorited ? locale.unfavoriteSuccess : locale.favoriteSuccess);
+            } else {
+                toast.error(locale.favoriteError);
+                // Revert optimistic update on error
+                setOptimisticFavorites(initialFavoriteVerseIds);
             }
         });
     };
@@ -100,7 +144,7 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={handleToggleComplete} disabled={isPending}>
+                                <Button variant="ghost" size="icon" onClick={handleToggleComplete} disabled={isProgressPending}>
                                     {isCurrentDayCompleted ? <CheckCircle className="h-6 w-6 text-green-500" /> : <Circle className="h-6 w-6 text-muted-foreground" />}
                                 </Button>
                             </TooltipTrigger>
@@ -112,12 +156,28 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
                 </CardHeader>
                 <CardContent className="p-6 md:p-8">
                     <div className="prose prose-lg dark:prose-invert max-w-none">
-                        {verses.map((verse, index) => (
-                            <p key={verse.id}>
-                                <sup>{verse.verse_number}</sup> {verse.text}
-                                {index < verses.length - 1 && ' '}
-                            </p>
-                        ))}
+                        {verses.map((verse) => {
+                            const isFavorited = optimisticFavorites.has(verse.id);
+                            return (
+                                <div key={verse.id} className="flex items-start gap-2 group">
+                                    <p className="flex-1">
+                                        <sup>{verse.verse_number}</sup> {verse.text}
+                                    </p>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8" onClick={() => handleToggleFavorite(verse)} disabled={isFavoritePending}>
+                                                    <Star className={`h-4 w-4 ${isFavorited ? 'text-yellow-500 fill-yellow-400' : 'text-muted-foreground'}`} />
+                                                </Button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                                <p>{isFavorited ? locale.unfavorite : locale.favorite}</p>
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </div>
+                            );
+                        })}
                     </div>
                 </CardContent>
             </Card>

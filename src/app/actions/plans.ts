@@ -14,6 +14,29 @@ interface ChapterReference {
   chapter: number;
 }
 
+export async function deleteUserReadingPlan(planId: string, lang: Locale): Promise<{ success: boolean; message: string }> {
+    const supabase = createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        return { success: false, message: "Usuário não autenticado." };
+    }
+
+    const { error } = await supabase
+        .from("user_reading_plans")
+        .delete()
+        .eq("id", planId)
+        .eq("user_id", user.id);
+
+    if (error) {
+        console.error("Erro ao excluir plano de leitura:", error);
+        return { success: false, message: `Falha ao excluir o plano: ${error.message}` };
+    }
+
+    revalidatePath(`/${lang}/plans`);
+    return { success: true, message: "Plano de leitura excluído com sucesso!" };
+}
+
 export async function getUserActiveReadingPlans(): Promise<UserReadingPlan[]> {
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -73,7 +96,7 @@ export async function getChaptersText(chapters: ChapterReference[], lang: Locale
     const supabase = createSupabaseServerClient();
     const queries = chapters.map(c => 
         supabase.from("verses")
-            .select("id, book, chapter, verse_number, text")
+            .select("*") // Seleciona tudo para ter todos os dados do versículo
             .eq("language_code", lang)
             .eq("book", c.book)
             .eq("chapter", c.chapter)

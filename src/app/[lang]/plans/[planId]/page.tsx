@@ -1,8 +1,10 @@
 import { Suspense } from 'react';
 import { Locale } from "@/lib/i18n/config";
 import { getPlanAndProgress, getChaptersText } from "@/app/actions/plans";
+import { getFavoriteVerseIds } from '@/app/actions/favorites';
 import { ReadingView } from '@/components/reading-plans/reading-view';
 import { Skeleton } from '@/components/ui/skeleton';
+import { createSupabaseServerClient } from '@/integrations/supabase/server';
 
 interface PlanPageProps {
     params: {
@@ -31,18 +33,20 @@ function ReadingSkeleton() {
 
 export default async function PlanPage({ params, searchParams }: PlanPageProps) {
     const { lang, planId } = params;
+    const supabase = createSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { plan, completedDays } = await getPlanAndProgress(planId);
+    const favoriteVerseIds = user ? await getFavoriteVerseIds(user.id) : new Set<string>();
 
     const scheduleKeys = Object.keys(plan.daily_reading_schedule).sort((a, b) => parseInt(a.split('_')[1]) - parseInt(b.split('_')[1]));
     const totalDays = scheduleKeys.length;
 
-    // Determina o dia atual para leitura
     let currentDayNumber: number;
     if (searchParams.day && !isNaN(Number(searchParams.day))) {
         currentDayNumber = Math.max(1, Math.min(Number(searchParams.day), totalDays));
     } else {
-        // Encontra o primeiro dia não concluído
-        const firstUnreadDay = scheduleKeys.find(key => !completedDays.has(parseInt(key.split('_')[1])));
+        const firstUnreadDay = scheduleKeys.find(key => !completedDays.has(parseInt(key.split('_')[1] || '1')));
         currentDayNumber = firstUnreadDay ? parseInt(firstUnreadDay.split('_')[1]) : 1;
     }
     
@@ -61,6 +65,7 @@ export default async function PlanPage({ params, searchParams }: PlanPageProps) 
                     totalDays={totalDays}
                     completedDays={completedDays}
                     chaptersToRead={chaptersToRead}
+                    initialFavoriteVerseIds={favoriteVerseIds}
                 />
             </Suspense>
         </div>
