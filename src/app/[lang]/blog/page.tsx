@@ -5,15 +5,15 @@ import { Locale } from "@/lib/i18n/config";
 
 const texts = {
   pt: {
-    title: "Blog Bíblia & IA",
+    title: "Artigos do Blog",
     noPosts: "Nenhuma postagem encontrada.",
   },
   en: {
-    title: "Bible & AI Blog",
+    title: "Blog Articles",
     noPosts: "No posts found.",
   },
   es: {
-    title: "Blog Biblia & IA",
+    title: "Artículos del Blog",
     noPosts: "No se encontraron entradas.",
   },
 };
