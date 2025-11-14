@@ -1,6 +1,12 @@
 import { Locale } from './i18n/config';
 
-const bookNameTranslations: Record<string, Record<"pt" | "es", string>> = {
+interface BookTranslations {
+  pt: string;
+  es: string;
+  englishAliases?: string[]; // Novo campo para aliases em inglês
+}
+
+const bookNameTranslations: Record<string, BookTranslations> = {
   // Antigo Testamento
   "Genesis": { "pt": "Gênesis", "es": "Génesis" },
   "Exodus": { "pt": "Êxodo", "es": "Éxodo" },
@@ -68,7 +74,7 @@ const bookNameTranslations: Record<string, Record<"pt" | "es", string>> = {
   "2 John": { "pt": "2 João", "es": "2 Juan" },
   "3 John": { "pt": "3 João", "es": "3 Juan" },
   "Jude": { "pt": "Judas", "es": "Judas" },
-  "Revelation": { "pt": "Apocalipse", "es": "Apocalipsis" },
+  "Revelation": { "pt": "Apocalipse", "es": "Apocalipsis", englishAliases: ["Revelation of John"] },
 };
 
 // Mapeamento de algarismos romanos para arábicos
@@ -102,8 +108,6 @@ function normalizeName(name: string): string {
     .toLowerCase()
     .trim();
 }
-
-// Não precisamos mais do reverseTranslationMap global, pois a busca será exaustiva.
 
 export function getBookNameFromSlug(slug: string): string | undefined {
     // Reconstroi o nome do livro a partir do slug (ex: "1-samuel" -> "1 Samuel")
@@ -146,22 +150,31 @@ export function getEnglishBookName(dbBookName: string, lang: Locale): string | u
     // 1. Normaliza o nome do livro vindo do banco de dados, convertendo romanos para arábicos
     const normalizedInput = normalizeName(convertRomanToArabic(dbBookName));
 
-    // 2. Itera por todos os nomes canônicos em inglês e suas traduções
+    // 2. Itera por todos os nomes canônicos em inglês e suas traduções/aliases
     for (const englishCanonicalName in bookNameTranslations) {
+        const bookData = bookNameTranslations[englishCanonicalName];
+
         // Verifica se o input normalizado corresponde ao nome canônico em inglês (normalizado)
         if (normalizeName(englishCanonicalName) === normalizedInput) {
             return englishCanonicalName;
         }
 
+        // Verifica se o input normalizado corresponde a algum alias em inglês
+        if (bookData.englishAliases) {
+            for (const alias of bookData.englishAliases) {
+                if (normalizeName(alias) === normalizedInput) {
+                    return englishCanonicalName;
+                }
+            }
+        }
+
         // Verifica se o input normalizado corresponde à tradução em português (normalizada)
-        const ptTranslated = bookNameTranslations[englishCanonicalName as keyof typeof bookNameTranslations]?.pt;
-        if (ptTranslated && normalizeName(ptTranslated) === normalizedInput) {
+        if (bookData.pt && normalizeName(bookData.pt) === normalizedInput) {
             return englishCanonicalName;
         }
 
         // Verifica se o input normalizado corresponde à tradução em espanhol (normalizada)
-        const esTranslated = bookNameTranslations[englishCanonicalName as keyof typeof bookNameTranslations]?.es;
-        if (esTranslated && normalizeName(esTranslated) === normalizedInput) {
+        if (bookData.es && normalizeName(bookData.es) === normalizedInput) {
             return englishCanonicalName;
         }
     }
