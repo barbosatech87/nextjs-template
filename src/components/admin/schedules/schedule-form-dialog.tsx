@@ -16,7 +16,7 @@ import { Author } from '@/app/actions/users';
 import { Locale } from '@/lib/i18n/config';
 import { BlogCategory, getBlogCategories } from '@/app/actions/blog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { scheduleSchema } from '@/app/actions/schedules'; // Importando o schema do server action
+import { scheduleSchema } from '@/lib/schemas/schedules'; // Importando o schema do server action
 
 // Função para analisar a expressão cron e preencher o formulário
 function parseCronExpression(cron: string): Partial<ScheduleFormData> {
