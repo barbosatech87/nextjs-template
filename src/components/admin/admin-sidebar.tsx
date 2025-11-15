@@ -13,7 +13,7 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { BookCopy, BotMessageSquare, Image, LayoutDashboard, Users, Bell, FileText } from 'lucide-react';
+import { BookCopy, BotMessageSquare, Image, LayoutDashboard, Users, Bell, FileText, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { Locale } from '@/lib/i18n/config';
 import { useProfile } from '@/hooks/use-profile';
@@ -28,6 +28,7 @@ const texts = {
     aiImage: "Gerador de Imagens",
     users: "Usuários",
     notifications: "Notificações",
+    schedules: "Agendamentos",
     title: "Admin"
   },
   en: {
@@ -38,6 +39,7 @@ const texts = {
     aiImage: "Image Generator",
     users: "Users",
     notifications: "Notifications",
+    schedules: "Schedules",
     title: "Admin"
   },
   es: {
@@ -48,6 +50,7 @@ const texts = {
     aiImage: "Generador de Imágenes",
     users: "Usuarios",
     notifications: "Notificaciones",
+    schedules: "Horarios",
     title: "Admin"
   },
 };
@@ -68,6 +71,7 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
     { href: `/${lang}/admin/ai-writer`, label: t.aiPost, icon: <BotMessageSquare /> },
     { href: `/${lang}/admin/ai-image-generator`, label: t.aiImage, icon: <Image /> },
     { href: `/${lang}/admin/pages`, label: t.pages, icon: <FileText /> },
+    { href: `/${lang}/admin/schedules`, label: t.schedules, icon: <Clock /> },
     { href: `/${lang}/admin/users`, label: t.users, icon: <Users /> },
     { href: `/${lang}/admin/notifications`, label: t.notifications, icon: <Bell /> },
   ];

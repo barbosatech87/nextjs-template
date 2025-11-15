@@ -15,6 +15,11 @@ export type AdminUser = {
   role: 'user' | 'writer' | 'admin';
 };
 
+export type Author = {
+  id: string;
+  full_name: string;
+}
+
 // Ação para buscar todos os usuários com suas informações de perfil
 export async function getAdminUsers(): Promise<AdminUser[]> {
   const supabaseAdmin = createSupabaseAdminClient();
@@ -52,6 +57,26 @@ export async function getAdminUsers(): Promise<AdminUser[]> {
 
   return combinedUsers;
 }
+
+// Nova função para buscar apenas autores
+export async function getAuthors(): Promise<Author[]> {
+  const supabaseAdmin = createSupabaseAdminClient();
+  const { data: profiles, error } = await supabaseAdmin
+    .from('profiles')
+    .select('id, first_name, last_name')
+    .in('role', ['admin', 'writer']);
+
+  if (error) {
+    console.error("Erro ao buscar autores:", error);
+    return [];
+  }
+
+  return profiles.map(p => ({
+    id: p.id,
+    full_name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Autor Desconhecido',
+  }));
+}
+
 
 // Ação para atualizar a função de um usuário
 const roleSchema = z.enum(['user', 'writer', 'admin']);
