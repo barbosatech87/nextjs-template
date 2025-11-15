@@ -34,6 +34,8 @@ export default async function AdminDashboardPage({ params }: AdminDashboardPageP
         </p>
       </div>
 
+      <QuickActions lang={lang} />
+
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <StatCard 
@@ -63,7 +65,6 @@ export default async function AdminDashboardPage({ params }: AdminDashboardPageP
             <RecentDraftsCard drafts={stats.recentDrafts} lang={lang} />
           </div>
           <div className="space-y-6">
-            <QuickActions lang={lang} />
             <AnalyticsCard />
           </div>
         </div>
