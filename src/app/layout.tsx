@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import Script from 'next/script';
 import { SessionContextProvider } from '@/components/auth/session-context-provider';
 import { Toaster } from '@/components/ui/sonner';
 import GoogleAnalytics from '@/components/analytics/google-analytics';
@@ -39,6 +40,12 @@ export default function RootLayout({ children }: RootLayoutProps) {
     // O atributo lang será definido no layout [lang]
     <html suppressHydrationWarning>
       <body>
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5872513184553634"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
         <SessionContextProvider>
           <GoogleAnalytics />
           {children}
