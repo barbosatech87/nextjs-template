@@ -5,6 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Locale } from "@/lib/i18n/config";
 import { PostSection } from "@/components/home/post-section";
+import { Metadata, ResolvingMetadata } from "next";
 
 const texts = {
   pt: {
@@ -31,11 +32,59 @@ const texts = {
 };
 
 interface BlogPostPageProps {
-  params: Promise<{ lang: Locale; slug: string }>;
+  params: { lang: Locale; slug: string };
+}
+
+// Função para gerar metadados dinâmicos
+export async function generateMetadata(
+  { params }: BlogPostPageProps,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const { lang, slug } = params;
+  const post = await getPostBySlug(slug, lang);
+
+  if (!post) {
+    return {
+      title: "Post não encontrado",
+    };
+  }
+
+  const authorName = post.author_first_name || post.author_last_name 
+    ? `${post.author_first_name || ''} ${post.author_last_name || ''}`.trim()
+    : 'PaxWord';
+
+  return {
+    title: post.title,
+    description: post.summary,
+    openGraph: {
+      title: post.title,
+      description: post.summary || '',
+      url: `/${lang}/blog/${slug}`,
+      siteName: 'PaxWord',
+      images: post.image_url ? [
+        {
+          url: post.image_url,
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ] : [],
+      locale: lang,
+      type: 'article',
+      publishedTime: post.published_at || undefined,
+      authors: [authorName],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: post.title,
+      description: post.summary || '',
+      images: post.image_url ? [post.image_url] : [],
+    },
+  };
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const { lang, slug } = await params;
+  const { lang, slug } = params;
   const t = texts[lang] || texts.pt;
 
   if (Array.isArray(slug) || !slug) {

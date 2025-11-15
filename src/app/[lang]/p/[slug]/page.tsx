@@ -4,9 +4,43 @@ import { Locale } from "@/lib/i18n/config";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Globe } from "lucide-react";
+import { Metadata, ResolvingMetadata } from "next";
 
 interface PublicPageProps {
   params: { lang: Locale; slug: string };
+}
+
+// Função para gerar metadados dinâmicos
+export async function generateMetadata(
+  { params }: PublicPageProps,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const { lang, slug } = params;
+  const page = await getPageBySlug(slug, lang);
+
+  if (!page) {
+    return {
+      title: "Página não encontrada",
+    };
+  }
+
+  return {
+    title: page.title,
+    description: page.summary,
+    openGraph: {
+      title: page.title,
+      description: page.summary || '',
+      url: `/${lang}/p/${slug}`,
+      siteName: 'PaxWord',
+      locale: lang,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary',
+      title: page.title,
+      description: page.summary || '',
+    },
+  };
 }
 
 export default async function PublicPage({ params }: PublicPageProps) {
