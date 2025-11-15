@@ -30,6 +30,7 @@ export const metadata: Metadata = {
     title: 'PaxWord - Explore a Palavra',
     description: 'Um lugar para explorar a Bíblia, encontrar planos de leitura, devocionais e aprofundar sua fé.',
   },
+  manifest: '/manifest.json',
 };
 
 

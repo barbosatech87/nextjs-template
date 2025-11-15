@@ -15,6 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { InstallPWAButton } from '@/components/pwa/install-pwa-button';
 
 interface HeaderProps {
   lang: Locale;
@@ -115,6 +116,7 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
 
         {/* Auth / Perfil e Menu Mobile */}
         <div className="flex items-center space-x-2">
+          <InstallPWAButton lang={lang} />
           {isLoading ? (
             <div className="h-8 w-24 animate-pulse bg-muted rounded-md" />
           ) : user ? (
