@@ -23,7 +23,7 @@ export default function AuthPage({ params: paramsProp }: AuthPageProps) {
       setView(newView);
     };
 
-    handleHashChange(); // Set initial view
+    handleHashChange(); // Define a visualização inicial no carregamento
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
@@ -46,15 +46,15 @@ export default function AuthPage({ params: paramsProp }: AuthPageProps) {
   const titles = {
     pt: {
       sign_in: 'Acesse sua conta',
-      sign_up: 'Cadastre-se',
+      sign_up: 'Crie sua conta',
     },
     en: {
       sign_in: 'Access your account',
-      sign_up: 'Sign Up',
+      sign_up: 'Create your account',
     },
     es: {
       sign_in: 'Accede a tu cuenta',
-      sign_up: 'Regístrate',
+      sign_up: 'Crea tu cuenta',
     },
   };
 
@@ -68,7 +68,7 @@ export default function AuthPage({ params: paramsProp }: AuthPageProps) {
         </h1>
         <Auth
           supabaseClient={supabase}
-          view={view}
+          // A prop 'view' foi removida para permitir que o componente controle seu próprio estado
           providers={[]}
           appearance={{
             theme: ThemeSupa,
@@ -89,14 +89,14 @@ export default function AuthPage({ params: paramsProp }: AuthPageProps) {
                 password_label: lang === 'pt' ? 'Sua senha' : 'Your password',
                 button_label: lang === 'pt' ? 'Entrar' : 'Sign In',
                 social_provider_text: lang === 'pt' ? 'Entrar com {{provider}}' : 'Sign in with {{provider}}',
-                link_text: lang === 'pt' ? 'Não tem uma conta? Cadastrar' : 'Don\'t have an account? Sign Up',
+                link_text: lang === 'pt' ? 'Não tem uma conta? Cadastre-se' : 'Don\'t have an account? Sign Up',
               },
               sign_up: {
                 email_label: lang === 'pt' ? 'Seu email' : 'Your email',
                 password_label: lang === 'pt' ? 'Crie uma senha' : 'Create a password',
                 button_label: lang === 'pt' ? 'Cadastrar' : 'Sign Up',
                 social_provider_text: lang === 'pt' ? 'Cadastrar com {{provider}}' : 'Sign up with {{provider}}',
-                link_text: lang === 'pt' ? 'Já tem uma conta? Entrar' : 'Already have an account? Sign In',
+                link_text: lang === 'pt' ? 'Já tem uma conta? Entre' : 'Already have an account? Sign In',
               },
               forgotten_password: {
                 link_text: lang === 'pt' ? 'Esqueceu sua senha?' : 'Forgot your password?',
