@@ -52,34 +52,34 @@ export function ChatLoginPrompt({ lang }: ChatLoginPromptProps) {
   return (
     <div className="flex items-center justify-center h-full">
       <Card className="w-full max-w-lg shadow-lg">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">{t.title}</CardTitle>
-          <CardDescription>{t.description}</CardDescription>
+        <CardHeader className="text-center p-4 sm:p-6">
+          <CardTitle className="text-xl sm:text-2xl">{t.title}</CardTitle>
+          <CardDescription className="text-sm sm:text-base">{t.description}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-start gap-4">
-            <Lightbulb className="h-6 w-6 text-primary mt-1" />
+        <CardContent className="space-y-4 p-4 sm:p-6">
+          <div className="flex items-start gap-3">
+            <Lightbulb className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
             <div>
               <h3 className="font-semibold">{t.feature1Title}</h3>
               <p className="text-sm text-muted-foreground">{t.feature1Desc}</p>
             </div>
           </div>
-          <div className="flex items-start gap-4">
-            <History className="h-6 w-6 text-primary mt-1" />
+          <div className="flex items-start gap-3">
+            <History className="h-6 w-6 text-primary mt-1 flex-shrink-0" />
             <div>
               <h3 className="font-semibold">{t.feature2Title}</h3>
               <p className="text-sm text-muted-foreground">{t.feature2Desc}</p>
             </div>
           </div>
-          <div className="flex items-start gap-4 rounded-md border border-amber-300 bg-amber-50 p-3 dark:bg-amber-950">
-            <AlertTriangle className="h-6 w-6 text-amber-600 mt-1" />
+          <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-3 dark:bg-amber-950">
+            <AlertTriangle className="h-6 w-6 text-amber-600 mt-1 flex-shrink-0" />
             <div>
               <h3 className="font-semibold">{t.warningTitle}</h3>
               <p className="text-sm text-amber-700 dark:text-amber-300">{t.warningDesc}</p>
             </div>
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="p-4 sm:p-6">
           <Button asChild className="w-full">
             <Link href={`/${lang}/auth`}>{t.buttonText}</Link>
           </Button>
