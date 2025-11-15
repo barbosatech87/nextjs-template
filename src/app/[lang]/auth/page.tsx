@@ -4,7 +4,7 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/auth/session-context-provider';
-import { redirect } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Locale } from '@/lib/i18n/config';
 import { useEffect, useState } from 'react';
 
@@ -14,26 +14,43 @@ interface AuthPageProps {
 
 export default function AuthPage({ params }: AuthPageProps) {
   const { lang } = params;
+  const router = useRouter();
   const { user, isLoading } = useSession();
   const [view, setView] = useState<'sign_in' | 'sign_up'>('sign_in');
 
+  // Detecta a view pelo hash da URL (suporta vários formatos)
   useEffect(() => {
-    const handleHashChange = () => {
-      const newView = window.location.hash.includes('sign-up') ? 'sign_up' : 'sign_in';
-      setView(newView);
+    const detectViewFromHash = () => {
+      const hash = window.location.hash.toLowerCase();
+      const isSignUp =
+        hash.includes('sign-up') ||
+        hash.includes('signup') ||
+        hash.includes('sign_up');
+      const isSignIn =
+        hash.includes('sign-in') ||
+        hash.includes('signin') ||
+        hash.includes('sign_in');
+
+      if (isSignUp) {
+        setView('sign_up');
+      } else if (isSignIn) {
+        setView('sign_in');
+      } else {
+        setView('sign_in'); // padrão
+      }
     };
 
-    handleHashChange(); // Define a visualização inicial no carregamento
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    detectViewFromHash();
+    window.addEventListener('hashchange', detectViewFromHash);
+    return () => window.removeEventListener('hashchange', detectViewFromHash);
   }, []);
 
-  // Redireciona usuários autenticados para a página inicial
+  // Redireciona usuários autenticados para a página inicial (client-safe)
   useEffect(() => {
     if (!isLoading && user) {
-      redirect(`/${lang}`);
+      router.replace(`/${lang}`);
     }
-  }, [user, isLoading, lang]);
+  }, [user, isLoading, lang, router]);
 
   if (isLoading || user) {
     return (
@@ -60,15 +77,48 @@ export default function AuthPage({ params }: AuthPageProps) {
 
   const currentTitle = titles[lang]?.[view] || titles.pt[view];
 
+  // Seletor simples para alternar entre Entrar/Cadastrar e sincronizar com o Auth
+  const handleSelectView = (nextView: 'sign_in' | 'sign_up') => {
+    setView(nextView);
+    // atualiza o hash para manter o Auth em sincronia
+    window.location.hash = nextView === 'sign_in' ? 'sign-in' : 'sign-up';
+  };
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted p-4">
       <div className="w-full max-w-md p-8 bg-background shadow-lg rounded-lg border">
         <h1 className="text-2xl font-bold mb-6 text-center">
           {currentTitle}
         </h1>
+
+        <div className="mb-4 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => handleSelectView('sign_in')}
+            className={`px-3 py-2 rounded-md text-sm font-medium border ${
+              view === 'sign_in'
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-muted text-muted-foreground border-muted-foreground/20'
+            }`}
+          >
+            Entrar
+          </button>
+          <button
+            type="button"
+            onClick={() => handleSelectView('sign_up')}
+            className={`px-3 py-2 rounded-md text-sm font-medium border ${
+              view === 'sign_up'
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-muted text-muted-foreground border-muted-foreground/20'
+            }`}
+          >
+            Cadastrar
+          </button>
+        </div>
+
         <Auth
           supabaseClient={supabase}
-          view={view} // Força o componente a usar a view do nosso estado
+          view={view}
           providers={[]}
           appearance={{
             theme: ThemeSupa,
@@ -88,15 +138,23 @@ export default function AuthPage({ params }: AuthPageProps) {
                 email_label: lang === 'pt' ? 'Seu email' : 'Your email',
                 password_label: lang === 'pt' ? 'Sua senha' : 'Your password',
                 button_label: lang === 'pt' ? 'Entrar' : 'Sign In',
-                social_provider_text: lang === 'pt' ? 'Entrar com {{provider}}' : 'Sign in with {{provider}}',
-                link_text: lang === 'pt' ? 'Não tem uma conta? Cadastre-se' : 'Don\'t have an account? Sign Up',
+                social_provider_text:
+                  lang === 'pt' ? 'Entrar com {{provider}}' : 'Sign in with {{provider}}',
+                link_text:
+                  lang === 'pt'
+                    ? 'Não tem uma conta? Cadastre-se'
+                    : "Don't have an account? Sign Up",
               },
               sign_up: {
                 email_label: lang === 'pt' ? 'Seu email' : 'Your email',
                 password_label: lang === 'pt' ? 'Crie uma senha' : 'Create a password',
                 button_label: lang === 'pt' ? 'Cadastrar' : 'Sign Up',
-                social_provider_text: lang === 'pt' ? 'Cadastrar com {{provider}}' : 'Sign up with {{provider}}',
-                link_text: lang === 'pt' ? 'Já tem uma conta? Entre' : 'Already have an account? Sign In',
+                social_provider_text:
+                  lang === 'pt' ? 'Cadastrar com {{provider}}' : 'Sign up with {{provider}}',
+                link_text:
+                  lang === 'pt'
+                    ? 'Já tem uma conta? Entre'
+                    : 'Already have an account? Sign In',
               },
               forgotten_password: {
                 link_text: lang === 'pt' ? 'Esqueceu sua senha?' : 'Forgot your password?',
