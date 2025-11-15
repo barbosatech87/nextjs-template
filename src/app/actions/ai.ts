@@ -11,7 +11,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// --- Função de refinamento com Claude ---
+// --- Função de refinamento com Claude (versão corrigida) ---
 async function refineContentWithClaude(content: string): Promise<string> {
   if (!process.env.CLAUDE_API_KEY) {
     console.warn("CLAUDE_API_KEY not set. Skipping refinement step.");
@@ -19,7 +19,10 @@ async function refineContentWithClaude(content: string): Promise<string> {
   }
 
   try {
+    // O system prompt define o papel e as instruções da IA.
     const systemPrompt = `Você é um editor teológico especialista. Refine o rascunho de post a seguir para melhorar sua profundidade teológica, clareza e tom inspirador, com um estilo pessoal e voltado para o público cristão. Otimize o texto para SEO, garantindo que as palavras-chave e a estrutura sejam amigáveis para ranqueamento. Mantenha o formato Markdown e a estrutura geral. Retorne APENAS o conteúdo Markdown refinado do corpo do post, nada mais.`;
+    
+    // O user prompt contém o conteúdo a ser refinado.
     const userPrompt = `Refine este rascunho de conteúdo:\n\n${content}`;
     
     const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -32,10 +35,10 @@ async function refineContentWithClaude(content: string): Promise<string> {
       body: JSON.stringify({
         model: "claude-3-haiku-20240307",
         max_tokens: 4096,
-        messages: [
-          { role: "user", content: userPrompt },
-          { role: "assistant", content: systemPrompt }
-        ],
+        // Usando o parâmetro oficial 'system' para as instruções.
+        system: systemPrompt,
+        // O array 'messages' agora contém apenas o conteúdo do usuário.
+        messages: [{ role: "user", content: userPrompt }],
         temperature: 0.5,
       }),
     });
@@ -46,6 +49,7 @@ async function refineContentWithClaude(content: string): Promise<string> {
     }
 
     const data = await response.json();
+    // A estrutura de resposta da API do Claude tem o conteúdo em um array.
     const refinedContent = data.content[0].text;
     
     console.log("Content successfully refined by Claude.");
@@ -53,7 +57,7 @@ async function refineContentWithClaude(content: string): Promise<string> {
 
   } catch (error) {
     console.error("Error refining content with Claude:", error);
-    // Retorna o conteúdo original se o refinamento falhar
+    // Se o refinamento falhar, retorna o conteúdo original para não quebrar o fluxo.
     return content;
   }
 }
@@ -76,7 +80,7 @@ const postOutputSchema = z.object({
   title: z.string(),
   slug: z.string(),
   content: z.string(),
-  summary: z.string().nullable(), // Alterado para permitir null
+  summary: z.string().nullable(),
   seo_title: z.string(),
   seo_description: z.string(),
 });
@@ -119,7 +123,7 @@ export async function generatePostWithAI(
     `;
 
     let userPrompt = "";
-    const { type, context, lang } = request;
+    const { type, context } = request;
 
     switch (type) {
       case "devotional":
@@ -152,7 +156,6 @@ export async function generatePostWithAI(
 
     const parsedContent = postOutputSchema.parse(JSON.parse(content));
 
-    // >>> NOVO PASSO: Refinar conteúdo com Claude <<<
     if (parsedContent.content) {
         console.log("Refining content with Claude...");
         parsedContent.content = await refineContentWithClaude(parsedContent.content);
@@ -167,10 +170,8 @@ export async function generatePostWithAI(
     if (error instanceof z.ZodError) {
       errorMessage = "A IA retornou um formato de dados inesperado.";
     } else if (error instanceof OpenAI.APIError) {
-      // Captura erros específicos da API OpenAI (ex: 401, 429)
       errorMessage = `Erro da API OpenAI: ${error.status} - ${error.message}`;
     } else if (error instanceof Error) {
-      // Captura outros erros de execução
       errorMessage = error.message;
     }
 
@@ -190,7 +191,6 @@ export async function generateImageAction(prompt: string): Promise<{ success: bo
   }
 
   try {
-    // O URL da Edge Function deve ser construído com o ID do projeto
     const functionUrl = `https://xrwnftnfzwbrzijnbhfu.supabase.co/functions/v1/generate-image`;
     
     const response = await fetch(functionUrl, {
@@ -205,7 +205,6 @@ export async function generateImageAction(prompt: string): Promise<{ success: bo
     const data = await response.json();
 
     if (!response.ok) {
-      // Se a resposta não for OK, o erro está no corpo da resposta JSON
       const errorMessage = data.error || "Failed to generate image.";
       console.error("Edge Function Error Response:", errorMessage);
       return { success: false, message: `Falha ao gerar imagem: ${errorMessage}` };
@@ -237,7 +236,6 @@ export async function saveGeneratedImage(prompt: string, imageUrl: string): Prom
       return { success: false, message: "Usuário não autenticado." };
     }
 
-    // Salvar no banco de dados
     const { error: dbError } = await supabase
       .from('generated_images')
       .insert({
