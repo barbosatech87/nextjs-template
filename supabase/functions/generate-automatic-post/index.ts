@@ -147,6 +147,10 @@ serve(async (req: Request) => {
     const imageUrl = await generateImageAndUpload(schedule.default_image_prompt, schedule.author_id, supabase);
     console.log(`Image generated and uploaded: ${imageUrl}`);
 
+    const statusToSet = schedule.publish_automatically ? 'published' : 'draft';
+    const publishedAt = schedule.publish_automatically ? new Date().toISOString() : null;
+    console.log(`Post will be saved with status: ${statusToSet}`);
+
     const { data: newPost, error: postInsertError } = await supabase.from('blog_posts').insert({
       author_id: schedule.author_id,
       title: draftPost.title,
@@ -157,12 +161,13 @@ serve(async (req: Request) => {
       image_alt_text: draftPost.title,
       seo_title: draftPost.seo_title,
       seo_description: draftPost.seo_description,
-      status: 'draft',
+      status: statusToSet,
+      published_at: publishedAt,
       language_code: 'pt',
     }).select('id').single();
 
     if (postInsertError) throw new Error(`Failed to save post: ${postInsertError.message}`);
-    console.log(`Post saved as draft with ID: ${newPost.id}`);
+    console.log(`Post saved with ID: ${newPost.id}`);
 
     // Associar categorias
     if (schedule.category_ids && schedule.category_ids.length > 0) {

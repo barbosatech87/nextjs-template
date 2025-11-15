@@ -59,6 +59,7 @@ export function ScheduleFormDialog({ lang, authors, initialData, children }: Sch
       theme: '',
       default_image_prompt: '',
       is_active: true,
+      publish_automatically: false,
       author_id: undefined,
       category_ids: [],
       frequencyType: 'daily',
@@ -76,7 +77,7 @@ export function ScheduleFormDialog({ lang, authors, initialData, children }: Sch
     if (isOpen) {
       let defaultVals: Partial<ScheduleFormData> = {
         name: '', post_type: 'devotional', theme: '', default_image_prompt: '',
-        is_active: true, author_id: undefined, category_ids: [],
+        is_active: true, publish_automatically: false, author_id: undefined, category_ids: [],
         frequencyType: 'daily', time: '05:00', dayOfWeek: '1', dayOfMonth: '1',
         frequency_cron_expression: '0 5 * * *',
       };
@@ -169,6 +170,10 @@ export function ScheduleFormDialog({ lang, authors, initialData, children }: Sch
             
             <FormField control={form.control} name="is_active" render={({ field }) => (
               <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Ativo</FormLabel><FormDescription>Se ativo, este agendamento será executado.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
+            )} />
+
+            <FormField control={form.control} name="publish_automatically" render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"><div className="space-y-0.5"><FormLabel>Publicar Automaticamente</FormLabel><FormDescription>Se ativo, o post será publicado diretamente.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>
             )} />
             
             <DialogFooter className="pt-4">
