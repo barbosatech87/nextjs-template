@@ -6,24 +6,12 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { deleteSchedule } from "@/app/actions/schedules";
+import { deleteSchedule, Schedule } from "@/app/actions/schedules";
 import { Locale } from "@/lib/i18n/config";
 import { MoreHorizontal, Trash2, Edit } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScheduleFormDialog } from "./schedule-form-dialog";
 import { Author } from "@/app/actions/users";
-
-type Schedule = {
-  id: string;
-  name: string;
-  post_type: 'devotional' | 'thematic' | 'summary';
-  frequency_cron_expression: string;
-  is_active: boolean;
-  author_id: string;
-  default_image_prompt: string;
-  theme?: string | null;
-  category_ids?: string[] | null;
-};
 
 interface SchedulesTableProps {
   schedules: Schedule[];

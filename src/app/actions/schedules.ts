@@ -5,8 +5,20 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { Locale } from "@/lib/i18n/config";
 
+export type Schedule = {
+  id: string;
+  name: string;
+  post_type: 'devotional' | 'thematic' | 'summary';
+  frequency_cron_expression: string;
+  is_active: boolean;
+  author_id: string;
+  default_image_prompt: string;
+  theme?: string | null;
+  category_ids?: string[] | null;
+};
+
 // Schema de validação para o formulário
-const scheduleSchema = z.object({
+export const scheduleSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(3, "O nome é obrigatório."),
   post_type: z.enum(['devotional', 'thematic', 'summary']),

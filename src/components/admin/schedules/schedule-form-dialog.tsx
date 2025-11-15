@@ -11,7 +11,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { saveSchedule, ScheduleFormData } from '@/app/actions/schedules';
+import { saveSchedule, ScheduleFormData, Schedule } from '@/app/actions/schedules';
 import { Author } from '@/app/actions/users';
 import { Locale } from '@/lib/i18n/config';
 import { BlogCategory, getBlogCategories } from '@/app/actions/blog';
@@ -41,7 +41,7 @@ function parseCronExpression(cron: string): Partial<ScheduleFormData> {
 interface ScheduleFormDialogProps {
   lang: Locale;
   authors: Author[];
-  initialData?: ScheduleFormData;
+  initialData?: Schedule;
   children: React.ReactNode;
 }
 
