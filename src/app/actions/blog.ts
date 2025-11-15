@@ -538,4 +538,235 @@ export async function getDailyVerse(lang: string): Promise<DailyVerseData | null
 }
 
 export async function getRecentPosts({
-// ... (restante da função getRecentPosts)
+  lang,
+  limit,
+  includeCategorySlug,
+  excludeCategorySlug,
+}: {
+  lang: string;
+  limit: number;
+  includeCategorySlug?: string;
+  excludeCategorySlug?: string;
+}): Promise<PostListItem[]> {
+  const supabase = createSupabaseServerClient();
+
+  const selectString = `id, slug, title, summary, image_url, published_at, language_code${includeCategorySlug ? ',blog_post_categories!inner(blog_categories!inner(slug))' : ''}`;
+
+  let query = supabase
+    .from('blog_posts')
+    .select(selectString)
+    .eq('status', 'published');
+
+  if (includeCategorySlug) {
+    query = query.eq('blog_post_categories.blog_categories.slug', includeCategorySlug);
+  }
+  
+  if (excludeCategorySlug) {
+    const { data: categoryToExclude } = await supabase
+      .from('blog_categories')
+      .select('id')
+      .eq('slug', excludeCategorySlug)
+      .single();
+
+    if (categoryToExclude) {
+      const { data: postsToExclude } = await supabase
+        .from('blog_post_categories')
+        .select('post_id')
+        .eq('category_id', categoryToExclude.id);
+
+      if (postsToExclude && postsToExclude.length > 0) {
+        const postIdsToExclude = postsToExclude.map(p => p.post_id);
+        query = query.not('id', 'in', `(${postIdsToExclude.join(',')})`);
+      }
+    }
+  }
+
+  query = query.order('published_at', { ascending: false }).limit(limit);
+
+  const { data: originalPosts, error } = await query;
+
+  if (error) {
+    console.error("Error fetching recent posts:", error);
+    return [];
+  }
+
+  if (!originalPosts || originalPosts.length === 0) {
+    return [];
+  }
+
+  // Type assertion to fix TS inference issue with complex Supabase queries
+  const typedPosts = originalPosts as unknown as PostListItem[];
+
+  const postIds = typedPosts.map(p => p.id);
+  
+  let finalPosts: PostListItem[] = typedPosts.map(p => ({
+    id: p.id,
+    slug: p.slug,
+    image_url: p.image_url,
+    published_at: p.published_at,
+    title: p.title,
+    summary: p.summary,
+    language_code: p.language_code,
+  }));
+
+  if (lang !== 'pt') {
+    const { data: translations, error: transError } = await supabase
+      .from('blog_post_translations')
+      .select('post_id, translated_title, translated_summary, language_code')
+      .in('post_id', postIds)
+      .eq('language_code', lang);
+
+    if (transError) {
+      console.error("Error fetching translations for recent posts:", transError);
+    } else if (translations) {
+      const translationMap = new Map(translations.map(t => [t.post_id, t]));
+      finalPosts = finalPosts.map(post => {
+        const translation = translationMap.get(post.id);
+        if (translation) {
+          return {
+            ...post,
+            title: translation.translated_title,
+            summary: translation.translated_summary,
+            language_code: translation.language_code,
+          };
+        }
+        return post;
+      });
+    }
+  }
+
+  return finalPosts;
+}
+
+// --- Funções para o Admin ---
+export type AdminPostListItem = PostListItem & {
+  status: string;
+  author_first_name: string | null;
+  author_last_name: string | null;
+};
+
+export async function getAdminPosts(): Promise<AdminPostListItem[]> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase.rpc('get_admin_blog_posts');
+
+  if (error) {
+    console.error('Error fetching admin posts:', error);
+    return [];
+  }
+  return data as AdminPostListItem[];
+}
+
+export async function getRelatedPosts({
+  postId,
+  categoryIds,
+  authorId,
+  lang,
+  limit = 3,
+}: {
+  postId: string;
+  categoryIds: string[];
+  authorId: string | null;
+  lang: string;
+  limit?: number;
+}): Promise<PostListItem[]> {
+  const supabase = createSupabaseServerClient();
+  let relatedPosts: PostListItem[] = [];
+  const foundPostIds = new Set<string>([postId]);
+
+  // 1. Find posts by category
+  if (categoryIds.length > 0) {
+    const { data: postCategoryData, error: pcError } = await supabase
+      .from('blog_post_categories')
+      .select('post_id')
+      .in('category_id', categoryIds)
+      .not('post_id', 'eq', postId);
+
+    if (pcError) console.error("Error fetching related post IDs by category:", pcError);
+
+    if (postCategoryData && postCategoryData.length > 0) {
+      const postIds = [...new Set(postCategoryData.map(pc => pc.post_id))];
+      const { data: posts, error: postsError } = await supabase
+        .from('blog_posts')
+        .select('id, slug, title, summary, image_url, published_at, language_code')
+        .in('id', postIds)
+        .eq('status', 'published')
+        .limit(limit);
+      
+      if (postsError) console.error("Error fetching related posts by category:", postsError);
+      
+      if (posts) {
+        relatedPosts.push(...posts as PostListItem[]);
+        posts.forEach(p => foundPostIds.add(p.id));
+      }
+    }
+  }
+
+  // 2. Find posts by author if needed
+  if (relatedPosts.length < limit && authorId) {
+    const { data: authorPosts, error: authorError } = await supabase
+      .from('blog_posts')
+      .select('id, slug, title, summary, image_url, published_at, language_code')
+      .eq('author_id', authorId)
+      .eq('status', 'published')
+      .not('id', 'in', `(${Array.from(foundPostIds).join(',')})`)
+      .order('published_at', { ascending: false })
+      .limit(limit - relatedPosts.length);
+
+    if (authorError) console.error("Error fetching related posts by author:", authorError);
+
+    if (authorPosts) {
+      relatedPosts.push(...authorPosts as PostListItem[]);
+      authorPosts.forEach(p => foundPostIds.add(p.id));
+    }
+  }
+
+  // 3. Find recent posts if needed
+  if (relatedPosts.length < limit) {
+    const { data: recentPosts, error: recentError } = await supabase
+      .from('blog_posts')
+      .select('id, slug, title, summary, image_url, published_at, language_code')
+      .eq('status', 'published')
+      .not('id', 'in', `(${Array.from(foundPostIds).join(',')})`)
+      .order('published_at', { ascending: false })
+      .limit(limit - relatedPosts.length);
+
+    if (recentError) console.error("Error fetching recent posts:", recentError);
+
+    if (recentPosts) {
+      relatedPosts.push(...recentPosts as PostListItem[]);
+    }
+  }
+
+  // Ensure unique posts and correct limit
+  const finalPosts = Array.from(new Map(relatedPosts.map(p => [p.id, p])).values()).slice(0, limit);
+
+  // 4. Handle translations
+  if (lang !== 'pt' && finalPosts.length > 0) {
+    const postIds = finalPosts.map(p => p.id);
+    const { data: translations, error: transError } = await supabase
+      .from('blog_post_translations')
+      .select('post_id, translated_title, translated_summary, language_code')
+      .in('post_id', postIds)
+      .eq('language_code', lang);
+
+    if (transError) {
+      console.error("Error fetching translations for related posts:", transError);
+    } else if (translations) {
+      const translationMap = new Map(translations.map(t => [t.post_id, t]));
+      return finalPosts.map(post => {
+        const translation = translationMap.get(post.id);
+        if (translation) {
+          return {
+            ...post,
+            title: translation.translated_title,
+            summary: translation.translated_summary,
+            language_code: translation.language_code,
+          };
+        }
+        return post;
+      });
+    }
+  }
+
+  return finalPosts;
+}
