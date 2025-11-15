@@ -27,6 +27,7 @@ export type NewPostData = Omit<BlogPost, 'id' | 'author_id' | 'created_at' | 'up
   // Adicionando campos que foram omitidos, mas são necessários no payload
   published_at: string | null;
   scheduled_for: string | null;
+  image_alt_text: string | null; // Novo campo
 };
 
 // Tipo de retorno para criação bem-sucedida (necessário para o diálogo de tradução)
@@ -243,6 +244,7 @@ export type PostListItem = {
   id: string;
   slug: string;
   image_url: string | null;
+  image_alt_text: string | null; // Novo campo
   published_at: string | null;
   // Campos que podem vir da tradução ou do original
   title: string;
@@ -254,6 +256,7 @@ export type PostDetail = {
   id: string;
   slug: string;
   image_url: string | null;
+  image_alt_text: string | null; // Novo campo
   published_at: string | null;
   author_id: string | null;
   author_first_name: string | null;
@@ -268,6 +271,7 @@ export type PostDetail = {
 
 export type EditablePostData = Omit<BlogPost, 'author_id' | 'created_at' | 'updated_at'> & {
   category_ids: string[];
+  image_alt_text: string | null; // Novo campo
 };
 
 /**
@@ -321,7 +325,7 @@ export async function getPublishedPosts(lang: string, page: number = 1) {
   // 1. Buscar posts originais publicados, ordenados por data de publicação
   let query = supabase
     .from('blog_posts')
-    .select('id, slug, title, summary, image_url, published_at, language_code', { count: 'exact' })
+    .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code', { count: 'exact' })
     .eq('status', 'published')
     .order('published_at', { ascending: false })
     .range(offset, offset + POSTS_PER_PAGE - 1);
@@ -344,6 +348,7 @@ export async function getPublishedPosts(lang: string, page: number = 1) {
     id: p.id,
     slug: p.slug,
     image_url: p.image_url,
+    image_alt_text: p.image_alt_text,
     published_at: p.published_at,
     title: p.title,
     summary: p.summary,
@@ -396,7 +401,7 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
   // 1. Buscar o post original pelo slug
   const { data: post, error: postError } = await supabase
     .from('blog_posts')
-    .select('id, slug, title, summary, content, image_url, published_at, language_code, author_id')
+    .select('id, slug, title, summary, content, image_url, image_alt_text, published_at, language_code, author_id')
     .eq('slug', slug)
     .eq('status', 'published')
     .single();
@@ -461,6 +466,7 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
     id: post.id,
     slug: post.slug,
     image_url: post.image_url,
+    image_alt_text: post.image_alt_text,
     published_at: post.published_at,
     author_id: post.author_id,
     author_first_name: authorProfile?.first_name || null,
@@ -560,7 +566,7 @@ export async function getRecentPosts({
 }): Promise<PostListItem[]> {
   const supabase = createSupabaseServerClient();
 
-  const selectString = `id, slug, title, summary, image_url, published_at, language_code${includeCategorySlug ? ',blog_post_categories!inner(blog_categories!inner(slug))' : ''}`;
+  const selectString = `id, slug, title, summary, image_url, image_alt_text, published_at, language_code${includeCategorySlug ? ',blog_post_categories!inner(blog_categories!inner(slug))' : ''}`;
 
   let query = supabase
     .from('blog_posts')
@@ -613,6 +619,7 @@ export async function getRecentPosts({
     id: p.id,
     slug: p.slug,
     image_url: p.image_url,
+    image_alt_text: p.image_alt_text,
     published_at: p.published_at,
     title: p.title,
     summary: p.summary,
@@ -697,7 +704,7 @@ export async function getRelatedPosts({
       const postIds = [...new Set(postCategoryData.map(pc => pc.post_id))];
       const { data: posts, error: postsError } = await supabase
         .from('blog_posts')
-        .select('id, slug, title, summary, image_url, published_at, language_code')
+        .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code')
         .in('id', postIds)
         .eq('status', 'published')
         .limit(limit);
@@ -715,7 +722,7 @@ export async function getRelatedPosts({
   if (relatedPosts.length < limit && authorId) {
     const { data: authorPosts, error: authorError } = await supabase
       .from('blog_posts')
-      .select('id, slug, title, summary, image_url, published_at, language_code')
+      .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code')
       .eq('author_id', authorId)
       .eq('status', 'published')
       .not('id', 'in', `(${Array.from(foundPostIds).join(',')})`)
@@ -734,7 +741,7 @@ export async function getRelatedPosts({
   if (relatedPosts.length < limit) {
     const { data: recentPosts, error: recentError } = await supabase
       .from('blog_posts')
-      .select('id, slug, title, summary, image_url, published_at, language_code')
+      .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code')
       .eq('status', 'published')
       .not('id', 'in', `(${Array.from(foundPostIds).join(',')})`)
       .order('published_at', { ascending: false })

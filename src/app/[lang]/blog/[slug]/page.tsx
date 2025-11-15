@@ -66,7 +66,7 @@ export async function generateMetadata(
           url: post.image_url,
           width: 1200,
           height: 630,
-          alt: post.title,
+          alt: post.image_alt_text || post.title,
         },
       ] : [],
       locale: lang,
@@ -119,7 +119,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <div className="mb-8 rounded-lg overflow-hidden shadow-xl">
             <img 
               src={post.image_url} 
-              alt={post.title} 
+              alt={post.image_alt_text || post.title} 
               className="w-full h-auto max-h-96 object-cover"
             />
           </div>

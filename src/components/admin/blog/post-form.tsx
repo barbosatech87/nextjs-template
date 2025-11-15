@@ -27,6 +27,7 @@ const postSchema = z.object({
   content: z.string().min(50, { message: "O conteúdo deve ter pelo menos 50 caracteres." }),
   summary: z.string().min(10, { message: "O resumo deve ter pelo menos 10 caracteres para ser usado na geração de imagem." }).max(300, { message: "O resumo deve ter no máximo 300 caracteres." }).nullable().optional(),
   image_url: z.string().url({ message: "URL de imagem inválida." }).nullable().optional(),
+  image_alt_text: z.string().max(125, { message: "Máximo de 125 caracteres." }).nullable().optional(),
   seo_title: z.string().max(70, { message: "Máximo de 70 caracteres." }).nullable().optional(),
   seo_description: z.string().max(160, { message: "Máximo de 160 caracteres." }).nullable().optional(),
   status: z.enum(['draft', 'published', 'archived']),
@@ -55,6 +56,8 @@ const texts = {
     general: "Informações Gerais",
     seo: "Otimização para Buscadores (SEO)",
     image: "Imagem de Capa",
+    imageAltText: "Texto Alternativo da Imagem",
+    imageAltTextHelp: "Descreva a imagem para acessibilidade e SEO.",
     titleLabel: "Título",
     slugLabel: "Slug (URL)",
     contentLabel: "Conteúdo (Markdown/HTML)",
@@ -85,6 +88,8 @@ const texts = {
     general: "General Information",
     seo: "Search Engine Optimization (SEO)",
     image: "Cover Image",
+    imageAltText: "Image Alt Text",
+    imageAltTextHelp: "Describe the image for accessibility and SEO.",
     titleLabel: "Title",
     slugLabel: "Slug (URL)",
     contentLabel: "Content (Markdown/HTML)",
@@ -115,6 +120,8 @@ const texts = {
     general: "Información General",
     seo: "Optimización para Motores de Búsqueda (SEO)",
     image: "Imagen de Portada",
+    imageAltText: "Texto Alternativo de la Imagen",
+    imageAltTextHelp: "Describe la imagen para accesibilidad y SEO.",
     titleLabel: "Título",
     slugLabel: "Slug (URL)",
     contentLabel: "Contenido (Markdown/HTML)",
@@ -161,6 +168,7 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
   const [isTranslationDialogOpen, setIsTranslationDialogOpen] = useState(false);
   const [newPostData, setNewPostData] = useState<{ postId: string, postContent: { title: string, summary: string | null, content: string } } | null>(null);
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(!!initialData?.slug);
+  const [isAltTextManuallyEdited, setIsAltTextManuallyEdited] = useState(!!initialData?.image_alt_text);
 
   const defaultValues: PostFormValues = {
     title: initialData?.title || '',
@@ -168,6 +176,7 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
     content: initialData?.content || '',
     summary: initialData?.summary || null,
     image_url: initialData?.image_url || null,
+    image_alt_text: initialData?.image_alt_text || null,
     seo_title: initialData?.seo_title || null,
     seo_description: initialData?.seo_description || null,
     status: initialData?.status || 'draft',
@@ -195,6 +204,7 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
         content: initialData.content || '',
         summary: initialData.summary ?? null,
         image_url: initialData.image_url ?? null,
+        image_alt_text: initialData.image_alt_text ?? null,
         seo_title: initialData.seo_title ?? null,
         seo_description: initialData.seo_description ?? null,
         status: initialData.status ?? 'draft',
@@ -206,6 +216,7 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
       form.reset(newValues);
       setCoverUrl(newValues.image_url ?? null);
       setIsSlugManuallyEdited(!!initialData.slug);
+      setIsAltTextManuallyEdited(!!initialData.image_alt_text);
     }
   }, [initialData, form]);
 
@@ -236,7 +247,10 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
       const slug = generateSlug(titleValue);
       form.setValue('slug', slug, { shouldValidate: true });
     }
-  }, [titleValue, isSlugManuallyEdited, form]);
+    if (!isAltTextManuallyEdited && titleValue) {
+      form.setValue('image_alt_text', titleValue, { shouldValidate: true });
+    }
+  }, [titleValue, isSlugManuallyEdited, isAltTextManuallyEdited, form]);
 
   const handleImageUploadSuccess = (url: string) => {
     setCoverUrl(url);
@@ -281,6 +295,7 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
         content: values.content,
         summary: values.summary || null,
         image_url: values.image_url || null,
+        image_alt_text: values.image_alt_text || null,
         seo_title: values.seo_title || null,
         seo_description: values.seo_description || null,
         status: values.status,
@@ -446,7 +461,7 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
                 <CardHeader>
                   <CardTitle>{t.image}</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <ImageUpload 
                     lang={lang} 
                     onUploadSuccess={handleImageUploadSuccess} 
@@ -455,6 +470,32 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
                     postSummary={safeSummaryValue}
                     initialImages={initialImages}
                   />
+                  {coverUrl && (
+                    <FormField
+                      control={form.control}
+                      name="image_alt_text"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t.imageAltText}</FormLabel>
+                          <FormControl>
+                            <Input 
+                              placeholder={t.imageAltText} 
+                              {...field} 
+                              value={field.value || ''}
+                              onChange={(e) => {
+                                if (!isAltTextManuallyEdited) {
+                                  setIsAltTextManuallyEdited(true);
+                                }
+                                field.onChange(e);
+                              }}
+                            />
+                          </FormControl>
+                          <FormDescription>{t.imageAltTextHelp}</FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
                 </CardContent>
               </Card>
 

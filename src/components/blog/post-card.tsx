@@ -22,7 +22,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, lang }) => {
           <div className="relative h-48 w-full overflow-hidden">
             <img 
               src={post.image_url} 
-              alt={post.title} 
+              alt={post.image_alt_text || post.title} 
               className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
             />
           </div>
