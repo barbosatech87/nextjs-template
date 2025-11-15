@@ -10,7 +10,7 @@ import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { LoginPrompt } from '@/components/auth/login-prompt';
 
 interface ProfilePageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 const pageTexts = {
@@ -44,7 +44,7 @@ const pageTexts = {
 };
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
-  const { lang } = params;
+  const { lang } = await params;
   const t = pageTexts[lang] || pageTexts.pt;
 
   const supabase = createSupabaseServerClient();

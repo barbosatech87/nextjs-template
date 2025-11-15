@@ -24,11 +24,11 @@ const pageTexts = {
 };
 
 interface ChapterPageProps {
-  params: { lang: Locale; bookSlug: string; chapter: string }; // Corrigido
+  params: Promise<{ lang: Locale; bookSlug: string; chapter: string }>;
 }
 
 export default async function ChapterPage({ params }: ChapterPageProps) {
-  const { lang, bookSlug, chapter } = params;
+  const { lang, bookSlug, chapter } = await params;
   const texts = pageTexts[lang] || pageTexts.pt;
 
   const bookName = getBookNameFromSlug(bookSlug);

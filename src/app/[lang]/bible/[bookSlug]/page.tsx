@@ -32,11 +32,11 @@ const pageTexts = {
 };
 
 interface BookPageProps {
-  params: { lang: Locale; bookSlug: string }; // Corrigido
+  params: Promise<{ lang: Locale; bookSlug: string }>;
 }
 
 export default async function BookPage({ params }: BookPageProps) {
-  const { lang, bookSlug } = params;
+  const { lang, bookSlug } = await params;
   const texts = pageTexts[lang] || pageTexts.pt;
 
   const bookName = getBookNameFromSlug(bookSlug);

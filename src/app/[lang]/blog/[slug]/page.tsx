@@ -32,7 +32,7 @@ const texts = {
 };
 
 interface BlogPostPageProps {
-  params: { lang: Locale; slug: string };
+  params: Promise<{ lang: Locale; slug: string }>;
 }
 
 // Função para gerar metadados dinâmicos
@@ -40,7 +40,7 @@ export async function generateMetadata(
   { params }: BlogPostPageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const { lang, slug } = params;
+  const { lang, slug } = await params;
   const post = await getPostBySlug(slug, lang);
 
   if (!post) {
@@ -84,7 +84,7 @@ export async function generateMetadata(
 }
 
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
-  const { lang, slug } = params;
+  const { lang, slug } = await params;
   const t = texts[lang] || texts.pt;
 
   if (Array.isArray(slug) || !slug) {

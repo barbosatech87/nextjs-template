@@ -7,13 +7,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 
 interface PlanPageProps {
-    params: {
+    params: Promise<{
         lang: Locale;
         planId: string;
-    };
-    searchParams: {
+    }>;
+    searchParams: Promise<{
         day?: string;
-    };
+    }>;
 }
 
 function ReadingSkeleton() {
@@ -32,7 +32,8 @@ function ReadingSkeleton() {
 }
 
 export default async function PlanPage({ params, searchParams }: PlanPageProps) {
-    const { lang, planId } = params;
+    const { lang, planId } = await params;
+    const sp = await searchParams;
     const supabase = createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -43,8 +44,8 @@ export default async function PlanPage({ params, searchParams }: PlanPageProps) 
     const totalDays = scheduleKeys.length;
 
     let currentDayNumber: number;
-    if (searchParams.day && !isNaN(Number(searchParams.day))) {
-        currentDayNumber = Math.max(1, Math.min(Number(searchParams.day), totalDays));
+    if (sp.day && !isNaN(Number(sp.day))) {
+        currentDayNumber = Math.max(1, Math.min(Number(sp.day), totalDays));
     } else {
         const firstUnreadDay = scheduleKeys.find(key => !completedDays.has(parseInt(key.split('_')[1] || '1')));
         currentDayNumber = firstUnreadDay ? parseInt(firstUnreadDay.split('_')[1]) : 1;

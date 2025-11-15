@@ -8,7 +8,7 @@ import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { PlansLoginPrompt } from "@/components/reading-plans/plans-login-prompt";
 
 interface PlansPageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 const pageTexts = {
@@ -35,7 +35,8 @@ const pageTexts = {
     },
 };
 
-export default async function PlansPage({ params: { lang } }: PlansPageProps) {
+export default async function PlansPage({ params }: PlansPageProps) {
+  const { lang } = await params;
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   const t = pageTexts[lang] || pageTexts.pt;

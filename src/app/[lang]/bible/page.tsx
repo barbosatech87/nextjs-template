@@ -21,12 +21,12 @@ const pageTexts = {
 }
 
 interface BiblePageProps {
-  params: { lang: Locale };
-  searchParams: { [key: string]: string | string[] | undefined } | undefined;
+  params: Promise<{ lang: Locale }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined } | undefined>;
 }
 
 export default async function BiblePage({ params }: BiblePageProps) {
-  const { lang } = params;
+  const { lang } = await params;
   const supabase = createSupabaseServerClient();
   const texts = pageTexts[lang] || pageTexts.pt;
 

@@ -7,7 +7,7 @@ import { Globe } from "lucide-react";
 import { Metadata, ResolvingMetadata } from "next";
 
 interface PublicPageProps {
-  params: { lang: Locale; slug: string };
+  params: Promise<{ lang: Locale; slug: string }>;
 }
 
 // Função para gerar metadados dinâmicos
@@ -15,7 +15,7 @@ export async function generateMetadata(
   { params }: PublicPageProps,
   parent: ResolvingMetadata
 ): Promise<Metadata> {
-  const { lang, slug } = params;
+  const { lang, slug } = await params;
   const page = await getPageBySlug(slug, lang);
 
   if (!page) {
@@ -44,7 +44,7 @@ export async function generateMetadata(
 }
 
 export default async function PublicPage({ params }: PublicPageProps) {
-  const { lang, slug } = params;
+  const { lang, slug } = await params;
   const page = await getPageBySlug(slug, lang);
 
   if (!page) {
