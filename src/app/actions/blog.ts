@@ -657,24 +657,6 @@ export async function getRecentPosts({
   return finalPosts;
 }
 
-// --- Funções para o Admin ---
-export type AdminPostListItem = PostListItem & {
-  status: string;
-  author_first_name: string | null;
-  author_last_name: string | null;
-};
-
-export async function getAdminPosts(): Promise<AdminPostListItem[]> {
-  const supabase = createSupabaseServerClient();
-  const { data, error } = await supabase.rpc('get_admin_blog_posts');
-
-  if (error) {
-    console.error('Error fetching admin posts:', error);
-    return [];
-  }
-  return data as AdminPostListItem[];
-}
-
 export async function getRelatedPosts({
   postId,
   categoryIds,
