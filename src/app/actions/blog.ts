@@ -482,19 +482,26 @@ export type DailyVerseData = {
   text: string;
 };
 
+// Interface para tipar o resultado do RPC get_random_verse
+interface VerseReference {
+    book: string;
+    chapter: number;
+    verse_number: number;
+    version: string;
+}
+
 export async function getDailyVerse(lang: string): Promise<DailyVerseData | null> {
   // Define o tempo de revalidação para 24 horas (86400 segundos)
   const supabase = createSupabaseServerClient();
   const today = new Date().toISOString().split('T')[0];
 
   // 1. Buscar o versículo do dia (já traduzido e com texto)
-  // Adicionamos o cache de 24h aqui.
   const { data: dailyVerse, error: dailyVerseError } = await supabase
     .from('daily_verse')
     .select('book, chapter, verse_number, text')
     .eq('date', today)
     .eq('language_code', lang)
-    .single(); // Removido .limit(1) pois .single() já garante isso
+    .single();
 
   if (dailyVerseError || !dailyVerse) {
     console.warn(`Daily verse not found for today (${lang}), fetching fallback reference.`, dailyVerseError?.message);
@@ -504,7 +511,10 @@ export async function getDailyVerse(lang: string): Promise<DailyVerseData | null
       .rpc('get_random_verse', { lang_code: lang })
       .single();
     
-    if (fallbackError || !fallbackRef) {
+    // Tipagem explícita para fallbackRef
+    const typedFallbackRef = fallbackRef as VerseReference | null;
+
+    if (fallbackError || !typedFallbackRef) {
       console.error("Failed to get fallback verse reference:", fallbackError);
       return null;
     }
@@ -513,9 +523,9 @@ export async function getDailyVerse(lang: string): Promise<DailyVerseData | null
     const { data: verseText, error: verseTextError } = await supabase
       .from('verses')
       .select('text')
-      .eq('book', fallbackRef.book)
-      .eq('chapter', fallbackRef.chapter)
-      .eq('verse_number', fallbackRef.verse_number)
+      .eq('book', typedFallbackRef.book)
+      .eq('chapter', typedFallbackRef.chapter)
+      .eq('verse_number', typedFallbackRef.verse_number)
       .eq('language_code', lang)
       .single();
 
@@ -526,9 +536,9 @@ export async function getDailyVerse(lang: string): Promise<DailyVerseData | null
     
     // Retorna o fallback completo
     return {
-      book: fallbackRef.book,
-      chapter: fallbackRef.chapter,
-      verse_number: fallbackRef.verse_number,
+      book: typedFallbackRef.book,
+      chapter: typedFallbackRef.chapter,
+      verse_number: typedFallbackRef.verse_number,
       text: verseText.text,
     };
   }
