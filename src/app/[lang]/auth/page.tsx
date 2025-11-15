@@ -4,7 +4,7 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/auth/session-context-provider';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Locale } from '@/lib/i18n/config';
 import { useEffect, useState } from 'react';
 import SignUpForm from '@/components/auth/sign-up-form';
@@ -13,9 +13,8 @@ interface AuthPageProps {
   params: { lang: Locale };
 }
 
-export default function AuthPage() {
-  const { lang: langParam } = useParams() as { lang: import('@/lib/i18n/config').Locale };
-  const lang = langParam ?? 'pt';
+export default function AuthPage({ params }: AuthPageProps) {
+  const lang = params?.lang ?? 'pt';
   const router = useRouter();
   const { user, isLoading } = useSession();
   const [view, setView] = useState<'sign_in' | 'sign_up' | 'forgotten_password'>('sign_in');
