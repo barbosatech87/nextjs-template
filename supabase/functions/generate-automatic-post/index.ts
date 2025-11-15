@@ -65,7 +65,7 @@ async function refineContentWithClaude(content) {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("CLAUDE_API_KEY"), "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
-      model: "claude-3-5-sonnet-20240620",
+      model: "claude-sonnet-4-5-20250929",
       max_tokens: 2048,
       messages: [{ role: "user", content: userPrompt }, { role: "assistant", content: systemPrompt }],
       temperature: 0.5,
