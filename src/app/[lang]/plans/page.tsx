@@ -11,6 +11,8 @@ interface PlansPageProps {
   params: Promise<{ lang: Locale }>;
 }
 
+export const dynamic = 'force-dynamic';
+
 const pageTexts = {
     pt: { 
       title: "Planos de Leitura", 
