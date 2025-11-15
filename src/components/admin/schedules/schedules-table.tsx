@@ -16,11 +16,13 @@ import { Author } from "@/app/actions/users";
 type Schedule = {
   id: string;
   name: string;
-  post_type: string;
+  post_type: 'devotional' | 'thematic' | 'summary';
   frequency_cron_expression: string;
   is_active: boolean;
   author_id: string;
   default_image_prompt: string;
+  theme?: string | null;
+  category_ids?: string[] | null;
 };
 
 interface SchedulesTableProps {
