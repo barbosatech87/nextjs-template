@@ -11,12 +11,12 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { saveSchedule, ScheduleFormData, Schedule } from '@/app/actions/schedules';
+import { saveSchedule, Schedule } from '@/app/actions/schedules';
 import { Author } from '@/app/actions/users';
 import { Locale } from '@/lib/i18n/config';
 import { BlogCategory, getBlogCategories } from '@/app/actions/blog';
 import { Checkbox } from '@/components/ui/checkbox';
-import { scheduleSchema } from '@/lib/schemas/schedules'; // Importando o schema do server action
+import { scheduleSchema, ScheduleFormData } from '@/lib/schemas/schedules';
 
 // Função para analisar a expressão cron e preencher o formulário
 function parseCronExpression(cron: string): Partial<ScheduleFormData> {
@@ -160,7 +160,7 @@ export function ScheduleFormDialog({ lang, authors, initialData, children }: Sch
             )} />
 
             <FormField control={form.control} name="category_ids" render={() => (
-              <FormItem><FormLabel>Categorias</FormLabel><div className="space-y-2">{categories.map((category) => (<FormField key={category.id} control={form.control} name="category_ids" render={({ field }) => (<FormItem className="flex flex-row items-start space-x-3 space-y-0"><FormControl><Checkbox checked={field.value?.includes(category.id)} onCheckedChange={(checked) => { return checked ? field.onChange([...(field.value || []), category.id]) : field.onChange(field.value?.filter(value => value !== category.id)); }} /></FormControl><FormLabel className="font-normal">{category.name}</FormLabel></FormItem>)} />))}</div><FormMessage /></FormItem>
+              <FormItem><FormLabel>Categorias</FormLabel><div className="space-y-2">{categories.map((category) => (<FormField key={category.id} control={form.control} name="category_ids" render={({ field }) => (<FormItem className="flex flex-row items-start space-x-3 space-y-0"><FormControl><Checkbox checked={field.value?.includes(category.id)} onCheckedChange={(checked) => { return checked ? field.onChange([...(field.value || []), category.id]) : field.onChange(field.value?.filter((value: string) => value !== category.id)); }} /></FormControl><FormLabel className="font-normal">{category.name}</FormLabel></FormItem>)} />))}</div><FormMessage /></FormItem>
             )} />
 
             <FormField control={form.control} name="default_image_prompt" render={({ field }) => (
