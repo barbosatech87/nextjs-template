@@ -272,12 +272,11 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
 
   async function onSubmit(values: PostFormValues) {
     startTransition(async () => {
-      const hasSchedule = !!values.scheduleDate && values.scheduleDate.trim() !== '';
       let publishedISO: string | null = null;
       let scheduledISO: string | null = null;
       let finalStatus = values.status;
 
-      if (hasSchedule) {
+      if (values.scheduleDate && values.scheduleDate.trim() !== '') {
         const chosenDate = new Date(values.scheduleDate);
         const now = new Date();
         
