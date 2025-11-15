@@ -3,6 +3,7 @@ import { HeroSearch } from '@/components/home/hero-search';
 import { DailyVerse } from '@/components/home/daily-verse';
 import { PostSection } from '@/components/home/post-section';
 import { getDailyVerse, getRecentPosts } from '@/app/actions/blog';
+import { ReadBibleCta } from '@/components/home/read-bible-cta';
 
 interface HomePageProps {
   params: Promise<{ lang: Locale }>;
@@ -12,6 +13,11 @@ const homeTexts = {
   pt: {
     hero: { heading: 'Explore a palavra', placeholder: 'Buscar na Bíblia...', button: 'Buscar' },
     dailyVerse: { title: 'Versículo do Dia', readChapter: 'Ler o capítulo', verseUnavailable: 'Versículo do dia indisponível no momento.' },
+    readBible: {
+      title: "Leia a Bíblia",
+      description: "Mergulhe nas Escrituras. Explore todos os livros do Antigo e Novo Testamento em um só lugar.",
+      button: "Acessar a Bíblia Completa"
+    },
     postSection: { 
       latest: { title: 'Últimas Postagens', viewAll: 'Ver todos' },
       devotional: { title: 'Devocional', viewAll: 'Ver todos devocionais' }
@@ -20,6 +26,11 @@ const homeTexts = {
   en: {
     hero: { heading: 'Explore the Word', placeholder: 'Search the Bible...', button: 'Search' },
     dailyVerse: { title: 'Verse of the Day', readChapter: 'Read chapter', verseUnavailable: 'Verse of the day is currently unavailable.' },
+    readBible: {
+      title: "Read the Bible",
+      description: "Dive into the Scriptures. Explore all the books of the Old and New Testaments in one place.",
+      button: "Access the Full Bible"
+    },
     postSection: { 
       latest: { title: 'Latest Posts', viewAll: 'View all' },
       devotional: { title: 'Devotional', viewAll: 'View all devotionals' }
@@ -28,6 +39,11 @@ const homeTexts = {
   es: {
     hero: { heading: 'Explora la Palabra', placeholder: 'Buscar en la Biblia...', button: 'Buscar' },
     dailyVerse: { title: 'Versículo del Día', readChapter: 'Leer el capítulo', verseUnavailable: 'El versículo del día no está disponible actualmente.' },
+    readBible: {
+      title: "Leer la Biblia",
+      description: "Sumérgete en las Escrituras. Explora todos los libros del Antiguo y Nuevo Testamento en un solo lugar.",
+      button: "Acceder a la Biblia Completa"
+    },
     postSection: { 
       latest: { title: 'Últimas Publicaciones', viewAll: 'Ver todos' },
       devotional: { title: 'Devotional', viewAll: 'Ver todos los devocionales' }
@@ -53,7 +69,9 @@ export default async function HomePage({ params }: HomePageProps) {
         <DailyVerse lang={lang} verse={dailyVerse} texts={t.dailyVerse} />
       </div>
 
-      <div className="mt-12 md:mt-16">
+      <ReadBibleCta lang={lang} texts={t.readBible} />
+
+      <div>
         <PostSection 
           lang={lang} 
           posts={devotionalPosts} 
