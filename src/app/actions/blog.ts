@@ -258,6 +258,7 @@ export type PostDetail = {
   image_url: string | null;
   image_alt_text: string | null; // Novo campo
   published_at: string | null;
+  updated_at: string | null; // Adicionado
   author_id: string | null;
   author_first_name: string | null;
   author_last_name: string | null;
@@ -401,7 +402,7 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
   // 1. Buscar o post original pelo slug
   const { data: post, error: postError } = await supabase
     .from('blog_posts')
-    .select('id, slug, title, summary, content, image_url, image_alt_text, published_at, language_code, author_id')
+    .select('id, slug, title, summary, content, image_url, image_alt_text, published_at, updated_at, language_code, author_id')
     .eq('slug', slug)
     .eq('status', 'published')
     .single();
@@ -468,6 +469,7 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
     image_url: post.image_url,
     image_alt_text: post.image_alt_text,
     published_at: post.published_at,
+    updated_at: post.updated_at,
     author_id: post.author_id,
     author_first_name: authorProfile?.first_name || null,
     author_last_name: authorProfile?.last_name || null,
