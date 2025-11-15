@@ -68,7 +68,6 @@ export default function AuthPage({ params: paramsProp }: AuthPageProps) {
         </h1>
         <Auth
           supabaseClient={supabase}
-          view={view}
           providers={[]}
           appearance={{
             theme: ThemeSupa,
