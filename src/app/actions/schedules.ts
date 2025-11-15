@@ -15,6 +15,7 @@ export type Schedule = {
   default_image_prompt: string;
   theme?: string | null;
   category_ids?: string[] | null;
+  publish_automatically: boolean;
 };
 
 function constructCronExpression(data: ScheduleFormData): string {
