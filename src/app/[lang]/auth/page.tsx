@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import type { Locale } from "@/lib/i18n/config";
 import { useSession } from "@/components/auth/session-context-provider";
@@ -12,7 +12,7 @@ import SignUpForm from "@/components/auth/sign-up-form";
 type AuthView = "sign_in" | "sign_up" | "forgotten_password";
 
 interface AuthPageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 const TITLES: Record<Locale, Record<AuthView, string>> = {
@@ -34,7 +34,8 @@ const TITLES: Record<Locale, Record<AuthView, string>> = {
 };
 
 export default function AuthPage({ params }: AuthPageProps) {
-  const lang = params?.lang ?? "pt";
+  const resolvedParams = use(params);
+  const lang = resolvedParams?.lang ?? "pt";
   const router = useRouter();
   const { user, isLoading } = useSession();
 
