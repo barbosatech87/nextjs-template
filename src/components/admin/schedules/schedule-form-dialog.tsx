@@ -25,7 +25,7 @@ const scheduleSchema = z.object({
   theme: z.string().optional(),
   frequency_cron_expression: z.string().min(1, "A frequência é obrigatória."),
   default_image_prompt: z.string().min(10, "O prompt da imagem é obrigatório."),
-  is_active: z.boolean().default(true),
+  is_active: z.boolean(),
   author_id: z.string().uuid("Selecione um autor."),
   category_ids: z.array(z.string().uuid()).optional(),
 }).refine(data => {
