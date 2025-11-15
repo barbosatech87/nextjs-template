@@ -22,7 +22,7 @@ const scheduleSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(3, "O nome é obrigatório."),
   post_type: z.enum(['devotional', 'thematic', 'summary']),
-  theme: z.string().optional(),
+  theme: z.string().nullable().optional(),
   frequency_cron_expression: z.string().min(1, "A frequência é obrigatória."),
   default_image_prompt: z.string().min(10, "O prompt da imagem é obrigatório."),
   is_active: z.boolean(),
@@ -138,7 +138,7 @@ export function ScheduleFormDialog({ lang, authors, initialData, children }: Sch
               <FormField control={form.control} name="theme" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Tema do Estudo</FormLabel>
-                  <FormControl><Input placeholder="Ex: Fé, Esperança, Amor" {...field} /></FormControl>
+                  <FormControl><Input placeholder="Ex: Fé, Esperança, Amor" {...field} value={field.value ?? ''} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
