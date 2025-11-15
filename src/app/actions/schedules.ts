@@ -9,11 +9,21 @@ import { Locale } from "@/lib/i18n/config";
 const scheduleSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(3, "O nome é obrigatório."),
-  post_type: z.string().default('devotional'),
+  post_type: z.enum(['devotional', 'thematic', 'summary']),
+  theme: z.string().optional(),
   frequency_cron_expression: z.string().min(1, "A frequência é obrigatória."),
   default_image_prompt: z.string().min(10, "O prompt da imagem é obrigatório."),
   is_active: z.boolean().default(true),
   author_id: z.string().uuid("Selecione um autor."),
+  category_ids: z.array(z.string().uuid()).optional(),
+}).refine(data => {
+    if (data.post_type === 'thematic') {
+        return !!data.theme && data.theme.length > 3;
+    }
+    return true;
+}, {
+    message: "O tema é obrigatório para o tipo 'Estudo Temático'.",
+    path: ['theme'],
 });
 
 export type ScheduleFormData = z.infer<typeof scheduleSchema>;
@@ -53,7 +63,9 @@ export async function saveSchedule(formData: ScheduleFormData, lang: Locale) {
     await checkAdmin();
     const validation = scheduleSchema.safeParse(formData);
     if (!validation.success) {
-      return { success: false, message: "Dados inválidos." };
+      // Pega a primeira mensagem de erro para exibir
+      const firstError = validation.error.errors[0]?.message || "Dados inválidos.";
+      return { success: false, message: firstError };
     }
 
     const supabase = createSupabaseServerClient();

@@ -12,19 +12,33 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { saveSchedule, ScheduleFormData } from '@/app/actions/schedules';
+import { saveSchedule } from '@/app/actions/schedules';
 import { Author } from '@/app/actions/users';
 import { Locale } from '@/lib/i18n/config';
+import { BlogCategory, getBlogCategories } from '@/app/actions/blog';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const scheduleSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(3, "O nome é obrigatório."),
-  post_type: z.string().default('devotional'),
+  post_type: z.enum(['devotional', 'thematic', 'summary']),
+  theme: z.string().optional(),
   frequency_cron_expression: z.string().min(1, "A frequência é obrigatória."),
   default_image_prompt: z.string().min(10, "O prompt da imagem é obrigatório."),
   is_active: z.boolean().default(true),
   author_id: z.string().uuid("Selecione um autor."),
+  category_ids: z.array(z.string().uuid()).optional(),
+}).refine(data => {
+    if (data.post_type === 'thematic') {
+        return !!data.theme && data.theme.length > 3;
+    }
+    return true;
+}, {
+    message: "O tema é obrigatório para o tipo 'Estudo Temático' e deve ter mais de 3 caracteres.",
+    path: ['theme'],
 });
+
+export type ScheduleFormData = z.infer<typeof scheduleSchema>;
 
 interface ScheduleFormDialogProps {
   lang: Locale;
@@ -36,6 +50,7 @@ interface ScheduleFormDialogProps {
 export function ScheduleFormDialog({ lang, authors, initialData, children }: ScheduleFormDialogProps) {
   const [isPending, startTransition] = useTransition();
   const [isOpen, setIsOpen] = useState(false);
+  const [categories, setCategories] = useState<BlogCategory[]>([]);
   const isEditing = !!initialData;
 
   const form = useForm<ScheduleFormData>({
@@ -43,23 +58,32 @@ export function ScheduleFormDialog({ lang, authors, initialData, children }: Sch
     defaultValues: initialData || {
       name: '',
       post_type: 'devotional',
+      theme: '',
       frequency_cron_expression: '0 5 * * *',
       default_image_prompt: '',
       is_active: true,
       author_id: undefined,
+      category_ids: [],
     },
   });
+
+  const postType = form.watch('post_type');
 
   useEffect(() => {
     if (isOpen) {
       form.reset(initialData || {
         name: '',
         post_type: 'devotional',
+        theme: '',
         frequency_cron_expression: '0 5 * * *',
         default_image_prompt: '',
         is_active: true,
         author_id: undefined,
+        category_ids: [],
       });
+      
+      // Busca categorias ao abrir o modal
+      getBlogCategories().then(setCategories);
     }
   }, [isOpen, initialData, form]);
 
@@ -78,7 +102,7 @@ export function ScheduleFormDialog({ lang, authors, initialData, children }: Sch
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar Agendamento' : 'Novo Agendamento'}</DialogTitle>
           <DialogDescription>
@@ -94,6 +118,32 @@ export function ScheduleFormDialog({ lang, authors, initialData, children }: Sch
                 <FormMessage />
               </FormItem>
             )} />
+            
+            <FormField control={form.control} name="post_type" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tipo de Post</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl><SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger></FormControl>
+                  <SelectContent>
+                    <SelectItem value="devotional">Devocional (Versículo Aleatório)</SelectItem>
+                    <SelectItem value="thematic">Estudo Temático</SelectItem>
+                    <SelectItem value="summary" disabled>Resumo de Capítulo (Em breve)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+
+            {postType === 'thematic' && (
+              <FormField control={form.control} name="theme" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tema do Estudo</FormLabel>
+                  <FormControl><Input placeholder="Ex: Fé, Esperança, Amor" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            )}
+
             <FormField control={form.control} name="frequency_cron_expression" render={({ field }) => (
               <FormItem>
                 <FormLabel>Frequência (Expressão Cron)</FormLabel>
@@ -102,6 +152,7 @@ export function ScheduleFormDialog({ lang, authors, initialData, children }: Sch
                 <FormMessage />
               </FormItem>
             )} />
+            
             <FormField control={form.control} name="author_id" render={({ field }) => (
               <FormItem>
                 <FormLabel>Autor Padrão</FormLabel>
@@ -116,6 +167,42 @@ export function ScheduleFormDialog({ lang, authors, initialData, children }: Sch
                 <FormMessage />
               </FormItem>
             )} />
+
+            <FormField
+              control={form.control}
+              name="category_ids"
+              render={() => (
+                <FormItem>
+                  <FormLabel>Categorias</FormLabel>
+                  <div className="space-y-2">
+                    {categories.map((category) => (
+                      <FormField
+                        key={category.id}
+                        control={form.control}
+                        name="category_ids"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value?.includes(category.id)}
+                                onCheckedChange={(checked) => {
+                                  return checked
+                                    ? field.onChange([...(field.value || []), category.id])
+                                    : field.onChange(field.value?.filter(value => value !== category.id));
+                                }}
+                              />
+                            </FormControl>
+                            <FormLabel className="font-normal">{category.name}</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                    ))}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField control={form.control} name="default_image_prompt" render={({ field }) => (
               <FormItem>
                 <FormLabel>Prompt Padrão da Imagem</FormLabel>
@@ -123,6 +210,7 @@ export function ScheduleFormDialog({ lang, authors, initialData, children }: Sch
                 <FormMessage />
               </FormItem>
             )} />
+            
             <FormField control={form.control} name="is_active" render={({ field }) => (
               <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                 <div className="space-y-0.5">
@@ -132,6 +220,7 @@ export function ScheduleFormDialog({ lang, authors, initialData, children }: Sch
                 <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
               </FormItem>
             )} />
+            
             <DialogFooter>
               <DialogClose asChild><Button type="button" variant="secondary">Cancelar</Button></DialogClose>
               <Button type="submit" disabled={isPending}>
