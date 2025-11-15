@@ -11,6 +11,50 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// --- Nova função de refinamento com Claude ---
+async function refineContentWithClaude(content: string): Promise<string> {
+  if (!process.env.CLAUDE_API_KEY) {
+    console.warn("CLAUDE_API_KEY not set. Skipping refinement step.");
+    return content;
+  }
+
+  try {
+    const systemPrompt = `Você é um editor teológico especialista. Refine o rascunho de post a seguir para melhorar sua profundidade teológica, clareza e tom inspirador, com um estilo pessoal e voltado para o público cristão. Otimize o texto para SEO, garantindo que as palavras-chave e a estrutura sejam amigáveis para ranqueamento. Mantenha o formato Markdown e a estrutura geral. Retorne APENAS o conteúdo Markdown refinado do corpo do post, nada mais.`;
+    
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.CLAUDE_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: "claude-3-haiku-20240307",
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [{ role: "user", content: `Refine este rascunho de conteúdo:\n\n${content}` }],
+        temperature: 0.5,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Claude API error: ${response.status} - ${errorText}`);
+    }
+
+    const data = await response.json();
+    const refinedContent = data.content[0].text;
+    
+    console.log("Content successfully refined by Claude.");
+    return refinedContent;
+
+  } catch (error) {
+    console.error("Error refining content with Claude:", error);
+    // Retorna o conteúdo original se o refinamento falhar
+    return content;
+  }
+}
+
 // --- Tipos e Schemas ---
 const generationRequestSchema = z.object({
   lang: z.custom<Locale>(),
@@ -104,6 +148,13 @@ export async function generatePostWithAI(
     }
 
     const parsedContent = postOutputSchema.parse(JSON.parse(content));
+
+    // >>> NOVO PASSO: Refinar conteúdo com Claude <<<
+    if (parsedContent.content) {
+        console.log("Refining content with Claude...");
+        parsedContent.content = await refineContentWithClaude(parsedContent.content);
+    }
+
     return { success: true, data: parsedContent };
   } catch (error) {
     console.error("Erro ao gerar post com IA:", error);
