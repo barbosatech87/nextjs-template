@@ -7,6 +7,7 @@ import { useSession } from '@/components/auth/session-context-provider';
 import { useRouter, useParams } from 'next/navigation';
 import { Locale } from '@/lib/i18n/config';
 import { useEffect, useState } from 'react';
+import SignUpForm from '@/components/auth/sign-up-form';
 
 interface AuthPageProps {
   params: { lang: Locale };
@@ -131,47 +132,42 @@ export default function AuthPage() {
           </button>
         </div>
 
-        <Auth
-          supabaseClient={supabase}
-          view={view}
-          providers={[]}
-          showLinks={false}
-          appearance={{
-            theme: ThemeSupa,
-            variables: {
-              default: {
-                colors: {
-                  brand: 'hsl(var(--primary))',
-                  brandAccent: 'hsl(var(--primary-foreground))',
+        {view === 'sign_up' ? (
+          <SignUpForm lang={lang} onSwitchToSignIn={() => handleSelectView('sign_in')} />
+        ) : (
+          <Auth
+            supabaseClient={supabase}
+            view={view}
+            providers={[]}
+            showLinks={false}
+            appearance={{
+              theme: ThemeSupa,
+              variables: {
+                default: {
+                  colors: {
+                    brand: 'hsl(var(--primary))',
+                    brandAccent: 'hsl(var(--primary-foreground))',
+                  },
                 },
               },
             },
-          }}
-          theme="light"
-          localization={{
-            variables: {
-              sign_in: {
-                email_label: lang === 'pt' ? 'Seu email' : 'Your email',
-                password_label: lang === 'pt' ? 'Sua senha' : 'Your password',
-                button_label: lang === 'pt' ? 'Entrar' : 'Sign In',
-                social_provider_text:
-                  lang === 'pt' ? 'Entrar com {{provider}}' : 'Sign in with {{provider}}',
-                // O link padrão do Auth foi ocultado (showLinks=false)
+            theme="light"
+            localization={{
+              variables: {
+                sign_in: {
+                  email_label: lang === 'pt' ? 'Seu email' : 'Your email',
+                  password_label: lang === 'pt' ? 'Sua senha' : 'Your password',
+                  button_label: lang === 'pt' ? 'Entrar' : 'Sign In',
+                  social_provider_text:
+                    lang === 'pt' ? 'Entrar com {{provider}}' : 'Sign in with {{provider}}',
+                },
+                forgotten_password: {
+                  link_text: lang === 'pt' ? 'Esqueceu sua senha?' : 'Forgot your password?',
+                },
               },
-              sign_up: {
-                email_label: lang === 'pt' ? 'Seu email' : 'Your email',
-                password_label: lang === 'pt' ? 'Crie uma senha' : 'Create a password',
-                button_label: lang === 'pt' ? 'Cadastrar' : 'Sign Up',
-                social_provider_text:
-                  lang === 'pt' ? 'Cadastrar com {{provider}}' : 'Sign up with {{provider}}',
-                // O link padrão do Auth foi ocultado (showLinks=false)
-              },
-              forgotten_password: {
-                link_text: lang === 'pt' ? 'Esqueceu sua senha?' : 'Forgot your password?',
-              },
-            },
-          }}
-        />
+            }}
+          />
+        )}
 
         {/* Links personalizados abaixo do formulário */}
         <div className="mt-4 text-center text-sm space-y-2">
