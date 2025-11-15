@@ -7,6 +7,7 @@ export type Profile = {
   last_name: string | null;
   avatar_url: string | null;
   role: 'user' | 'writer' | 'admin';
+  subscription_status: 'free' | 'premium'; // Novo campo adicionado
   updated_at: string | null;
 };
 
