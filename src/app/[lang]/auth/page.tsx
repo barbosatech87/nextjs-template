@@ -17,7 +17,7 @@ export default function AuthPage() {
   const lang = langParam ?? 'pt';
   const router = useRouter();
   const { user, isLoading } = useSession();
-  const [view, setView] = useState<'sign_in' | 'sign_up'>('sign_in');
+  const [view, setView] = useState<'sign_in' | 'sign_up' | 'forgotten_password'>('sign_in');
 
   // Detecta a view pelo hash da URL (suporta vários formatos)
   useEffect(() => {
@@ -31,11 +31,17 @@ export default function AuthPage() {
         hash.includes('sign-in') ||
         hash.includes('signin') ||
         hash.includes('sign_in');
+      const isForgot =
+        hash.includes('forgot') ||
+        hash.includes('forgot-password') ||
+        hash.includes('forgotten_password');
 
       if (isSignUp) {
         setView('sign_up');
       } else if (isSignIn) {
         setView('sign_in');
+      } else if (isForgot) {
+        setView('forgotten_password');
       } else {
         setView('sign_in'); // padrão
       }
@@ -65,24 +71,32 @@ export default function AuthPage() {
     pt: {
       sign_in: 'Acesse sua conta',
       sign_up: 'Crie sua conta',
+      forgotten_password: 'Recupere sua senha',
     },
     en: {
       sign_in: 'Access your account',
       sign_up: 'Create your account',
+      forgotten_password: 'Recover your password',
     },
     es: {
       sign_in: 'Accede a tu cuenta',
       sign_up: 'Crea tu cuenta',
+      forgotten_password: 'Recupera tu contraseña',
     },
   };
 
   const currentTitle = titles[lang]?.[view] || titles.pt[view];
 
   // Seletor simples para alternar entre Entrar/Cadastrar e sincronizar com o Auth
-  const handleSelectView = (nextView: 'sign_in' | 'sign_up') => {
+  const handleSelectView = (nextView: 'sign_in' | 'sign_up' | 'forgotten_password') => {
     setView(nextView);
     // atualiza o hash para manter o Auth em sincronia
-    window.location.hash = nextView === 'sign_in' ? 'sign-in' : 'sign-up';
+    window.location.hash =
+      nextView === 'sign_in'
+        ? 'sign-in'
+        : nextView === 'sign_up'
+        ? 'sign-up'
+        : 'forgot-password';
   };
 
   return (
@@ -121,6 +135,7 @@ export default function AuthPage() {
           supabaseClient={supabase}
           view={view}
           providers={[]}
+          showLinks={false}
           appearance={{
             theme: ThemeSupa,
             variables: {
@@ -141,10 +156,7 @@ export default function AuthPage() {
                 button_label: lang === 'pt' ? 'Entrar' : 'Sign In',
                 social_provider_text:
                   lang === 'pt' ? 'Entrar com {{provider}}' : 'Sign in with {{provider}}',
-                link_text:
-                  lang === 'pt'
-                    ? 'Não tem uma conta? Cadastre-se'
-                    : "Don't have an account? Sign Up",
+                // O link padrão do Auth foi ocultado (showLinks=false)
               },
               sign_up: {
                 email_label: lang === 'pt' ? 'Seu email' : 'Your email',
@@ -152,10 +164,7 @@ export default function AuthPage() {
                 button_label: lang === 'pt' ? 'Cadastrar' : 'Sign Up',
                 social_provider_text:
                   lang === 'pt' ? 'Cadastrar com {{provider}}' : 'Sign up with {{provider}}',
-                link_text:
-                  lang === 'pt'
-                    ? 'Já tem uma conta? Entre'
-                    : 'Already have an account? Sign In',
+                // O link padrão do Auth foi ocultado (showLinks=false)
               },
               forgotten_password: {
                 link_text: lang === 'pt' ? 'Esqueceu sua senha?' : 'Forgot your password?',
@@ -163,6 +172,64 @@ export default function AuthPage() {
             },
           }}
         />
+
+        {/* Links personalizados abaixo do formulário */}
+        <div className="mt-4 text-center text-sm space-y-2">
+          {view === 'sign_in' && (
+            <>
+              <button
+                type="button"
+                onClick={() => handleSelectView('forgotten_password')}
+                className="text-muted-foreground hover:text-foreground underline"
+              >
+                {lang === 'pt'
+                  ? 'Esqueceu sua senha?'
+                  : lang === 'es'
+                  ? '¿Olvidaste tu contraseña?'
+                  : 'Forgot your password?'}
+              </button>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => handleSelectView('sign_up')}
+                  className="text-muted-foreground hover:text-foreground underline"
+                >
+                  {lang === 'pt'
+                    ? 'Não tem uma conta? Cadastre-se'
+                    : lang === 'es'
+                    ? '¿No tienes una cuenta? Regístrate'
+                    : "Don't have an account? Sign up"}
+                </button>
+              </div>
+            </>
+          )}
+          {view === 'sign_up' && (
+            <button
+              type="button"
+              onClick={() => handleSelectView('sign_in')}
+              className="text-muted-foreground hover:text-foreground underline"
+            >
+              {lang === 'pt'
+                ? 'Já tem uma conta? Entre'
+                : lang === 'es'
+                ? '¿Ya tienes una cuenta? Inicia sesión'
+                : 'Already have an account? Sign in'}
+            </button>
+          )}
+          {view === 'forgotten_password' && (
+            <button
+              type="button"
+              onClick={() => handleSelectView('sign_in')}
+              className="text-muted-foreground hover:text-foreground underline"
+            >
+              {lang === 'pt'
+                ? 'Voltar para entrar'
+                : lang === 'es'
+                ? 'Volver a iniciar sesión'
+                : 'Back to sign in'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
