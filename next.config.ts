@@ -5,8 +5,8 @@ const pwaConfig = withPWA({
   dest: "public",
   register: true,
   skipWaiting: true,
-  // A linha abaixo foi comentada para permitir testes do PWA em ambiente de desenvolvimento.
-  // disable: process.env.NODE_ENV === "development",
+  // A linha abaixo foi descomentada para desabilitar o PWA em desenvolvimento.
+  disable: process.env.NODE_ENV === "development",
 });
 
 const nextConfig: NextConfig = {
