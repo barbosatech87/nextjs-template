@@ -11,7 +11,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// --- Nova função de refinamento com Claude ---
+// --- Função de refinamento com Claude ---
 async function refineContentWithClaude(content: string): Promise<string> {
   if (!process.env.CLAUDE_API_KEY) {
     console.warn("CLAUDE_API_KEY not set. Skipping refinement step.");
@@ -20,6 +20,7 @@ async function refineContentWithClaude(content: string): Promise<string> {
 
   try {
     const systemPrompt = `Você é um editor teológico especialista. Refine o rascunho de post a seguir para melhorar sua profundidade teológica, clareza e tom inspirador, com um estilo pessoal e voltado para o público cristão. Otimize o texto para SEO, garantindo que as palavras-chave e a estrutura sejam amigáveis para ranqueamento. Mantenha o formato Markdown e a estrutura geral. Retorne APENAS o conteúdo Markdown refinado do corpo do post, nada mais.`;
+    const userPrompt = `Refine este rascunho de conteúdo:\n\n${content}`;
     
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -31,8 +32,10 @@ async function refineContentWithClaude(content: string): Promise<string> {
       body: JSON.stringify({
         model: "claude-3-haiku-20240307",
         max_tokens: 4096,
-        system: systemPrompt,
-        messages: [{ role: "user", content: `Refine este rascunho de conteúdo:\n\n${content}` }],
+        messages: [
+          { role: "user", content: userPrompt },
+          { role: "assistant", content: systemPrompt }
+        ],
         temperature: 0.5,
       }),
     });
