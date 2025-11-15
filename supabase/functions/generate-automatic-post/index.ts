@@ -58,7 +58,7 @@ async function generateDraftWithOpenAI(postType, context) {
 }
 
 async function refineContentWithClaude(content) {
-  const systemPrompt = `Você é um editor teológico especialista. Refine o rascunho de post a seguir para melhorar sua profundidade teológica, clareza e tom inspirador, com um estilo pessoal e voltado para o público cristão. Otimize o texto para SEO, garantindo que as palavras-chave e a estrutura sejam amigáveis para ranqueamento. Mantenha o formato Markdown e a estrutura geral. Retorne APENAS o conteúdo Markdown refinado do corpo do post, nada mais.`;
+  const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua principal prioridade é refinar o rascunho a seguir para ranquear na primeira página do Google. Para isso, reescreva o texto com um tom **altamente pessoal e envolvente**, falando diretamente ao leitor cristão. Otimize para SEO, incorporando palavras-chave relevantes de forma natural, usando uma estrutura clara com subtítulos (H2, H3) e garantindo que o texto responda a possíveis perguntas do usuário. Além do SEO, melhore a profundidade teológica, a clareza e o tom inspirador. Mantenha o formato Markdown. Retorne APENAS o conteúdo Markdown refinado do corpo do post, nada mais.`;
   const userPrompt = `Refine este rascunho de conteúdo:\n\n${content}`;
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -66,8 +66,9 @@ async function refineContentWithClaude(content) {
     headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("CLAUDE_API_KEY"), "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: "claude-sonnet-4-5-20250929",
-      max_tokens: 2048,
-      messages: [{ role: "user", content: userPrompt }, { role: "assistant", content: systemPrompt }],
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: [{ role: "user", content: userPrompt }],
       temperature: 0.5,
     }),
   });
