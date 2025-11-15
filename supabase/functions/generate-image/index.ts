@@ -8,9 +8,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Prompt de sistema para estilo e proibição de texto
+// Prompt de sistema simplificado para evitar erros e ser mais direto
 const SYSTEM_PROMPT =
-  "Conceptual blog post image. The image must be high quality, artistic, and suitable for a Christian blog. CRITICAL: Never include any readable text, numbers, letters, or typography in the image. Focus on abstract or conceptual representation of the theme."
+  "High-quality, artistic, conceptual image for a Christian blog post. Abstract or symbolic representation. No text, letters, or numbers."
 
 interface ImageGenerationRequest {
   prompt: string
@@ -39,7 +39,7 @@ serve(async (req: Request) => {
     }
 
     // Junta prompt do usuário com o prompt de sistema
-    const fullPrompt = `${SYSTEM_PROMPT} Theme: ${prompt}`
+    const fullPrompt = `${SYSTEM_PROMPT}. Theme: ${prompt}`
 
     // Geração da imagem via OpenAI
     const openaiResponse = await fetch("https://api.openai.com/v1/images/generations", {
@@ -60,7 +60,11 @@ serve(async (req: Request) => {
     if (!openaiResponse.ok) {
       const errorText = await openaiResponse.text()
       console.error("OpenAI API Error:", errorText)
-      throw new Error(`OpenAI API error: ${openaiResponse.status}`)
+      // Retorna o erro detalhado da OpenAI para o cliente
+      return new Response(JSON.stringify({ error: `OpenAI API error: ${errorText}` }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await openaiResponse.json()
