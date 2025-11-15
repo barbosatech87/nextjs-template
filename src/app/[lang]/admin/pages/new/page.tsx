@@ -2,10 +2,10 @@ import { Locale } from '@/lib/i18n/config';
 import { PageForm } from '@/components/admin/pages/page-form';
 
 interface NewPageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
-export default function NewPage({ params }: NewPageProps) {
-  const { lang } = params;
+export default async function NewPage({ params }: NewPageProps) {
+  const { lang } = await params;
   return <PageForm lang={lang} />;
 }

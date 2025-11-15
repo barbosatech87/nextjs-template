@@ -4,11 +4,11 @@ import { Locale } from '@/lib/i18n/config';
 import { getGeneratedImages } from '@/app/actions/image-generation';
 
 interface AiImageGeneratorPageProps {
-    params: { lang: Locale };
+    params: Promise<{ lang: Locale }>;
 }
 
 export default async function AiImageGeneratorPage({ params }: AiImageGeneratorPageProps) {
-    const { lang } = params;
+    const { lang } = await params;
     // Recarrega as imagens a cada visita
     const images = await getGeneratedImages();
 

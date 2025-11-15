@@ -4,11 +4,11 @@ import { PageForm } from '@/components/admin/pages/page-form';
 import { notFound } from 'next/navigation';
 
 interface EditPageProps {
-  params: { lang: Locale; pageId: string };
+  params: Promise<{ lang: Locale; pageId: string }>;
 }
 
 export default async function EditPage({ params }: EditPageProps) {
-  const { lang, pageId } = params;
+  const { lang, pageId } = await params;
   const page = await getPageById(pageId);
 
   if (!page) {

@@ -6,11 +6,11 @@ import { getAdminPages } from '@/app/actions/pages';
 import { PagesTable } from '@/components/admin/pages/pages-table';
 
 interface ManagePagesPageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 export default async function ManagePagesPage({ params }: ManagePagesPageProps) {
-  const { lang } = params;
+  const { lang } = await params;
   const pages = await getAdminPages();
 
   const t = {

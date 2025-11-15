@@ -5,11 +5,11 @@ import { redirect } from 'next/navigation';
 
 interface AdminSectionLayoutProps {
   children: ReactNode;
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 export default async function AdminUsersLayout({ children, params }: AdminSectionLayoutProps) {
-  const { lang } = params;
+  const { lang } = await params;
   const supabase = createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 

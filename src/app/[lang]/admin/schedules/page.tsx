@@ -7,11 +7,11 @@ import { SchedulesTable } from '@/components/admin/schedules/schedules-table';
 import { ScheduleFormDialog } from '@/components/admin/schedules/schedule-form-dialog';
 
 interface ManageSchedulesPageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 export default async function ManageSchedulesPage({ params }: ManageSchedulesPageProps) {
-  const { lang } = params;
+  const { lang } = await params;
   const schedules = await getSchedules();
   const authors = await getAuthors();
 
