@@ -10,7 +10,7 @@ declare const Response: any;
 // Define os cabeçalhos CORS
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-secret',
 };
 
 // Define os idiomas alvo
@@ -65,9 +65,19 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // 1. Autenticação (Manual, conforme regra)
+  // 1. Autenticação
+  const internalSecret = req.headers.get('X-Internal-Secret');
+  const expectedSecret = Deno.env.get('INTERNAL_SECRET_KEY');
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
+
+  let isAuthorized = false;
+  if (internalSecret && expectedSecret && internalSecret === expectedSecret) {
+    isAuthorized = true; // Chamada interna autorizada
+  } else if (authHeader) {
+    isAuthorized = true; // Chamada de usuário (assume que o token é válido, como antes)
+  }
+
+  if (!isAuthorized) {
     return new Response('Unauthorized', { status: 401, headers: corsHeaders });
   }
   

@@ -125,10 +125,10 @@ serve(async (req: Request) => {
       content: draftPost.content,
       summary: draftPost.summary,
       image_url: imageUrl,
-      image_alt_text: draftPost.title, // Usando o título como alt text padrão
+      image_alt_text: draftPost.title,
       seo_title: draftPost.seo_title,
       seo_description: draftPost.seo_description,
-      status: 'draft', // Salva como rascunho
+      status: 'draft',
       language_code: 'pt',
     }).select('id').single();
 
@@ -142,9 +142,38 @@ serve(async (req: Request) => {
     if (usedVerseError) throw new Error(`Failed to mark verse as used: ${usedVerseError.message}`);
     console.log("Verse marked as used.");
 
-    // TODO: Disparar a função de tradução na próxima etapa.
+    // 7. Disparar a função de tradução (fire and forget)
+    const translateUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/translate-blog-post`;
+    const internalSecret = Deno.env.get("INTERNAL_SECRET_KEY");
 
-    return new Response(JSON.stringify({ message: "Automatic post created successfully as a draft.", postId: newPost.id }), {
+    if (internalSecret) {
+      // Não aguardamos a conclusão, apenas disparamos.
+      fetch(translateUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Internal-Secret': internalSecret,
+        },
+        body: JSON.stringify({
+          postId: newPost.id,
+          title: draftPost.title,
+          summary: draftPost.summary,
+          content: draftPost.content,
+        }),
+      }).then(res => {
+        if (!res.ok) {
+          console.error(`Failed to trigger translation for post ${newPost.id}. Status: ${res.status}`);
+        } else {
+          console.log(`Translation successfully triggered for post ${newPost.id}.`);
+        }
+      }).catch(err => {
+        console.error(`Error triggering translation for post ${newPost.id}:`, err);
+      });
+    } else {
+      console.warn("INTERNAL_SECRET_KEY not set. Skipping automatic translation.");
+    }
+
+    return new Response(JSON.stringify({ message: "Automatic post created and translation initiated.", postId: newPost.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200,
     });
 
