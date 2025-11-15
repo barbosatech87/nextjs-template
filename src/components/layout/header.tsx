@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSession } from '@/components/auth/session-context-provider';
 import { Locale } from '@/lib/i18n/config';
 import { Button } from '@/components/ui/button';
-import { User, BookOpen, Brain, Calendar, Rss, Shield, LogOut, Bell, Menu } from 'lucide-react';
+import { User, BookOpen, Brain, Calendar, Rss, Shield, LogOut, Bell, Menu, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LanguageSwitcher } from '@/components/i18n/language-switcher';
 import { useProfile } from '@/hooks/use-profile';
@@ -15,13 +15,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { InstallPWAButton } from '@/components/pwa/install-pwa-button';
+import { useInstallPrompt } from '@/hooks/use-install-prompt';
 
 interface HeaderProps {
   lang: Locale;
 }
 
-// Simulação de textos de navegação (será substituído por um sistema i18n completo depois)
 const navTexts = {
   pt: {
     bible: "Ler Bíblia",
@@ -35,6 +34,7 @@ const navTexts = {
     logout: "Sair",
     logoutSuccess: "Você foi desconectado com sucesso.",
     logoutError: "Erro ao sair da conta.",
+    install: "Instalar App",
   },
   en: {
     bible: "Read Bible",
@@ -48,6 +48,7 @@ const navTexts = {
     logout: "Log Out",
     logoutSuccess: "You have been successfully logged out.",
     logoutError: "Error logging out.",
+    install: "Install App",
   },
   es: {
     bible: "Leer Biblia",
@@ -61,6 +62,7 @@ const navTexts = {
     logout: "Cerrar Sesión",
     logoutSuccess: "Has cerrado sesión con éxito.",
     logoutError: "Error al cerrar sesión.",
+    install: "Instalar App",
   },
 };
 
@@ -68,6 +70,7 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
   const { user, isLoading } = useSession();
   const { profile } = useProfile();
   const { unreadCount } = useNotifications();
+  const [isInstallable, handleInstall] = useInstallPrompt();
   const texts = navTexts[lang] || navTexts.pt;
   const router = useRouter();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -116,7 +119,12 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
 
         {/* Auth / Perfil e Menu Mobile */}
         <div className="flex items-center space-x-2">
-          <InstallPWAButton lang={lang} />
+          {isInstallable && (
+            <Button variant="outline" size="sm" onClick={handleInstall} className="hidden md:inline-flex">
+              <Download className="mr-2 h-4 w-4" />
+              {texts.install}
+            </Button>
+          )}
           {isLoading ? (
             <div className="h-8 w-24 animate-pulse bg-muted rounded-md" />
           ) : user ? (
@@ -194,6 +202,18 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
                       {item.label}
                     </Link>
                   ))}
+                  {isInstallable && (
+                    <button
+                      onClick={() => {
+                        handleInstall();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="flex items-center rounded-md p-3 text-base font-medium hover:bg-accent text-left"
+                    >
+                      <Download className="mr-3 h-5 w-5 text-muted-foreground" />
+                      {texts.install}
+                    </button>
+                  )}
                 </div>
               </SheetContent>
             </Sheet>
