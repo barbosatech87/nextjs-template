@@ -4,6 +4,8 @@ import { Toaster } from '@/components/ui/sonner';
 import GoogleAnalytics from '@/components/analytics/google-analytics';
 import './globals.css';
 import { Metadata } from 'next';
+import { createSupabaseServerClient } from '@/integrations/supabase/server';
+import AdsenseScript from '@/components/ads/adsense-script';
 
 interface RootLayoutProps {
   children: ReactNode;
@@ -36,12 +38,35 @@ export const metadata: Metadata = {
 };
 
 
-export default function RootLayout({ children }: RootLayoutProps) {
+export default async function RootLayout({ children }: RootLayoutProps) {
+  const supabase = createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  let shouldShowAds = true; // Padrão é mostrar anúncios
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_status')
+      .eq('id', user.id)
+      .single();
+
+    // Esconde anúncios se o usuário estiver logado e seu status NÃO for 'free'
+    if (profile && profile.subscription_status !== 'free') {
+      shouldShowAds = false;
+    }
+  }
+
+  const adsenseClientId = 'ca-pub-5872513184553634';
+
   return (
     // O atributo lang será definido no layout [lang]
     <html suppressHydrationWarning>
+      <head>
+        {/* O script do AdSense só será renderizado se a condição for verdadeira */}
+        {shouldShowAds && <AdsenseScript adsenseClientId={adsenseClientId} />}
+      </head>
       <body>
-        {/* O script do AdSense foi removido daqui e substituído pela metatag acima */}
         <SessionContextProvider>
           <GoogleAnalytics />
           {children}
