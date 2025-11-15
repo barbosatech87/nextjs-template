@@ -1,5 +1,4 @@
 import { ReactNode } from 'react';
-import Script from 'next/script';
 import { SessionContextProvider } from '@/components/auth/session-context-provider';
 import { Toaster } from '@/components/ui/sonner';
 import GoogleAnalytics from '@/components/analytics/google-analytics';
@@ -10,8 +9,7 @@ interface RootLayoutProps {
   children: ReactNode;
 }
 
-// Adicionando metadados base para SEO
-// NOTA: A URL base deve ser alterada para o seu domínio de produção.
+// Adicionando metadados base para SEO e a metatag do AdSense
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.paxword.com'), // Substitua pelo seu domínio
   title: {
@@ -32,6 +30,9 @@ export const metadata: Metadata = {
     description: 'Um lugar para explorar a Bíblia, encontrar planos de leitura, devocionais e aprofundar sua fé.',
   },
   manifest: '/manifest.json',
+  other: {
+    'google-adsense-account': 'ca-pub-5872513184553634',
+  },
 };
 
 
@@ -40,12 +41,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     // O atributo lang será definido no layout [lang]
     <html suppressHydrationWarning>
       <body>
-        <Script
-          async
-          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5872513184553634"
-          crossOrigin="anonymous"
-          strategy="afterInteractive"
-        />
+        {/* O script do AdSense foi removido daqui e substituído pela metatag acima */}
         <SessionContextProvider>
           <GoogleAnalytics />
           {children}
