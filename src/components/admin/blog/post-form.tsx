@@ -272,21 +272,29 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
 
   async function onSubmit(values: PostFormValues) {
     startTransition(async () => {
-      // Decide published_at ou scheduled_for, e default se vazio
       const hasSchedule = !!values.scheduleDate && values.scheduleDate.trim() !== '';
       let publishedISO: string | null = null;
       let scheduledISO: string | null = null;
+      let finalStatus = values.status;
 
       if (hasSchedule) {
-        const chosen = new Date(values.scheduleDate as string);
+        const chosenDate = new Date(values.scheduleDate);
         const now = new Date();
-        if (chosen.getTime() > now.getTime()) {
-          scheduledISO = toISOFromLocal(values.scheduleDate as string);
+        
+        if (chosenDate.getTime() > now.getTime()) {
+          // Data futura: agendamento
+          scheduledISO = toISOFromLocal(values.scheduleDate);
+          publishedISO = null; // Garante que não seja publicado agora
+          finalStatus = 'draft'; // Força o status para rascunho, pois está agendado
         } else {
-          publishedISO = toISOFromLocal(values.scheduleDate as string);
+          // Data passada ou presente: publicação
+          publishedISO = toISOFromLocal(values.scheduleDate);
+          scheduledISO = null;
         }
-      } else {
+      } else if (values.status === 'published') {
+        // Sem data, mas status é 'publicado': publica agora
         publishedISO = new Date().toISOString();
+        scheduledISO = null;
       }
 
       const postData: NewPostData = {
@@ -298,7 +306,7 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
         image_alt_text: values.image_alt_text || null,
         seo_title: values.seo_title || null,
         seo_description: values.seo_description || null,
-        status: values.status,
+        status: finalStatus,
         published_at: publishedISO,
         scheduled_for: scheduledISO,
         category_ids: values.category_ids || [],
@@ -311,7 +319,6 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
       if (result.success) {
         toast.success(isEditing ? t.successEdit : t.successCreate);
 
-        // Após criar: já recebemos id e conteúdo no retorno
         if (!isEditing && 'postId' in result && 'postContent' in result) {
           const creationResult = result as { postId: string, postContent: { title: string, summary: string | null, content: string } };
           setNewPostData({
@@ -320,7 +327,6 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
           });
           setIsTranslationDialogOpen(true);
         } else {
-          // Após editar: usar os dados do próprio formulário para tradução
           if (postId) {
             setNewPostData({
               postId,
@@ -332,7 +338,6 @@ export function PostForm({ lang, initialData, isEditing = false, postId, initial
             });
             setIsTranslationDialogOpen(true);
           } else {
-            // fallback improvável: se não houver postId, retorna para a lista
             toast.success(t.successEdit);
             router.push(`/${lang}/admin/blog`);
           }
