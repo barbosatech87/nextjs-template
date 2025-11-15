@@ -6,7 +6,7 @@ interface BookTranslations {
   englishAliases?: string[];
 }
 
-const bookNameTranslations: Record<string, BookTranslations> = {
+export const bookNameTranslations: Record<string, BookTranslations> = {
   // Antigo Testamento
   "Genesis": { "pt": "Gênesis", "es": "Génesis" },
   "Exodus": { "pt": "Êxodo", "es": "Éxodo" },
@@ -125,7 +125,7 @@ export function getBookNameFromSlug(slug: string): string | undefined {
     // Tenta encontrar o nome canônico em inglês a partir do nome normalizado do slug,
     // verificando o nome em inglês, seus aliases e suas traduções.
     for (const englishCanonicalName in bookNameTranslations) {
-        const bookData = bookNameTranslations[englishCanonicalName];
+        const bookData = bookNameTranslations[englishCanonicalName as keyof typeof bookNameTranslations];
 
         // 1. Verifica o nome canônico em inglês
         if (normalizeName(englishCanonicalName) === normalizedSlugName) {
@@ -174,7 +174,7 @@ export function getEnglishBookName(dbBookName: string, lang: Locale): string | u
 
     // 2. Itera por todos os nomes canônicos em inglês e suas traduções/aliases
     for (const englishCanonicalName in bookNameTranslations) {
-        const bookData = bookNameTranslations[englishCanonicalName];
+        const bookData = bookNameTranslations[englishCanonicalName as keyof typeof bookNameTranslations];
 
         // Verifica se o input normalizado corresponde ao nome canônico em inglês (normalizado)
         if (normalizeName(englishCanonicalName) === normalizedInput) {

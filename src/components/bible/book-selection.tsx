@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Locale } from '@/lib/i18n/config';
-import { getTranslatedBookName, getEnglishBookName } from '@/lib/bible-translations';
+import { getTranslatedBookName, getEnglishBookName, bookNameTranslations } from '@/lib/bible-translations';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 interface Book {
@@ -11,9 +11,10 @@ interface Book {
   total_chapters: number;
 }
 
-// Estendemos a interface para incluir o nome canônico em inglês
+// Estendemos a interface para incluir o nome canônico em inglês e os aliases
 interface CanonicalBook extends Book {
   canonicalEnglishName: string; // O nome canônico em inglês (e.g., "Revelation")
+  englishAliases?: string[];
 }
 
 interface BookSelectionProps {
@@ -61,11 +62,13 @@ export const BookSelection: React.FC<BookSelectionProps> = ({ books, lang }) => 
   books.forEach(originalBook => { // Renomeado 'book' para 'originalBook' para maior clareza
     const englishCanonicalName = getEnglishBookName(originalBook.book, lang); // Converte o nome localizado do DB para o nome canônico em inglês
     if (englishCanonicalName) {
+      const bookData = bookNameTranslations[englishCanonicalName as keyof typeof bookNameTranslations];
       // Armazena o livro com o nome canônico em inglês para uso posterior
       const canonicalBook: CanonicalBook = {
         book: originalBook.book, // Nome original do DB
         total_chapters: originalBook.total_chapters,
         canonicalEnglishName: englishCanonicalName, // O nome canônico em inglês
+        englishAliases: bookData?.englishAliases,
       };
       bookMap.set(englishCanonicalName, canonicalBook);
     }
