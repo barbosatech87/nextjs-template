@@ -23,7 +23,7 @@ export const scheduleSchema = z.object({
   name: z.string().min(3, "O nome é obrigatório."),
   post_type: z.enum(['devotional', 'thematic', 'summary']),
   theme: z.string().nullable().optional(),
-  is_active: z.boolean().default(true),
+  is_active: z.boolean(),
   author_id: z.string().uuid("Selecione um autor."),
   category_ids: z.array(z.string().uuid()).nullable().optional(),
   default_image_prompt: z.string().min(10, "O prompt da imagem é obrigatório."),
