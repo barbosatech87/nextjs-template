@@ -68,7 +68,7 @@ export default function AuthPage({ params: paramsProp }: AuthPageProps) {
         </h1>
         <Auth
           supabaseClient={supabase}
-          // A prop 'view' foi removida para permitir que o componente controle seu próprio estado
+          view={view} // Força o componente a usar a view do nosso estado
           providers={[]}
           appearance={{
             theme: ThemeSupa,
