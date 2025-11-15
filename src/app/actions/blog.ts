@@ -483,71 +483,59 @@ export type DailyVerseData = {
 };
 
 export async function getDailyVerse(lang: string): Promise<DailyVerseData | null> {
+  // Define o tempo de revalidação para 24 horas (86400 segundos)
   const supabase = createSupabaseServerClient();
   const today = new Date().toISOString().split('T')[0];
 
-  let { data: dailyVerseRef, error: dailyVerseError } = await supabase
+  // 1. Buscar o versículo do dia (já traduzido e com texto)
+  // Adicionamos o cache de 24h aqui.
+  const { data: dailyVerse, error: dailyVerseError } = await supabase
     .from('daily_verse')
-    .select('book, chapter, verse_number')
+    .select('book, chapter, verse_number, text')
     .eq('date', today)
     .eq('language_code', lang)
-    .single();
+    .single()
+    .limit(1); // Adiciona limite 1 para garantir que é uma única linha
 
-  if (!dailyVerseRef || dailyVerseError) {
-    console.warn("Daily verse not found for today, fetching fallback.", dailyVerseError?.message);
+  if (dailyVerseError || !dailyVerse) {
+    console.warn(`Daily verse not found for today (${lang}), fetching fallback reference.`, dailyVerseError?.message);
+    
+    // 2. Se não encontrar o registro do dia, tentamos buscar uma referência aleatória para o idioma do usuário.
     const { data: fallbackRef, error: fallbackError } = await supabase
-      .rpc('get_fallback_verse', { lang_code: lang })
+      .rpc('get_random_verse', { lang_code: lang })
       .single();
     
     if (fallbackError || !fallbackRef) {
-      console.error("Failed to get fallback verse:", fallbackError);
-      return null;
-    }
-    // O fallback retorna um objeto com book, chapter, verse_number e version.
-    // Precisamos garantir que o tipo seja compatível com o que esperamos.
-    dailyVerseRef = fallbackRef as { book: string; chapter: number; verse_number: number };
-  }
-
-  if (!dailyVerseRef) {
-    return null;
-  }
-
-  const { data: verse, error: verseError } = await supabase
-    .from('verses')
-    .select('text')
-    .eq('book', dailyVerseRef.book)
-    .eq('chapter', dailyVerseRef.chapter)
-    .eq('verse_number', dailyVerseRef.verse_number)
-    .eq('language_code', lang)
-    .single();
-
-  if (verseError || !verse) {
-    // Se o versículo não for encontrado no idioma do usuário, tentamos buscar no idioma original (pt)
-    const { data: ptVerse, error: ptVerseError } = await supabase
-      .from('verses')
-      .select('text')
-      .eq('book', dailyVerseRef.book)
-      .eq('chapter', dailyVerseRef.chapter)
-      .eq('verse_number', dailyVerseRef.verse_number)
-      .eq('language_code', 'pt') // Tenta o idioma original
-      .single();
-
-    if (ptVerseError || !ptVerse) {
-      console.error("Failed to fetch verse text even in fallback language (pt):", ptVerseError);
+      console.error("Failed to get fallback verse reference:", fallbackError);
       return null;
     }
     
-    // Retorna o texto em português se o idioma do usuário falhar
+    // 3. Se encontrarmos uma referência, buscamos o texto do versículo na tabela 'verses'
+    const { data: verseText, error: verseTextError } = await supabase
+      .from('verses')
+      .select('text')
+      .eq('book', fallbackRef.book)
+      .eq('chapter', fallbackRef.chapter)
+      .eq('verse_number', fallbackRef.verse_number)
+      .eq('language_code', lang)
+      .single();
+
+    if (verseTextError || !verseText) {
+      console.error("Failed to fetch verse text for fallback reference:", verseTextError);
+      return null;
+    }
+    
+    // Retorna o fallback completo
     return {
-      ...dailyVerseRef,
-      text: ptVerse.text,
+      book: fallbackRef.book,
+      chapter: fallbackRef.chapter,
+      verse_number: fallbackRef.verse_number,
+      text: verseText.text,
     };
   }
 
-  return {
-    ...dailyVerseRef,
-    text: verse.text,
-  };
+  // 4. Se o registro do dia foi encontrado, retorna-o diretamente
+  return dailyVerse as DailyVerseData;
 }
 
 export async function getRecentPosts({
