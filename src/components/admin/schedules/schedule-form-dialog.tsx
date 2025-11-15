@@ -119,7 +119,7 @@ export function ScheduleFormDialog({ lang, authors, initialData, children }: Sch
             )} />
             
             <FormField control={form.control} name="post_type" render={({ field }) => (
-              <FormItem><FormLabel>Tipo de Post</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="devotional">Devocional (Versículo Aleatório)</SelectItem><SelectItem value="thematic">Estudo Temático</SelectItem><SelectItem value="summary" disabled>Resumo de Capítulo (Em breve)</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+              <FormItem><FormLabel>Tipo de Post</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger></FormControl><SelectContent><SelectItem value="devotional">Devocional (Versículo Aleatório)</SelectItem><SelectItem value="thematic">Estudo Temático</SelectItem><SelectItem value="summary">Resumo de Capítulo</SelectItem></SelectContent></Select><FormMessage /></FormItem>
             )} />
 
             {postType === 'thematic' && (

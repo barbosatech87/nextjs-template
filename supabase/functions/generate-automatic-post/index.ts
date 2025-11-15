@@ -32,8 +32,8 @@ async function generateDraftWithOpenAI(postType, context) {
       userPrompt = `Gere um post de estudo bíblico aprofundado sobre o tema: "${context.theme}". Use versículos bíblicos relevantes para embasar o conteúdo.`;
       break;
     case 'summary':
-      // Lógica para resumo de capítulo (a ser implementada)
-      userPrompt = `Gere um resumo detalhado e reflexivo do capítulo ${context.chapter} do livro de ${context.book}.`;
+      // A função RPC nos dá um versículo aleatório do capítulo, então usamos seus dados.
+      userPrompt = `Gere um resumo detalhado e reflexivo do capítulo ${context.verse.chapter} do livro de ${context.verse.book}.`;
       break;
     case 'devotional':
     default:
@@ -142,11 +142,15 @@ serve(async (req: Request) => {
     if (schedule.post_type === 'thematic') {
         if (!schedule.theme) throw new Error(`Theme is required for thematic post type on schedule ${schedule.id}`);
         context.theme = schedule.theme;
-    } else { // Devocional
+    } else if (schedule.post_type === 'devotional' || schedule.post_type === 'summary') {
         const { data: verse, error: verseError } = await supabase.rpc('get_unused_verse_for_schedule', { p_schedule_id: schedule.id }).single();
-        if (verseError || !verse) throw new Error(`Could not get unused verse for schedule ${schedule.id}: ${verseError?.message || 'No verse available.'}`);
+        if (verseError || !verse) {
+            throw new Error(`Could not get unused verse for schedule ${schedule.id}: ${verseError?.message || 'No verse available.'}`);
+        }
         context.verse = verse;
-        console.log(`[LOG] Selected verse: ${verse.book} ${verse.chapter}:${verse.verse_number}`);
+        console.log(`[LOG] Selected verse for ${schedule.post_type}: ${verse.book} ${verse.chapter}:${verse.verse_number}`);
+    } else {
+        throw new Error(`Unsupported post_type: ${schedule.post_type}`);
     }
 
     const draftPost = await generateDraftWithOpenAI(schedule.post_type, context);
@@ -188,7 +192,7 @@ serve(async (req: Request) => {
         else console.log(`[LOG] Associated ${postCategories.length} categories to post ${newPost.id}.`);
     }
 
-    if (schedule.post_type === 'devotional' && context.verse) {
+    if ((schedule.post_type === 'devotional' || schedule.post_type === 'summary') && context.verse) {
         const { error: usedVerseError } = await supabase.from('used_verses_for_automation').insert({
           schedule_id: schedule.id,
           verse_id: context.verse.id,
