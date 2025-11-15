@@ -27,7 +27,7 @@ const scheduleSchema = z.object({
   default_image_prompt: z.string().min(10, "O prompt da imagem é obrigatório."),
   is_active: z.boolean(),
   author_id: z.string().uuid("Selecione um autor."),
-  category_ids: z.array(z.string().uuid()).optional(),
+  category_ids: z.array(z.string().uuid()).nullable().optional(),
 }).refine(data => {
     if (data.post_type === 'thematic') {
         return !!data.theme && data.theme.length > 3;
