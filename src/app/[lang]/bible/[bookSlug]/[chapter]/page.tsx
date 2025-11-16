@@ -38,7 +38,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     notFound();
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   // Fetch verses for the current chapter
   const { data: verses, error: versesError } = await supabase

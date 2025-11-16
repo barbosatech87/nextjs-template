@@ -44,7 +44,7 @@ export default async function BookPage({ params }: BookPageProps) {
     notFound();
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from('verses')
     .select('chapter')
