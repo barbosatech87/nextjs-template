@@ -54,6 +54,8 @@ export async function generateMetadata(
     ? `${post.author_first_name || ''} ${post.author_last_name || ''}`.trim()
     : 'PaxWord';
 
+  const imageUrl = post.image_url || '/social-share.png';
+
   return {
     title: post.title,
     description: post.summary,
@@ -62,14 +64,14 @@ export async function generateMetadata(
       description: post.summary || '',
       url: `/${lang}/blog/${slug}`,
       siteName: 'PaxWord',
-      images: post.image_url ? [
+      images: [
         {
-          url: post.image_url,
+          url: imageUrl,
           width: 1200,
           height: 630,
           alt: post.image_alt_text || post.title,
         },
-      ] : [],
+      ],
       locale: lang,
       type: 'article',
       publishedTime: post.published_at || undefined,
@@ -79,7 +81,7 @@ export async function generateMetadata(
       card: 'summary_large_image',
       title: post.title,
       description: post.summary || '',
-      images: post.image_url ? [post.image_url] : [],
+      images: [imageUrl],
     },
   };
 }

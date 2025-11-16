@@ -25,11 +25,20 @@ export const metadata: Metadata = {
     siteName: 'PaxWord',
     locale: 'pt_BR',
     type: 'website',
+    images: [
+      {
+        url: '/social-share.png',
+        width: 1200,
+        height: 630,
+        alt: 'PaxWord - Explore a Palavra',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'PaxWord - Explore a Palavra',
     description: 'Um lugar para explorar a Bíblia, encontrar planos de leitura, devocionais e aprofundar sua fé.',
+    images: ['/social-share.png'],
   },
   manifest: '/manifest.json',
   other: {

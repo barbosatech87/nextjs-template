@@ -5,6 +5,7 @@ import { getBookNameFromSlug, getTranslatedBookName } from '@/lib/bible-translat
 import { VerseDisplay } from '@/components/bible/verse-display';
 import { BibleNavigation } from '@/components/bible/bible-navigation';
 import { ShareButtons } from '@/components/social/share-buttons';
+import { Metadata, ResolvingMetadata } from "next";
 
 const pageTexts = {
   pt: {
@@ -32,6 +33,48 @@ const pageTexts = {
 
 interface ChapterPageProps {
   params: Promise<{ lang: Locale; bookSlug: string; chapter: string }>;
+}
+
+export async function generateMetadata(
+  { params }: ChapterPageProps,
+  parent: ResolvingMetadata
+): Promise<Metadata> {
+  const { lang, bookSlug, chapter } = await params;
+  const bookName = getBookNameFromSlug(bookSlug);
+  
+  if (!bookName) {
+    return {
+      title: "Capítulo não encontrado",
+    };
+  }
+
+  const translatedBookName = getTranslatedBookName(bookName, lang);
+  const title = `Leitura de ${translatedBookName} ${chapter} - PaxWord`;
+  const description = `Leia o capítulo ${chapter} do livro de ${translatedBookName} na íntegra. Explore a Palavra de Deus no PaxWord.`;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      url: `/${lang}/bible/${bookSlug}/${chapter}`,
+      images: [
+        {
+          url: '/social-share.png',
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/social-share.png'],
+    },
+  };
 }
 
 export default async function ChapterPage({ params }: ChapterPageProps) {

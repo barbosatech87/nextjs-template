@@ -34,11 +34,20 @@ export async function generateMetadata(
       siteName: 'PaxWord',
       locale: lang,
       type: 'website',
+      images: [
+        {
+          url: '/social-share.png',
+          width: 1200,
+          height: 630,
+          alt: page.title,
+        },
+      ],
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title: page.title,
       description: page.summary || '',
+      images: ['/social-share.png'],
     },
   };
 }
