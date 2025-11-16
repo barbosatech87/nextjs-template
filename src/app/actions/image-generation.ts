@@ -12,7 +12,7 @@ export type GeneratedImageData = {
 
 export async function getGeneratedImages(): Promise<GeneratedImageData[]> {
     try {
-        const supabase = createSupabaseServerClient();
+        const supabase = await createSupabaseServerClient();
         const { data: { user } } = await supabase.auth.getUser();
 
         if (!user) {
@@ -41,7 +41,7 @@ export async function getGeneratedImages(): Promise<GeneratedImageData[]> {
 }
 
 export async function deleteGeneratedImage(id: string) {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {

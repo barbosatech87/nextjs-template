@@ -7,7 +7,7 @@ const BUCKET_NAME = 'blog_images';
 
 export async function uploadImage(file: File) {
   try {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {

@@ -19,7 +19,7 @@ const systemPrompt = `Você é um assistente bíblico. Sua função é responder
 
 async function getBibleVerse(book: string, chapter: number, verse_number: number, lang: Locale) {
   console.log(`Buscando versículo: ${book} ${chapter}:${verse_number} em ${lang}`);
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   
   const englishBookName = getEnglishBookName(book, lang);
 
