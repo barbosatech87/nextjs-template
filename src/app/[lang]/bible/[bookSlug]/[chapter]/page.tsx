@@ -14,6 +14,9 @@ const pageTexts = {
     next: "Próximo",
     shareTitle: "Leitura de",
     shareSummary: "Leia o capítulo {chapter} de {book} na íntegra no PaxWord.",
+    home: "Início",
+    chapterLabel: "Capítulo",
+    holyBible: "A Bíblia Sagrada",
   },
   en: {
     bible: "Bible",
@@ -21,6 +24,9 @@ const pageTexts = {
     next: "Next",
     shareTitle: "Reading",
     shareSummary: "Read chapter {chapter} of {book} in full on PaxWord.",
+    home: "Home",
+    chapterLabel: "Chapter",
+    holyBible: "The Holy Bible",
   },
   es: {
     bible: "Biblia",
@@ -28,6 +34,9 @@ const pageTexts = {
     next: "Siguiente",
     shareTitle: "Lectura de",
     shareSummary: "Lee el capítulo {chapter} de {book} completo en PaxWord.",
+    home: "Inicio",
+    chapterLabel: "Capítulo",
+    holyBible: "La Santa Biblia",
   }
 };
 
@@ -121,41 +130,64 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
   const shareSummary = texts.shareSummary.replace('{chapter}', chapter).replace('{book}', translatedBookName);
   const sharePath = `bible/${bookSlug}/${chapter}`;
 
+  // --- Dados Estruturados (JSON-LD) ---
+  const baseUrl = 'https://www.paxword.com';
+  const fullUrl = `${baseUrl}/${lang}/bible/${bookSlug}/${chapter}`;
+
+  const chapterSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Chapter',
+    'name': `${texts.shareTitle} ${translatedBookName} ${chapterNumber}`,
+    'chapterNumber': chapterNumber,
+    'isPartOf': {
+      '@type': 'Book',
+      'name': translatedBookName,
+      'isPartOf': {
+        '@type': 'BookSeries',
+        'name': texts.holyBible,
+        'url': `${baseUrl}/${lang}/bible`
+      }
+    }
+  };
+
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    'itemListElement': [
+      {
+        '@type': 'ListItem',
+        'position': 1,
+        'name': texts.home,
+        'item': `${baseUrl}/${lang}`
+      },
+      {
+        '@type': 'ListItem',
+        'position': 2,
+        'name': texts.bible,
+        'item': `${baseUrl}/${lang}/bible`
+      },
+      {
+        '@type': 'ListItem',
+        'position': 3,
+        'name': translatedBookName,
+        'item': `${baseUrl}/${lang}/bible/${bookSlug}`
+      },
+      {
+        '@type': 'ListItem',
+        'position': 4,
+        'name': `${texts.chapterLabel} ${chapterNumber}`,
+        'item': fullUrl
+      }
+    ]
+  };
+
   return (
-    <main className="container mx-auto px-4 py-8 max-w-4xl">
-      <BibleNavigation
-        lang={lang}
-        bookName={translatedBookName}
-        bookSlug={bookSlug}
-        chapter={chapterNumber}
-        totalChapters={totalChapters}
-        texts={texts}
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify([chapterSchema, breadcrumbSchema]) }}
       />
-      
-      <header className="text-center my-8">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{translatedBookName} {chapterNumber}</h1>
-      </header>
-
-      <ShareButtons
-        title={shareTitle}
-        summary={shareSummary}
-        path={sharePath}
-        lang={lang}
-        className="mb-8"
-      />
-
-      <div className="mt-8">
-        <VerseDisplay verses={verses || []} />
-      </div>
-
-      <div className="mt-8">
-        <ShareButtons
-          title={shareTitle}
-          summary={shareSummary}
-          path={sharePath}
-          lang={lang}
-          className="my-8"
-        />
+      <main className="container mx-auto px-4 py-8 max-w-4xl">
         <BibleNavigation
           lang={lang}
           bookName={translatedBookName}
@@ -164,7 +196,41 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
           totalChapters={totalChapters}
           texts={texts}
         />
-      </div>
-    </main>
+        
+        <header className="text-center my-8">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{translatedBookName} {chapterNumber}</h1>
+        </header>
+
+        <ShareButtons
+          title={shareTitle}
+          summary={shareSummary}
+          path={sharePath}
+          lang={lang}
+          className="mb-8"
+        />
+
+        <div className="mt-8">
+          <VerseDisplay verses={verses || []} />
+        </div>
+
+        <div className="mt-8">
+          <ShareButtons
+            title={shareTitle}
+            summary={shareSummary}
+            path={sharePath}
+            lang={lang}
+            className="my-8"
+          />
+          <BibleNavigation
+            lang={lang}
+            bookName={translatedBookName}
+            bookSlug={bookSlug}
+            chapter={chapterNumber}
+            totalChapters={totalChapters}
+            texts={texts}
+          />
+        </div>
+      </main>
+    </>
   );
 }
