@@ -87,9 +87,9 @@ export const config = {
      * - api (rotas de API)
      * - _next/static (arquivos estáticos)
      * - _next/image (otimização de imagem)
-     * - favicon.ico (arquivo de favicon)
+     * - qualquer arquivo com uma extensão (ex: .ico, .svg, .png, .js, .json)
      * Isso evita que o middleware seja executado em requisições desnecessárias.
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|sw.js).*)',
+    '/((?!api|_next/static|_next/image|.*\\..*).*)',
   ],
 };
