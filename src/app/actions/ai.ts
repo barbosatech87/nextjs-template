@@ -183,7 +183,7 @@ export async function generatePostWithAI(
  * Gera uma imagem chamando a Edge Function.
  */
 export async function generateImageAction(prompt: string): Promise<{ success: boolean; url?: string; message?: string }> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { session } } = await supabase.auth.getSession();
 
   if (!session) {
@@ -229,7 +229,7 @@ export async function generateImageAction(prompt: string): Promise<{ success: bo
  */
 export async function saveGeneratedImage(prompt: string, imageUrl: string): Promise<{ success: boolean; message?: string }> {
   try {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -264,7 +264,7 @@ export async function saveGeneratedImage(prompt: string, imageUrl: string): Prom
  * Busca metadados da Bíblia (livro e total de capítulos) para um idioma específico.
  */
 export async function getBibleMetadata(lang: Locale) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   
   const { data, error } = await supabase.rpc('get_bible_metadata', {
     lang_code: lang,
