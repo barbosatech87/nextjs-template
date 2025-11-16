@@ -5,8 +5,70 @@ const pwaConfig = withPWA({
   dest: "public",
   register: true,
   skipWaiting: true,
-  // A linha abaixo foi descomentada para desabilitar o PWA em desenvolvimento.
   disable: process.env.NODE_ENV === "development",
+  runtimeCaching: [
+    // Estratégia para páginas (HTML)
+    {
+      urlPattern: ({ request }) => request.mode === 'navigate',
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'pages',
+        expiration: {
+          maxEntries: 60,
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 dias
+        },
+      },
+    },
+    // Estratégia para imagens
+    {
+      urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'images',
+        expiration: {
+          maxEntries: 60,
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 dias
+        },
+      },
+    },
+    // Estratégia para fontes
+    {
+      urlPattern: /^https:\/\/fonts\.(?:googleapis|gstatic)\.com\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'google-fonts',
+        expiration: {
+          maxEntries: 30,
+          maxAgeSeconds: 60 * 60 * 24 * 365, // 1 ano
+        },
+      },
+    },
+    // Estratégia para dados da API do Supabase
+    {
+      urlPattern: new RegExp(`^${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/.*`),
+      handler: 'StaleWhileRevalidate',
+      options: {
+        cacheName: 'api-data',
+        expiration: {
+          maxEntries: 50,
+          maxAgeSeconds: 10 * 60, // 10 minutos
+        },
+      },
+    },
+    // Estratégia para arquivos estáticos (JS, CSS)
+    {
+      urlPattern: ({ request }) =>
+        request.destination === 'script' || request.destination === 'style',
+      handler: 'StaleWhileRevalidate',
+      options: {
+        cacheName: 'static-resources',
+        expiration: {
+          maxEntries: 60,
+          maxAgeSeconds: 24 * 60 * 60, // 1 dia
+        },
+      },
+    },
+  ],
 });
 
 const nextConfig: NextConfig = {
