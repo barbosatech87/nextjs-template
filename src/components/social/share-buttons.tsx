@@ -65,7 +65,7 @@ export function ShareButtons({ title, summary, path, lang, className }: ShareBut
   const t = texts[lang] || texts.pt;
 
   useEffect(() => {
-    if (typeof navigator !== 'undefined' && navigator.share) {
+    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
       setIsShareApiAvailable(true);
     }
   }, []);
