@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Locale } from "@/lib/i18n/config";
 import { PostSection } from "@/components/home/post-section";
 import { Metadata, ResolvingMetadata } from "next";
+import { ShareButtons } from "@/components/social/share-buttons";
 
 const texts = {
   pt: {
@@ -162,7 +163,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             {post.title}
           </h1>
 
-          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-8">
+          <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-6">
             <div className="flex items-center gap-1">
               <User className="h-4 w-4" />
               <span>{t.author} {authorName}</span>
@@ -177,6 +178,14 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             </Badge>
           </div>
 
+          <ShareButtons 
+            title={post.title}
+            summary={post.summary}
+            slug={post.slug}
+            lang={lang}
+            className="mb-8"
+          />
+
           {post.summary && (
             <p className="text-xl italic text-foreground/80 mb-8 border-l-4 pl-4 border-primary/50">
               {post.summary}
@@ -188,6 +197,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <div 
             className="prose prose-lg dark:prose-invert max-w-none"
             dangerouslySetInnerHTML={{ __html: post.content }}
+          />
+
+          <Separator className="my-8" />
+
+          <ShareButtons 
+            title={post.title}
+            summary={post.summary}
+            slug={post.slug}
+            lang={lang}
           />
         </article>
 
