@@ -4,7 +4,7 @@ import { createSupabaseServerClient } from "@/integrations/supabase/server";
 
 // Helper para verificar se o usuário é admin
 async function checkAdmin() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Usuário não autenticado.");
 
@@ -31,7 +31,7 @@ export type DashboardStats = {
 export async function getDashboardStats(): Promise<DashboardStats | null> {
   try {
     await checkAdmin();
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
 
     const [
       publishedPostsCount,

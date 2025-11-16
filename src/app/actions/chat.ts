@@ -48,7 +48,7 @@ export async function getAiChatResponse(
   history: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
   lang: Locale
 ) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {

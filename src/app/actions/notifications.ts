@@ -15,7 +15,7 @@ export async function createNotificationForUser(
   body: string,
   metadata?: Record<string, unknown>
 ) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   assert(user, "Not authenticated");
 
@@ -38,7 +38,7 @@ export async function createNotificationForUser(
  * Envia uma notificação para todos os usuários e registra o envio.
  */
 export async function sendNotificationToAll(title: string, body: string) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   assert(user, "Not authenticated");
 
@@ -84,7 +84,7 @@ export async function sendNotificationToAll(title: string, body: string) {
  * Busca todos os envios de notificação para a listagem no painel de admin.
  */
 export async function getNotificationBroadcasts() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from("notification_broadcasts")
     .select("*")
@@ -101,7 +101,7 @@ export async function getNotificationBroadcasts() {
  * Deleta um envio de notificação e todas as notificações individuais associadas.
  */
 export async function deleteNotificationBroadcast(broadcastId: string) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   assert(user, "Not authenticated");
 

@@ -34,7 +34,7 @@ function ReadingSkeleton() {
 export default async function PlanPage({ params, searchParams }: PlanPageProps) {
     const { lang, planId } = await params;
     const sp = await searchParams;
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     const { plan, completedDays } = await getPlanAndProgress(planId);

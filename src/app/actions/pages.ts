@@ -15,7 +15,7 @@ type CreatePageSuccess = {
 type ActionResponse = CreatePageSuccess | { success: false; message: string; };
 
 async function checkAdmin() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Usuário não autenticado.");
 
@@ -34,7 +34,7 @@ async function checkAdmin() {
 export async function createPage(pageData: PageData, lang: string): Promise<ActionResponse> {
   try {
     const author_id = await checkAdmin();
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
 
     const { data: newPage, error } = await supabase
       .from("pages")
@@ -59,7 +59,7 @@ export async function createPage(pageData: PageData, lang: string): Promise<Acti
 export async function updatePage(pageId: string, pageData: PageData, lang: string) {
   try {
     await checkAdmin();
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
 
     const { error } = await supabase
       .from("pages")
@@ -81,7 +81,7 @@ export async function updatePage(pageId: string, pageData: PageData, lang: strin
 export async function deletePage(pageId: string, lang: string) {
   try {
     await checkAdmin();
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
 
     const { error } = await supabase.from("pages").delete().eq("id", pageId);
 
@@ -96,7 +96,7 @@ export async function deletePage(pageId: string, lang: string) {
 }
 
 export async function getAdminPages(): Promise<Page[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.from('pages').select('*').order('created_at', { ascending: false });
   if (error) {
     console.error("Error fetching admin pages:", error);
@@ -106,7 +106,7 @@ export async function getAdminPages(): Promise<Page[]> {
 }
 
 export async function getPageById(pageId: string): Promise<Page | null> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.from('pages').select('*').eq('id', pageId).single();
   if (error) {
     console.error("Error fetching page by ID:", error);
@@ -116,7 +116,7 @@ export async function getPageById(pageId: string): Promise<Page | null> {
 }
 
 export async function getPageBySlug(slug: string, lang: string): Promise<(Page & { content: string }) | null> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: page, error } = await supabase
     .from('pages')
     .select('*')

@@ -5,7 +5,7 @@ import { Verse } from "@/types/supabase";
 import { revalidatePath } from "next/cache";
 
 export async function getFavoriteVerseIds(userId: string): Promise<Set<string>> {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
         .from("user_favorites")
         .select("verse_id")
@@ -20,7 +20,7 @@ export async function getFavoriteVerseIds(userId: string): Promise<Set<string>> 
 }
 
 export async function toggleFavoriteVerse(verse: Verse, isFavorited: boolean): Promise<{ success: boolean; message: string }> {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -75,7 +75,7 @@ export type HydratedFavorite = {
 };
 
 export async function getHydratedFavorites(): Promise<HydratedFavorite[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {

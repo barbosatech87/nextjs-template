@@ -47,7 +47,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const { lang } = await params;
   const t = pageTexts[lang] || pageTexts.pt;
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {

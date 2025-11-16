@@ -3,7 +3,7 @@ import { createSupabaseServerClient } from '@/integrations/supabase/server'
 import { i18n } from '@/lib/i18n/config'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = createSupabaseServerClient()
+  const supabase = await createSupabaseServerClient()
   const baseUrl = 'https://www.paxword.com' // Idealmente, isso viria de uma variável de ambiente
 
   // 1. Páginas estáticas

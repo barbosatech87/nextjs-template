@@ -27,7 +27,7 @@ interface BiblePageProps {
 
 export default async function BiblePage({ params }: BiblePageProps) {
   const { lang } = await params;
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const texts = pageTexts[lang] || pageTexts.pt;
 
   const { data: books, error } = await supabase.rpc('get_bible_metadata', {

@@ -56,7 +56,7 @@ function createSnippet(text: string, query: string): string {
 export async function searchAll(query: string, lang: Locale): Promise<SearchResult[]> {
   if (!query) return [];
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const results: SearchResult[] = [];
   const addedVerseKeys = new Set<string>();
 

@@ -38,7 +38,7 @@ function constructCronExpression(data: ScheduleFormData): string {
 }
 
 async function checkAdmin() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Usuário não autenticado.");
 
@@ -54,7 +54,7 @@ async function checkAdmin() {
 }
 
 export async function getSchedules() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from('automatic_post_schedules')
     .select('*')
@@ -76,7 +76,7 @@ export async function saveSchedule(formData: ScheduleFormData, lang: Locale) {
       return { success: false, message: firstError };
     }
 
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const { id, frequencyType, time, dayOfWeek, dayOfMonth, ...scheduleData } = validation.data;
 
     const cronExpression = constructCronExpression(validation.data);
@@ -112,7 +112,7 @@ export async function saveSchedule(formData: ScheduleFormData, lang: Locale) {
 export async function deleteSchedule(id: string, lang: Locale) {
   try {
     await checkAdmin();
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const { error } = await supabase
       .from('automatic_post_schedules')
       .delete()

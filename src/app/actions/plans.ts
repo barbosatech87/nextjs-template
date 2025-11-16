@@ -15,7 +15,7 @@ interface ChapterReference {
 }
 
 export async function deleteUserReadingPlan(planId: string, lang: Locale): Promise<{ success: boolean; message: string }> {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -38,7 +38,7 @@ export async function deleteUserReadingPlan(planId: string, lang: Locale): Promi
 }
 
 export async function getUserActiveReadingPlans(): Promise<UserReadingPlan[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
@@ -60,7 +60,7 @@ export async function getUserActiveReadingPlans(): Promise<UserReadingPlan[]> {
 }
 
 export async function getPlanAndProgress(planId: string): Promise<{ plan: UserReadingPlan; completedDays: Set<number> }> {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) notFound();
@@ -93,7 +93,7 @@ export async function getPlanAndProgress(planId: string): Promise<{ plan: UserRe
 }
 
 export async function getChaptersText(chapters: ChapterReference[], lang: Locale): Promise<Verse[]> {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const queries = chapters.map(c => 
         supabase.from("verses")
             .select("*") // Seleciona tudo para ter todos os dados do versículo
@@ -116,7 +116,7 @@ export async function getChaptersText(chapters: ChapterReference[], lang: Locale
 }
 
 export async function updateReadingProgress(planId: string, dayNumber: number, isCompleted: boolean, lang: Locale) {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
@@ -158,7 +158,7 @@ export async function createUserReadingPlan(
     return { success: false, message: "Dados inválidos." };
   }
 
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
