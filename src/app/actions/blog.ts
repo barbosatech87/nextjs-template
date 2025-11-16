@@ -515,15 +515,34 @@ export async function getDailyVerse(lang: string): Promise<DailyVerseData | null
     console.warn(`Daily verse not found for today (${lang}), fetching fallback reference.`, dailyVerseError?.message);
     
     // 2. Se não encontrar o registro do dia, tentamos buscar uma referência aleatória para o idioma do usuário.
-    const { data: fallbackRef, error: fallbackError } = await supabase
+    let refLang = lang;
+    const { data: fallbackRefPrimary, error: fallbackErrorPrimary } = await supabase
       .rpc('get_random_verse', { lang_code: lang })
-      .single();
-    
-    // Tipagem explícita para fallbackRef
-    const typedFallbackRef = fallbackRef as VerseReference | null;
+      .maybeSingle();
 
-    if (fallbackError || !typedFallbackRef) {
-      console.error("Failed to get fallback verse reference:", fallbackError);
+    let typedFallbackRef = fallbackRefPrimary as VerseReference | null;
+
+    // Se não houver referência no idioma solicitado, tenta em 'pt'
+    if (!typedFallbackRef) {
+      const { data: fallbackRefPt, error: fallbackErrorPt } = await supabase
+        .rpc('get_random_verse', { lang_code: 'pt' })
+        .maybeSingle();
+
+      if (fallbackErrorPrimary) {
+        console.warn('Primary fallback reference query error:', fallbackErrorPrimary);
+      }
+      if (fallbackErrorPt) {
+        console.warn('PT fallback reference query error:', fallbackErrorPt);
+      }
+
+      if (fallbackRefPt) {
+        typedFallbackRef = fallbackRefPt as VerseReference;
+        refLang = 'pt';
+      }
+    }
+    
+    if (!typedFallbackRef) {
+      console.error("Failed to get any fallback verse reference.");
       return null;
     }
     
@@ -534,7 +553,7 @@ export async function getDailyVerse(lang: string): Promise<DailyVerseData | null
       .eq('book', typedFallbackRef.book)
       .eq('chapter', typedFallbackRef.chapter)
       .eq('verse_number', typedFallbackRef.verse_number)
-      .eq('language_code', lang)
+      .eq('language_code', refLang)
       .single();
 
     if (verseTextError || !verseText) {

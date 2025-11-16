@@ -11,8 +11,9 @@ interface PostCardProps {
 }
 
 const PostCard: React.FC<PostCardProps> = ({ post, lang }) => {
+  const dateLocale = lang === 'pt' ? 'pt-BR' : lang === 'en' ? 'en-US' : 'es-ES';
   const formattedDate = post.published_at 
-    ? new Date(post.published_at).toLocaleDateString(lang, { year: 'numeric', month: 'long', day: 'numeric' })
+    ? new Date(post.published_at).toLocaleDateString(dateLocale, { year: 'numeric', month: 'long', day: 'numeric' })
     : 'N/A';
 
   return (
