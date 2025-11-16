@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle } from "lucide-react";
 
 interface ManageUsersPageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 export default async function ManageUsersPage({ params }: ManageUsersPageProps) {
-  const { lang } = params;
+  const { lang } = await params;
   const users = await getAdminUsers();
 
   return (

@@ -6,11 +6,11 @@ import { getNotificationBroadcasts } from '@/app/actions/notifications';
 import { NotificationsTable } from '@/components/admin/notifications/notifications-table';
 
 interface ManageNotificationsPageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 export default async function ManageNotificationsPage({ params }: ManageNotificationsPageProps) {
-  const { lang } = params;
+  const { lang } = await params;
   const broadcasts = await getNotificationBroadcasts();
 
   const t = {
