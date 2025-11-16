@@ -11,19 +11,32 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// --- Função de refinamento com Claude (versão corrigida) ---
-async function refineContentWithClaude(content: string): Promise<string> {
+// --- Função de finalização com Claude ---
+async function refineAndFinalizeWithClaude(content: string): Promise<AIResponse> {
   if (!process.env.CLAUDE_API_KEY) {
     console.warn("CLAUDE_API_KEY not set. Skipping refinement step.");
-    return content;
+    throw new Error("Chave da API Claude não configurada.");
   }
 
   try {
-    // O system prompt define o papel e as instruções da IA.
-    const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua principal prioridade é refinar o rascunho a seguir para ranquear na primeira página do Google. Para isso, reescreva o texto com um tom **altamente pessoal e envolvente**, falando diretamente ao leitor cristão. Otimize para SEO, incorporando palavras-chave relevantes de forma natural, usando uma estrutura clara com subtítulos (H2, H3) e garantindo que o texto responda a possíveis perguntas do usuário. Além do SEO, melhore a profundidade teológica, a clareza e o tom inspirador. Mantenha o formato Markdown. Retorne APENAS o conteúdo Markdown refinado do corpo do post, nada mais.`;
+    const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua tarefa é pegar um rascunho de post em Markdown e transformá-lo em um artigo completo e otimizado.
+
+Sua saída DEVE ser um objeto JSON com a seguinte estrutura:
+{
+  "title": "Um título atrativo e otimizado para SEO com no máximo 70 caracteres.",
+  "slug": "um-slug-para-url-baseado-no-titulo-sem-acentos-e-com-hifens",
+  "content": "O corpo do post em formato Markdown, refinado para ter um tom pessoal, envolvente e teologicamente sólido. Otimize para SEO, usando subtítulos (H2, H3) e palavras-chave relevantes. Não inclua o título principal (H1) aqui.",
+  "summary": "Um resumo conciso do post com no máximo 300 caracteres.",
+  "seo_title": "Um título para SEO, similar ao título principal, com no máximo 60 caracteres.",
+  "seo_description": "Uma meta descrição para SEO, otimizada para cliques, com no máximo 160 caracteres."
+}
+
+Instruções para o refinamento do conteúdo:
+1.  Reescreva o texto com um tom altamente pessoal e envolvente, falando diretamente ao leitor.
+2.  Melhore a profundidade teológica, a clareza e o tom inspirador.
+3.  Garanta que a estrutura do conteúdo seja clara, usando subtítulos (H2, H3) e listas quando apropriado.`;
     
-    // O user prompt contém o conteúdo a ser refinado.
-    const userPrompt = `Refine este rascunho de conteúdo:\n\n${content}`;
+    const userPrompt = `Refine este rascunho e crie o JSON completo:\n\n${content}`;
     
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -33,11 +46,9 @@ async function refineContentWithClaude(content: string): Promise<string> {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-5-20250929",
+        model: "claude-3-5-sonnet-20240620",
         max_tokens: 4096,
-        // Usando o parâmetro oficial 'system' para as instruções.
         system: systemPrompt,
-        // O array 'messages' agora contém apenas o conteúdo do usuário.
         messages: [{ role: "user", content: userPrompt }],
         temperature: 0.5,
       }),
@@ -49,18 +60,25 @@ async function refineContentWithClaude(content: string): Promise<string> {
     }
 
     const data = await response.json();
-    // A estrutura de resposta da API do Claude tem o conteúdo em um array.
-    const refinedContent = data.content[0].text;
+    const jsonString = data.content[0].text;
     
-    console.log("Content successfully refined by Claude.");
-    return refinedContent;
+    const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("Claude did not return a valid JSON object.");
+    }
+    
+    const parsedJson = JSON.parse(jsonMatch[0]);
+    const validatedData = postOutputSchema.parse(parsedJson);
+    
+    console.log("Content successfully finalized by Claude.");
+    return validatedData;
 
   } catch (error) {
-    console.error("Error refining content with Claude:", error);
-    // Se o refinamento falhar, retorna o conteúdo original para não quebrar o fluxo.
-    return content;
+    console.error("Error finalizing content with Claude:", error);
+    throw error;
   }
 }
+
 
 // --- Tipos e Schemas ---
 const generationRequestSchema = z.object({
@@ -101,71 +119,48 @@ export async function generatePostWithAI(
   }
 
   try {
-    const systemPrompt = `
-      Você é um assistente de IA especializado em criar conteúdo para um blog bíblico.
-      Seu público é primariamente cristão.
-      Todo o conteúdo deve ser otimizado para SEO, com linguagem clara, inspiradora e teologicamente sólida.
-      O idioma do conteúdo gerado deve ser ${request.lang}.
-      
-      Instruções de Formatação:
-      1. O campo "title" deve conter apenas o título principal.
-      2. O campo "content" deve conter o corpo do artigo em Markdown. Não inclua o título principal (H1) no campo "content". Use subtítulos (H2, H3) e formatação Markdown (negrito, listas) conforme necessário.
-      
-      Sua resposta DEVE ser um objeto JSON com a seguinte estrutura:
-      {
-        "title": "Um título atrativo e otimizado para SEO com no máximo 70 caracteres.",
-        "slug": "um-slug-para-url-baseado-no-titulo-sem-acentos-e-com-hifens",
-        "content": "O corpo do post em formato Markdown, começando diretamente com o primeiro parágrafo ou subtítulo (H2). Deve ter pelo menos 3 parágrafos.",
-        "summary": "Um resumo conciso do post com no máximo 300 caracteres. Pode ser nulo se não for relevante.",
-        "seo_title": "Um título para SEO, similar ao título principal, com no máximo 60 caracteres.",
-        "seo_description": "Uma meta descrição para SEO, otimizada para cliques, com no máximo 160 caracteres."
-      }
-    `;
+    // 1. Gerar rascunho inicial com OpenAI
+    const openAISystemPrompt = `Você é um assistente de IA especializado em criar rascunhos para um blog bíblico. Seu público é primariamente cristão. O idioma do conteúdo gerado deve ser ${request.lang}. Gere APENAS o corpo do post em formato Markdown. Não inclua um título principal (H1). Comece diretamente com o primeiro parágrafo ou um subtítulo (H2).`;
 
-    let userPrompt = "";
+    let openAIUserPrompt = "";
     const { type, context } = request;
 
     switch (type) {
       case "devotional":
-        userPrompt = `Gere um post devocional baseado no versículo: ${context.book} ${context.chapter}:${context.verse}. O post deve incluir: uma reflexão sobre o versículo, uma aplicação prática para o dia a dia e uma breve oração.`;
+        openAIUserPrompt = `Gere um rascunho de post devocional baseado no versículo: ${context.book} ${context.chapter}:${context.verse}. O post deve incluir: uma reflexão sobre o versículo, uma aplicação prática para o dia a dia e uma breve oração.`;
         break;
       case "thematic":
-        userPrompt = `Gere o primeiro post de uma série temática sobre "${context.theme}". O post deve introduzir o tema, discutir sua importância à luz da Bíblia e usar pelo menos um versículo relevante como base.`;
+        openAIUserPrompt = `Gere um rascunho para o primeiro post de uma série temática sobre "${context.theme}". O post deve introduzir o tema, discutir sua importância à luz da Bíblia e usar pelo menos um versículo relevante como base.`;
         break;
       case "summary":
-        userPrompt = `Gere um post que resume o capítulo ${context.chapter} do livro de ${context.book}. O resumo deve ser em linguagem acessível, destacando os principais eventos, personagens e ensinamentos do capítulo.`;
+        openAIUserPrompt = `Gere um rascunho que resume o capítulo ${context.chapter} do livro de ${context.book}. O resumo deve ser em linguagem acessível, destacando os principais eventos, personagens e ensinamentos do capítulo.`;
         break;
       default:
         return { success: false, message: "Tipo de geração inválido." };
     }
 
-    const response = await openai.chat.completions.create({
+    const openAIResponse = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
+        { role: "system", content: openAISystemPrompt },
+        { role: "user", content: openAIUserPrompt },
       ],
-      response_format: { type: "json_object" },
       temperature: 0.7,
     });
 
-    const content = response.choices[0].message.content;
-    if (!content) {
-      throw new Error("A resposta da IA está vazia.");
+    const initialDraft = openAIResponse.choices[0].message.content;
+    if (!initialDraft) {
+      throw new Error("A resposta da OpenAI (rascunho inicial) está vazia.");
     }
 
-    const parsedContent = postOutputSchema.parse(JSON.parse(content));
+    // 2. Refinar e finalizar com Claude
+    const finalPostObject = await refineAndFinalizeWithClaude(initialDraft);
 
-    if (parsedContent.content) {
-        console.log("Refining content with Claude...");
-        parsedContent.content = await refineContentWithClaude(parsedContent.content);
-    }
-
-    return { success: true, data: parsedContent };
+    return { success: true, data: finalPostObject };
   } catch (error) {
     console.error("Erro ao gerar post com IA:", error);
     
-    let errorMessage = "Falha ao comunicar com a API da OpenAI.";
+    let errorMessage = "Falha ao comunicar com as APIs de IA.";
     
     if (error instanceof z.ZodError) {
       errorMessage = "A IA retornou um formato de dados inesperado.";

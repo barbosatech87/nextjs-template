@@ -16,28 +16,19 @@ const corsHeaders = {
 // --- FUNÇÕES DE IA E UTILITÁRIOS ---
 
 async function generateDraftWithOpenAI(postType, context) {
-  const systemPrompt = `Você é um assistente de IA para um blog cristão. Gere um post baseado no tipo e contexto fornecidos. O idioma deve ser português do Brasil. A saída DEVE ser um objeto JSON com a seguinte estrutura:
-{
-  "title": "Um título atrativo e otimizado para SEO com no máximo 70 caracteres.",
-  "slug": "um-slug-para-url-baseado-no-titulo-sem-acentos-e-com-hifens",
-  "content": "O corpo do post em formato Markdown, com pelo menos 3 parágrafos. Não inclua o título principal (H1) no conteúdo.",
-  "summary": "Um resumo conciso do post com no máximo 300 caracteres.",
-  "seo_title": "Um título para SEO, similar ao título principal, com no máximo 60 caracteres.",
-  "seo_description": "Uma meta descrição para SEO, otimizada para cliques, com no máximo 160 caracteres."
-}`;
+  const systemPrompt = `Você é um assistente de IA para um blog cristão. Gere um rascunho de post em formato Markdown baseado no tipo e contexto fornecidos. O idioma deve ser português do Brasil. Foque apenas no corpo do texto. Não inclua um título principal (H1).`;
   
   let userPrompt = "";
   switch (postType) {
     case 'thematic':
-      userPrompt = `Gere um post de estudo bíblico aprofundado sobre o tema: "${context.theme}". Use versículos bíblicos relevantes para embasar o conteúdo.`;
+      userPrompt = `Gere um rascunho de post de estudo bíblico aprofundado sobre o tema: "${context.theme}". Use versículos bíblicos relevantes para embasar o conteúdo.`;
       break;
     case 'summary':
-      // A função RPC nos dá um versículo aleatório do capítulo, então usamos seus dados.
-      userPrompt = `Gere um resumo detalhado e reflexivo do capítulo ${context.verse.chapter} do livro de ${context.verse.book}.`;
+      userPrompt = `Gere um rascunho de resumo detalhado e reflexivo do capítulo ${context.verse.chapter} do livro de ${context.verse.book}.`;
       break;
     case 'devotional':
     default:
-      userPrompt = `Gere um post devocional para o versículo: ${context.verse.book} ${context.verse.chapter}:${context.verse.verse_number} - "${context.verse.text}".`;
+      userPrompt = `Gere um rascunho de post devocional para o versículo: ${context.verse.book} ${context.verse.chapter}:${context.verse.verse_number} - "${context.verse.text}".`;
       break;
   }
 
@@ -47,25 +38,40 @@ async function generateDraftWithOpenAI(postType, context) {
     body: JSON.stringify({
       model: "gpt-4o-mini",
       messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-      response_format: { type: "json_object" },
       temperature: 0.7,
     }),
   });
 
   if (!response.ok) throw new Error(`OpenAI API error: ${await response.text()}`);
   const data = await response.json();
-  return JSON.parse(data.choices[0].message.content);
+  return data.choices[0].message.content;
 }
 
-async function refineContentWithClaude(content) {
-  const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua principal prioridade é refinar o rascunho a seguir para ranquear na primeira página do Google. Para isso, reescreva o texto com um tom **altamente pessoal e envolvente**, falando diretamente ao leitor cristão. Otimize para SEO, incorporando palavras-chave relevantes de forma natural, usando uma estrutura clara com subtítulos (H2, H3) e garantindo que o texto responda a possíveis perguntas do usuário. Além do SEO, melhore a profundidade teológica, a clareza e o tom inspirador. Mantenha o formato Markdown. Retorne APENAS o conteúdo Markdown refinado do corpo do post, nada mais.`;
-  const userPrompt = `Refine este rascunho de conteúdo:\n\n${content}`;
+async function createFinalPostWithClaude(draftContent) {
+  const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua tarefa é pegar um rascunho de post em Markdown e transformá-lo em um artigo completo e otimizado.
+
+Sua saída DEVE ser um objeto JSON com a seguinte estrutura:
+{
+  "title": "Um título atrativo e otimizado para SEO com no máximo 70 caracteres.",
+  "slug": "um-slug-para-url-baseado-no-titulo-sem-acentos-e-com-hifens",
+  "content": "O corpo do post em formato Markdown, refinado para ter um tom pessoal, envolvente e teologicamente sólido. Otimize para SEO, usando subtítulos (H2, H3) e palavras-chave relevantes. Não inclua o título principal (H1) aqui.",
+  "summary": "Um resumo conciso do post com no máximo 300 caracteres.",
+  "seo_title": "Um título para SEO, similar ao título principal, com no máximo 60 caracteres.",
+  "seo_description": "Uma meta descrição para SEO, otimizada para cliques, com no máximo 160 caracteres."
+}
+
+Instruções para o refinamento do conteúdo:
+1.  Reescreva o texto com um tom altamente pessoal e envolvente, falando diretamente ao leitor.
+2.  Melhore a profundidade teológica, a clareza e o tom inspirador.
+3.  Garanta que a estrutura do conteúdo seja clara, usando subtítulos (H2, H3) e listas quando apropriado.`;
+  
+  const userPrompt = `Refine este rascunho e crie o JSON completo:\n\n${draftContent}`;
 
   const response = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("CLAUDE_API_KEY"), "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
-      model: "claude-sonnet-4-5-20250929",
+      model: "claude-3-5-sonnet-20240620",
       max_tokens: 4096,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
@@ -75,7 +81,14 @@ async function refineContentWithClaude(content) {
 
   if (!response.ok) throw new Error(`Claude API error: ${await response.text()}`);
   const data = await response.json();
-  return data.content[0].text;
+  const jsonString = data.content[0].text;
+
+  const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error("Claude did not return a valid JSON object.");
+  }
+  
+  return JSON.parse(jsonMatch[0]);
 }
 
 async function generateImageAndUpload(prompt, userId, supabase) {
@@ -112,7 +125,6 @@ async function generateImageAndUpload(prompt, userId, supabase) {
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
-  // Adicionando verificação de segurança
   const internalSecret = req.headers.get('X-Internal-Secret');
   const expectedSecret = Deno.env.get('INTERNAL_SECRET_KEY');
   if (!internalSecret || internalSecret !== expectedSecret) {
@@ -153,11 +165,11 @@ serve(async (req: Request) => {
         throw new Error(`Unsupported post_type: ${schedule.post_type}`);
     }
 
-    const draftPost = await generateDraftWithOpenAI(schedule.post_type, context);
-    console.log(`[LOG] Draft generated by OpenAI: "${draftPost.title}"`);
+    const initialDraft = await generateDraftWithOpenAI(schedule.post_type, context);
+    console.log(`[LOG] Draft generated by OpenAI.`);
 
-    draftPost.content = await refineContentWithClaude(draftPost.content);
-    console.log("[LOG] Content refined by Claude.");
+    const draftPost = await createFinalPostWithClaude(initialDraft);
+    console.log(`[LOG] Post finalized by Claude: "${draftPost.title}"`);
 
     const imageUrl = await generateImageAndUpload(schedule.default_image_prompt, schedule.author_id, supabase);
     console.log(`[LOG] Image generated and uploaded: ${imageUrl}`);
@@ -184,7 +196,6 @@ serve(async (req: Request) => {
     if (postInsertError) throw new Error(`Failed to save post: ${postInsertError.message}`);
     console.log(`[LOG] Post saved with ID: ${newPost.id}`);
 
-    // Associar categorias
     if (schedule.category_ids && schedule.category_ids.length > 0) {
         const postCategories = schedule.category_ids.map(catId => ({ post_id: newPost.id, category_id: catId }));
         const { error: catError } = await supabase.from('blog_post_categories').insert(postCategories);
@@ -201,7 +212,6 @@ serve(async (req: Request) => {
         console.log("[LOG] Verse marked as used.");
     }
 
-    // Disparar a função de tradução (fire and forget)
     const translateUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/translate-blog-post`;
     const internalSecret = Deno.env.get("INTERNAL_SECRET_KEY");
 
