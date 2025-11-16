@@ -39,7 +39,7 @@ export const metadata: Metadata = {
 
 
 export default async function RootLayout({ children }: RootLayoutProps) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser();
 
   let shouldShowAds = true; // Padrão é mostrar anúncios

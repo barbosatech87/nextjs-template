@@ -42,7 +42,7 @@ type ActionResponse = CreatePostSuccess | { success: false; message: string; };
 
 export async function createPost(postData: NewPostData, lang: string): Promise<ActionResponse> {
   try {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     
     // 1. Verificar autenticação e permissão
     const { data: { user } } = await supabase.auth.getUser();
@@ -112,7 +112,7 @@ export async function createPost(postData: NewPostData, lang: string): Promise<A
 
 export async function updatePost(postId: string, postData: NewPostData, lang: string) {
   try {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     
     // 1. Verificar autenticação e permissão
     const { data: { user } } = await supabase.auth.getUser();
@@ -194,7 +194,7 @@ export async function updatePost(postId: string, postData: NewPostData, lang: st
 
 export async function deletePost(postId: string, lang: string) {
   try {
-    const supabase = createSupabaseServerClient();
+    const supabase = await createSupabaseServerClient();
     
     // Adicionar verificação de permissão de administrador/writer
     const { data: { user } } = await supabase.auth.getUser();
@@ -279,7 +279,7 @@ export type EditablePostData = Omit<BlogPost, 'author_id' | 'created_at' | 'upda
  * Busca um post específico por ID, incluindo categorias, para edição.
  */
 export async function getPostById(postId: string): Promise<EditablePostData | null> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   // 1. Buscar o post principal
   const { data: post, error: postError } = await supabase
@@ -320,7 +320,7 @@ export async function getPostById(postId: string): Promise<EditablePostData | nu
  * Busca posts publicados com paginação, priorizando a tradução para o idioma solicitado.
  */
 export async function getPublishedPosts(lang: string, page: number = 1) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const offset = (page - 1) * POSTS_PER_PAGE;
 
   // 1. Buscar posts originais publicados, ordenados por data de publicação
@@ -397,7 +397,7 @@ export async function getPublishedPosts(lang: string, page: number = 1) {
  * Busca um post específico por slug, priorizando a tradução para o idioma solicitado.
  */
 export async function getPostBySlug(slug: string, lang: string): Promise<PostDetail | null> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   // 1. Buscar o post original pelo slug
   const { data: post, error: postError } = await supabase
@@ -500,7 +500,7 @@ interface VerseReference {
 
 export async function getDailyVerse(lang: string): Promise<DailyVerseData | null> {
   // Define o tempo de revalidação para 24 horas (86400 segundos)
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const today = new Date().toISOString().split('T')[0];
 
   // 1. Buscar o versículo do dia (já traduzido e com texto)
@@ -566,7 +566,7 @@ export async function getRecentPosts({
   includeCategorySlug?: string;
   excludeCategorySlug?: string;
 }): Promise<PostListItem[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   const selectString = `id, slug, title, summary, image_url, image_alt_text, published_at, language_code${includeCategorySlug ? ',blog_post_categories!inner(blog_categories!inner(slug))' : ''}`;
 
@@ -670,7 +670,7 @@ export async function getRelatedPosts({
   lang: string;
   limit?: number;
 }): Promise<PostListItem[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   let relatedPosts: PostListItem[] = [];
   const foundPostIds = new Set<string>([postId]);
 
@@ -780,7 +780,7 @@ export type AdminPostListItem = PostListItem & {
 };
 
 export async function getAdminPosts(): Promise<AdminPostListItem[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.rpc('get_admin_blog_posts');
 
   if (error) {
@@ -797,7 +797,7 @@ export type BlogCategory = {
 };
 
 export async function getBlogCategories(): Promise<BlogCategory[]> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from('blog_categories')
     .select('id, name, slug')
