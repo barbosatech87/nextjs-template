@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 interface ShareButtonsProps {
   title: string;
   summary: string | null;
-  slug: string;
+  path: string; // Alterado de 'slug' para 'path'
   lang: Locale;
   className?: string;
 }
@@ -59,19 +59,18 @@ const texts = {
   },
 };
 
-export function ShareButtons({ title, summary, slug, lang, className }: ShareButtonsProps) {
+export function ShareButtons({ title, summary, path, lang, className }: ShareButtonsProps) {
   const isMobile = useIsMobile();
   const [isShareApiAvailable, setIsShareApiAvailable] = useState(false);
   const t = texts[lang] || texts.pt;
 
   useEffect(() => {
-    // A verificação do navigator só pode ocorrer no lado do cliente
     if (typeof navigator !== 'undefined' && navigator.share) {
       setIsShareApiAvailable(true);
     }
   }, []);
 
-  const postUrl = `https://www.paxword.com/${lang}/blog/${slug}`;
+  const shareUrl = `https://www.paxword.com/${lang}/${path}`;
   const shareText = `${title} - ${summary || ''}`;
 
   const handleNativeShare = async () => {
@@ -79,7 +78,7 @@ export function ShareButtons({ title, summary, slug, lang, className }: ShareBut
       await navigator.share({
         title: title,
         text: shareText,
-        url: postUrl,
+        url: shareUrl,
       });
     } catch (error) {
       console.log('Web Share API cancelado pelo usuário.', error);
@@ -87,19 +86,19 @@ export function ShareButtons({ title, summary, slug, lang, className }: ShareBut
   };
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(postUrl).then(
+    navigator.clipboard.writeText(shareUrl).then(
       () => toast.success(t.linkCopied),
       () => toast.error(t.linkCopyError)
     );
   };
 
   const socialLinks = [
-    { name: t.whatsApp, icon: <MessageCircle className="h-5 w-5" />, url: `https://api.whatsapp.com/send?text=${encodeURIComponent(`${title} - ${postUrl}`)}` },
-    { name: t.twitter, icon: <Twitter className="h-5 w-5" />, url: `https://twitter.com/intent/tweet?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(title)}` },
-    { name: t.facebook, icon: <Facebook className="h-5 w-5" />, url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}` },
-    { name: t.linkedin, icon: <Linkedin className="h-5 w-5" />, url: `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(postUrl)}&title=${encodeURIComponent(title)}&summary=${encodeURIComponent(summary || '')}` },
-    { name: t.telegram, icon: <Send className="h-5 w-5" />, url: `https://t.me/share/url?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(title)}` },
-    { name: t.email, icon: <Mail className="h-5 w-5" />, url: `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`Confira este artigo: ${postUrl}`)}` },
+    { name: t.whatsApp, icon: <MessageCircle className="h-5 w-5" />, url: `https://api.whatsapp.com/send?text=${encodeURIComponent(`${title} - ${shareUrl}`)}` },
+    { name: t.twitter, icon: <Twitter className="h-5 w-5" />, url: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(title)}` },
+    { name: t.facebook, icon: <Facebook className="h-5 w-5" />, url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}` },
+    { name: t.linkedin, icon: <Linkedin className="h-5 w-5" />, url: `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(title)}&summary=${encodeURIComponent(summary || '')}` },
+    { name: t.telegram, icon: <Send className="h-5 w-5" />, url: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(title)}` },
+    { name: t.email, icon: <Mail className="h-5 w-5" />, url: `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`Confira este capítulo: ${shareUrl}`)}` },
   ];
 
   if (isMobile && isShareApiAvailable) {

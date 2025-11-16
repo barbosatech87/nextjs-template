@@ -4,22 +4,29 @@ import { Locale } from '@/lib/i18n/config';
 import { getBookNameFromSlug, getTranslatedBookName } from '@/lib/bible-translations';
 import { VerseDisplay } from '@/components/bible/verse-display';
 import { BibleNavigation } from '@/components/bible/bible-navigation';
+import { ShareButtons } from '@/components/social/share-buttons';
 
 const pageTexts = {
   pt: {
     bible: "Bíblia",
     previous: "Anterior",
     next: "Próximo",
+    shareTitle: "Leitura de",
+    shareSummary: "Leia o capítulo {chapter} de {book} na íntegra no PaxWord.",
   },
   en: {
     bible: "Bible",
     previous: "Previous",
     next: "Next",
+    shareTitle: "Reading",
+    shareSummary: "Read chapter {chapter} of {book} in full on PaxWord.",
   },
   es: {
     bible: "Biblia",
     previous: "Anterior",
     next: "Siguiente",
+    shareTitle: "Lectura de",
+    shareSummary: "Lee el capítulo {chapter} de {book} completo en PaxWord.",
   }
 };
 
@@ -67,6 +74,10 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
   const totalChapters = chapterData.chapter;
   const translatedBookName = getTranslatedBookName(bookName, lang);
 
+  const shareTitle = `${texts.shareTitle} ${translatedBookName} ${chapterNumber}`;
+  const shareSummary = texts.shareSummary.replace('{chapter}', chapter).replace('{book}', translatedBookName);
+  const sharePath = `bible/${bookSlug}/${chapter}`;
+
   return (
     <main className="container mx-auto px-4 py-8 max-w-4xl">
       <BibleNavigation
@@ -82,11 +93,26 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
         <h1 className="text-3xl md:text-4xl font-bold tracking-tight">{translatedBookName} {chapterNumber}</h1>
       </header>
 
+      <ShareButtons
+        title={shareTitle}
+        summary={shareSummary}
+        path={sharePath}
+        lang={lang}
+        className="mb-8"
+      />
+
       <div className="mt-8">
         <VerseDisplay verses={verses || []} />
       </div>
 
       <div className="mt-8">
+        <ShareButtons
+          title={shareTitle}
+          summary={shareSummary}
+          path={sharePath}
+          lang={lang}
+          className="my-8"
+        />
         <BibleNavigation
           lang={lang}
           bookName={translatedBookName}

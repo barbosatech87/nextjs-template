@@ -181,7 +181,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <ShareButtons 
             title={post.title}
             summary={post.summary}
-            slug={post.slug}
+            path={`blog/${post.slug}`}
             lang={lang}
             className="mb-8"
           />
@@ -204,7 +204,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <ShareButtons 
             title={post.title}
             summary={post.summary}
-            slug={post.slug}
+            path={`blog/${post.slug}`}
             lang={lang}
           />
         </article>
