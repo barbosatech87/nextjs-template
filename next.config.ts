@@ -9,7 +9,7 @@ const pwaConfig = withPWA({
   runtimeCaching: [
     // Estratégia para páginas (HTML)
     {
-      urlPattern: ({ request }) => request.mode === 'navigate',
+      urlPattern: ({ request }: { request: Request }) => request.mode === 'navigate',
       handler: 'NetworkFirst',
       options: {
         cacheName: 'pages',
@@ -57,7 +57,7 @@ const pwaConfig = withPWA({
     },
     // Estratégia para arquivos estáticos (JS, CSS)
     {
-      urlPattern: ({ request }) =>
+      urlPattern: ({ request }: { request: Request }) =>
         request.destination === 'script' || request.destination === 'style',
       handler: 'StaleWhileRevalidate',
       options: {
