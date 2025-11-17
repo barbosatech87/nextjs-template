@@ -87,7 +87,8 @@ Instruções para o refinamento do conteúdo:
     return validatedData;
 
   } catch (claudeError) {
-    console.warn(`Primary refinement with Claude failed: ${claudeError.message}. Falling back to OpenAI GPT-4o.`);
+    const message = claudeError instanceof Error ? claudeError.message : String(claudeError);
+    console.warn(`Primary refinement with Claude failed: ${message}. Falling back to OpenAI GPT-4o.`);
     
     // 2. Se Claude falhar, usar o fallback (OpenAI GPT-4o)
     try {
@@ -132,7 +133,8 @@ Instruções para o refinamento do conteúdo:
       return validatedData;
 
     } catch (openAIError) {
-      console.error(`Fallback refinement with OpenAI also failed: ${openAIError.message}`);
+      const message = openAIError instanceof Error ? openAIError.message : String(openAIError);
+      console.error(`Fallback refinement with OpenAI also failed: ${message}`);
       throw openAIError;
     }
   }
