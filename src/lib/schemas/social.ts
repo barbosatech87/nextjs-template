@@ -6,7 +6,7 @@ export const socialAutomationSchema = z.object({
   platform: z.enum(['pinterest', 'facebook']),
   is_active: z.boolean(),
   source_category_id: z.string().uuid().nullable().optional(),
-  pinterest_board_id: z.string().optional(),
+  pinterest_board_id: z.string().nullable().optional(),
   image_prompt_template: z.string().min(10, "O prompt da imagem é obrigatório."),
   description_template: z.string().min(10, "O template de descrição é obrigatório."),
   
