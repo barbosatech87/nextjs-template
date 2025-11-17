@@ -78,6 +78,8 @@ Sua saída DEVE ser um objeto JSON com a seguinte estrutura:
   "seo_description": "Uma meta descrição para SEO, otimizada para cliques, com no máximo 160 caracteres."
 }
 
+IMPORTANTE: Garanta que qualquer quebra de linha dentro dos valores de string do JSON (como no campo 'content') seja devidamente escapada como '\\n'.
+
 Instruções para o refinamento do conteúdo:
 1.  Reescreva o texto com um tom altamente pessoal e envolvente, falando diretamente ao leitor.
 2.  Melhore a profundidade teológica, a clareza e o tom inspirador.
