@@ -66,7 +66,11 @@ async function generateDraftWithOpenAI(postType, context) {
 }
 
 async function createFinalPostWithClaude(draftContent) {
-  const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua tarefa é pegar um rascunho de post em Markdown e transformá-lo em um artigo completo e otimizado.
+  const modelsToTry = ["claude-3-sonnet-20240229", "claude-3-haiku-20240307"];
+
+  for (const model of modelsToTry) {
+    try {
+      const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua tarefa é pegar um rascunho de post em Markdown e transformá-lo em um artigo completo e otimizado.
 
 Sua saída DEVE ser um objeto JSON com a seguinte estrutura:
 {
@@ -84,31 +88,44 @@ Instruções para o refinamento do conteúdo:
 1.  Reescreva o texto com um tom altamente pessoal e envolvente, falando diretamente ao leitor.
 2.  Melhore a profundidade teológica, a clareza e o tom inspirador.
 3.  Garanta que a estrutura do conteúdo seja clara, usando subtítulos (H2, H3) e listas quando apropriado.`;
-  
-  const userPrompt = `Refine este rascunho e crie o JSON completo:\n\n${draftContent}`;
+      
+      const userPrompt = `Refine este rascunho e crie o JSON completo:\n\n${draftContent}`;
 
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("CLAUDE_API_KEY"), "anthropic-version": "2023-06-01" },
-    body: JSON.stringify({
-      model: "claude-3-haiku-20240307",
-      max_tokens: 4096,
-      system: systemPrompt,
-      messages: [{ role: "user", content: userPrompt }],
-      temperature: 0.5,
-    }),
-  });
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("CLAUDE_API_KEY"), "anthropic-version": "2023-06-01" },
+        body: JSON.stringify({
+          model: model,
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }],
+          temperature: 0.5,
+        }),
+      });
 
-  if (!response.ok) throw new Error(`Claude API error: ${await response.text()}`);
-  const data = await response.json();
-  const jsonString = data.content[0].text;
+      if (!response.ok) {
+        throw new Error(`Claude API error with model ${model}: ${await response.text()}`);
+      }
+      const data = await response.json();
+      const jsonString = data.content[0].text;
 
-  const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("Claude did not return a valid JSON object.");
+      const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error(`Claude model ${model} did not return a valid JSON object.`);
+      }
+      
+      console.log(`Content successfully finalized by Claude using model: ${model}.`);
+      return JSON.parse(jsonMatch[0]);
+
+    } catch (error) {
+      console.warn(`Failed to use Claude model ${model}. Error: ${error.message}`);
+      if (model === modelsToTry[modelsToTry.length - 1]) {
+        console.error("All Claude models failed.");
+        throw error;
+      }
+    }
   }
-  
-  return JSON.parse(jsonMatch[0]);
+  throw new Error("All Claude models failed to generate content.");
 }
 
 async function generateImageAndUpload(prompt, userId, supabase) {

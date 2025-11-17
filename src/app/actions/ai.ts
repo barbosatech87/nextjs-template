@@ -18,8 +18,11 @@ async function refineAndFinalizeWithClaude(content: string): Promise<AIResponse>
     throw new Error("Chave da API Claude não configurada.");
   }
 
-  try {
-    const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua tarefa é pegar um rascunho de post em Markdown e transformá-lo em um artigo completo e otimizado.
+  const modelsToTry = ["claude-3-sonnet-20240229", "claude-3-haiku-20240307"];
+
+  for (const model of modelsToTry) {
+    try {
+      const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua tarefa é pegar um rascunho de post em Markdown e transformá-lo em um artigo completo e otimizado.
 
 Sua saída DEVE ser um objeto JSON com a seguinte estrutura:
 {
@@ -37,48 +40,56 @@ Instruções para o refinamento do conteúdo:
 1.  Reescreva o texto com um tom altamente pessoal e envolvente, falando diretamente ao leitor.
 2.  Melhore a profundidade teológica, a clareza e o tom inspirador.
 3.  Garanta que a estrutura do conteúdo seja clara, usando subtítulos (H2, H3) e listas quando apropriado.`;
-    
-    const userPrompt = `Refine este rascunho e crie o JSON completo:\n\n${content}`;
-    
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.CLAUDE_API_KEY,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-3-haiku-20240307",
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-        temperature: 0.5,
-      }),
-    });
+      
+      const userPrompt = `Refine este rascunho e crie o JSON completo:\n\n${content}`;
+      
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": process.env.CLAUDE_API_KEY,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: model,
+          max_tokens: 4096,
+          system: systemPrompt,
+          messages: [{ role: "user", content: userPrompt }],
+          temperature: 0.5,
+        }),
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Claude API error: ${response.status} - ${errorText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Claude API error with model ${model}: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      const jsonString = data.content[0].text;
+      
+      const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error(`Claude model ${model} did not return a valid JSON object.`);
+      }
+      
+      const parsedJson = JSON.parse(jsonMatch[0]);
+      const validatedData = postOutputSchema.parse(parsedJson);
+      
+      console.log(`Content successfully finalized by Claude using model: ${model}.`);
+      return validatedData;
+
+    } catch (error) {
+      console.warn(`Failed to use Claude model ${model}. Error: ${error.message}`);
+      if (model === modelsToTry[modelsToTry.length - 1]) {
+        // Se for o último modelo da lista e falhou, lança o erro.
+        console.error("All Claude models failed.");
+        throw error;
+      }
+      // Se não for o último, o loop continuará para o próximo modelo.
     }
-
-    const data = await response.json();
-    const jsonString = data.content[0].text;
-    
-    const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("Claude did not return a valid JSON object.");
-    }
-    
-    const parsedJson = JSON.parse(jsonMatch[0]);
-    const validatedData = postOutputSchema.parse(parsedJson);
-    
-    console.log("Content successfully finalized by Claude.");
-    return validatedData;
-
-  } catch (error) {
-    console.error("Error finalizing content with Claude:", error);
-    throw error;
   }
+  // Se o loop terminar sem sucesso (improvável, mas seguro)
+  throw new Error("All Claude models failed to generate content.");
 }
 
 
