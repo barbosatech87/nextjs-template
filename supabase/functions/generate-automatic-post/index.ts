@@ -89,7 +89,7 @@ Instruções para o refinamento do conteúdo:
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("CLAUDE_API_KEY"), "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
-      model: "claude-3-5-sonnet-20240620",
+      model: "claude-3-sonnet-20240229",
       max_tokens: 4096,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
@@ -109,53 +109,13 @@ Instruções para o refinamento do conteúdo:
   return JSON.parse(jsonMatch[0]);
 }
 
-// NOVA FUNÇÃO: Diretor de Arte de IA
-async function generateImagePromptWithAI(postType, postContent, theme) {
-  const stylePrompts = {
-    devotional: "Crie um prompt para uma imagem de estilo suave, inspirador e contemplativo. Use elementos simbólicos ou abstratos que representem paz, reflexão e esperança. Evite imagens literais ou muito complexas. O estilo pode ser Realismo suave. Nunca utilize textos ou qualquer tipografia.",
-    thematic: "Crie um prompt para uma imagem conceitual e forte, que represente o tema central do estudo. Pode incluir elementos históricos, simbologia mais direta ou uma composição artística que provoque o pensamento. Estilos como pintura a óleo digital, arte conceitual ou fotografia dramática são adequados. Nunca utilize textos ou qualquer tipografia.",
-    summary: "Crie um prompt que descreva uma cena representativa do capítulo bíblico resumido. O estilo deve ser ilustrativo, como uma pintura digital ou uma gravura, capturando um momento chave da narrativa de forma respeitosa e artística. Nunca utilize textos ou qualquer tipografia."
-  };
-
-  const styleInstruction = stylePrompts[postType] || stylePrompts.devotional;
-
-  const systemPrompt = `Você é um diretor de arte de um blog cristão. Sua tarefa é criar um prompt de imagem para DALL-E 3 baseado no conteúdo de um post. O prompt deve ser em inglês, detalhado, e seguir as instruções de estilo fornecidas. O prompt deve descrever uma imagem que seja conceitual, artística e evite representações literais de figuras bíblicas, a menos que seja uma cena narrativa clara. O prompt final deve ter no máximo 250 caracteres. Retorne APENAS o texto do prompt, nada mais.`;
-
-  const userPrompt = `
-    **Instrução de Estilo:**
-    ${styleInstruction}
-
-    **Conteúdo do Post:**
-    - Título: ${postContent.title}
-    - Resumo: ${postContent.summary}
-    - Tema (se aplicável): ${theme || 'N/A'}
-    - Corpo (trecho): ${postContent.content.substring(0, 500)}...
-
-    Baseado no conteúdo e na instrução de estilo, gere o prompt para a imagem.
-  `;
-
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
-    body: JSON.stringify({
-      model: "gpt-4o",
-      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-      temperature: 0.6,
-      max_tokens: 100,
-    }),
-  });
-
-  if (!response.ok) throw new Error(`OpenAI Prompt Generation API error: ${await response.text()}`);
-  const data = await response.json();
-  return data.choices[0].message.content.trim().replace(/"/g, ''); // Limpa aspas
-}
-
-
 async function generateImageAndUpload(prompt, userId, supabase) {
+  const fullPrompt = `High-quality, artistic, conceptual image for a Christian blog post. Abstract or symbolic representation. No text, letters, or numbers. Theme: ${prompt}`;
+  
   const openaiResponse = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
-    body: JSON.stringify({ model: "dall-e-3", prompt: prompt, n: 1, size: "1024x1024", response_format: "url" }),
+    body: JSON.stringify({ model: "dall-e-3", prompt: fullPrompt, n: 1, size: "1024x1024", response_format: "url" }),
   });
 
   if (!openaiResponse.ok) throw new Error(`OpenAI Image API error: ${await openaiResponse.text()}`);
@@ -232,18 +192,7 @@ serve(async (req: Request) => {
     const draftPost = await createFinalPostWithClaude(initialDraft);
     console.log(`[LOG] Post finalized by Claude: "${draftPost.title}"`);
 
-    // LÓGICA DE GERAÇÃO DE PROMPT DE IMAGEM
-    let finalImagePrompt;
-    if (schedule.default_image_prompt && schedule.default_image_prompt.trim() !== '') {
-        finalImagePrompt = `${schedule.default_image_prompt}. Artistic and conceptual style, without any text or typography.`;
-        console.log(`[LOG] Using user-provided image prompt, refined for DALL-E.`);
-    } else {
-        console.log(`[LOG] Generating image prompt with AI Art Director...`);
-        finalImagePrompt = await generateImagePromptWithAI(schedule.post_type, draftPost, schedule.theme);
-        console.log(`[LOG] AI-generated image prompt: "${finalImagePrompt}"`);
-    }
-
-    const imageUrl = await generateImageAndUpload(finalImagePrompt, schedule.author_id, supabase);
+    const imageUrl = await generateImageAndUpload(schedule.default_image_prompt, schedule.author_id, supabase);
     console.log(`[LOG] Image generated and uploaded: ${imageUrl}`);
 
     const statusToSet = schedule.publish_automatically ? 'published' : 'draft';
