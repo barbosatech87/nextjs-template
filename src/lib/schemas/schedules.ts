@@ -10,7 +10,7 @@ export const scheduleSchema = z.object({
   publish_automatically: z.boolean(), // Removido .default(false) para corrigir o erro de tipo
   author_id: z.string().uuid("Selecione um autor."),
   category_ids: z.array(z.string().uuid()).nullable().optional(),
-  default_image_prompt: z.string().min(10, "O prompt da imagem é obrigatório."),
+  default_image_prompt: z.string().min(10, "O prompt deve ter pelo menos 10 caracteres.").optional().or(z.literal('')),
   
   // Novos campos para a UI amigável
   frequencyType: z.enum(['daily', 'weekly', 'monthly', 'custom']),
