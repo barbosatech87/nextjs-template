@@ -17,10 +17,6 @@ const pwaConfig = withPWA({
           maxEntries: 60,
           maxAgeSeconds: 30 * 24 * 60 * 60, // 30 dias
         },
-        // Adicionando o fallback para documentos
-        fallbacks: {
-          document: '/offline', // next-pwa lida com o prefixo de idioma
-        },
       },
     },
     // Estratégia para imagens
