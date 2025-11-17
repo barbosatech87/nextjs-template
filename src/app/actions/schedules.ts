@@ -162,3 +162,36 @@ export async function getAutomationLogs(): Promise<AutomationLog[]> {
     return [];
   }
 }
+
+export async function triggerScheduleManually(scheduleId: string, lang: Locale) {
+  try {
+    await checkAdmin();
+
+    const functionUrl = `https://xrwnftnfzwbrzijnbhfu.supabase.co/functions/v1/generate-automatic-post`;
+    const internalSecret = process.env.INTERNAL_SECRET_KEY;
+
+    if (!internalSecret) {
+      throw new Error("Chave secreta interna não configurada no servidor.");
+    }
+
+    // A chamada não é aguardada (await) de propósito.
+    // A Edge Function é acionada e o usuário pode continuar navegando.
+    // O resultado será visível na página de logs.
+    fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Secret': internalSecret,
+      },
+      body: JSON.stringify({ scheduleId }),
+    });
+
+    // Revalida o cache da página de logs para que o novo registro apareça.
+    revalidatePath(`/${lang}/admin/schedules/logs`);
+
+    return { success: true, message: "Execução manual iniciada. Verifique o histórico para ver o resultado." };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Ocorreu um erro inesperado ao acionar o agendamento.";
+    return { success: false, message };
+  }
+}

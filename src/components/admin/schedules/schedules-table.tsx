@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { deleteSchedule, Schedule } from "@/app/actions/schedules";
+import { deleteSchedule, Schedule, triggerScheduleManually } from "@/app/actions/schedules";
 import { Locale } from "@/lib/i18n/config";
-import { MoreHorizontal, Trash2, Edit } from "lucide-react";
+import { MoreHorizontal, Trash2, Edit, Play } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ScheduleFormDialog } from "./schedule-form-dialog";
 import { Author } from "@/app/actions/users";
@@ -20,11 +20,24 @@ interface SchedulesTableProps {
 }
 
 export function SchedulesTable({ schedules, authors, lang }: SchedulesTableProps) {
-  const [isPending, startTransition] = useTransition();
+  const [isDeleting, startDeleteTransition] = useTransition();
+  const [isTriggering, startTriggerTransition] = useTransition();
 
   const handleDelete = (id: string) => {
-    startTransition(async () => {
+    startDeleteTransition(async () => {
       const result = await deleteSchedule(id, lang);
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
+    });
+  };
+
+  const handleRunNow = (id: string) => {
+    startTriggerTransition(async () => {
+      toast.info("Iniciando execução manual do agendamento...");
+      const result = await triggerScheduleManually(id, lang);
       if (result.success) {
         toast.success(result.message);
       } else {
@@ -64,6 +77,10 @@ export function SchedulesTable({ schedules, authors, lang }: SchedulesTableProps
                           <Edit className="mr-2 h-4 w-4" /> Editar
                         </DropdownMenuItem>
                       </ScheduleFormDialog>
+                      <DropdownMenuItem onClick={() => handleRunNow(schedule.id)} disabled={isTriggering}>
+                        <Play className="mr-2 h-4 w-4" />
+                        {isTriggering ? "Executando..." : "Executar Agora"}
+                      </DropdownMenuItem>
                       <AlertDialogTrigger asChild>
                         <DropdownMenuItem className="text-destructive focus:text-destructive">
                           <Trash2 className="mr-2 h-4 w-4" /> Deletar
@@ -78,7 +95,7 @@ export function SchedulesTable({ schedules, authors, lang }: SchedulesTableProps
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={() => handleDelete(schedule.id)} disabled={isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      <AlertDialogAction onClick={() => handleDelete(schedule.id)} disabled={isDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
                         Continuar
                       </AlertDialogAction>
                     </AlertDialogFooter>
