@@ -72,7 +72,7 @@ async function createFinalPost(draftContent) {
       throw new Error("CLAUDE_API_KEY not set. Skipping to fallback.");
     }
 
-    const model = "claude-3-5-sonnet-20240620";
+    const model = "claude-sonnet-4-5-20250929";
     const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua tarefa é pegar um rascunho de post em Markdown e transformá-lo em um artigo completo e otimizado.
 
 Sua saída DEVE ser um objeto JSON com a seguinte estrutura:
