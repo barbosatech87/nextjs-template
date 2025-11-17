@@ -11,18 +11,27 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// --- Função de finalização com Claude ---
-async function refineAndFinalizeWithClaude(content: string): Promise<AIResponse> {
-  if (!process.env.CLAUDE_API_KEY) {
-    console.warn("CLAUDE_API_KEY not set. Skipping refinement step.");
-    throw new Error("Chave da API Claude não configurada.");
-  }
+const postOutputSchema = z.object({
+  title: z.string(),
+  slug: z.string(),
+  content: z.string(),
+  summary: z.string().nullable(),
+  seo_title: z.string(),
+  seo_description: z.string(),
+});
 
-  const modelsToTry = ["claude-3-sonnet-20240229", "claude-3-haiku-20240307"];
+export type AIResponse = z.infer<typeof postOutputSchema>;
 
-  for (const model of modelsToTry) {
-    try {
-      const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua tarefa é pegar um rascunho de post em Markdown e transformá-lo em um artigo completo e otimizado.
+// --- Função de finalização com Claude e fallback para OpenAI ---
+async function refineAndFinalizeContent(content: string): Promise<AIResponse> {
+  // 1. Tentar com o modelo principal (Claude 3.5 Sonnet)
+  try {
+    if (!process.env.CLAUDE_API_KEY) {
+      throw new Error("CLAUDE_API_KEY not set. Skipping to fallback.");
+    }
+
+    const model = "claude-3-5-sonnet-20240620";
+    const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua tarefa é pegar um rascunho de post em Markdown e transformá-lo em um artigo completo e otimizado.
 
 Sua saída DEVE ser um objeto JSON com a seguinte estrutura:
 {
@@ -40,56 +49,93 @@ Instruções para o refinamento do conteúdo:
 1.  Reescreva o texto com um tom altamente pessoal e envolvente, falando diretamente ao leitor.
 2.  Melhore a profundidade teológica, a clareza e o tom inspirador.
 3.  Garanta que a estrutura do conteúdo seja clara, usando subtítulos (H2, H3) e listas quando apropriado.`;
-      
+    
+    const userPrompt = `Refine este rascunho e crie o JSON completo:\n\n${content}`;
+    
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": process.env.CLAUDE_API_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: model,
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        temperature: 0.5,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Claude API error with model ${model}: ${await response.text()}`);
+    }
+
+    const data = await response.json();
+    const jsonString = data.content[0].text;
+    
+    const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error(`Claude model ${model} did not return a valid JSON object.`);
+    }
+    
+    const parsedJson = JSON.parse(jsonMatch[0]);
+    const validatedData = postOutputSchema.parse(parsedJson);
+    
+    console.log(`Content successfully finalized by Claude using model: ${model}.`);
+    return validatedData;
+
+  } catch (claudeError) {
+    console.warn(`Primary refinement with Claude failed: ${claudeError.message}. Falling back to OpenAI GPT-4o.`);
+    
+    // 2. Se Claude falhar, usar o fallback (OpenAI GPT-4o)
+    try {
+      const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua tarefa é pegar um rascunho de post em Markdown e transformá-lo em um artigo completo e otimizado.
+
+Sua saída DEVE ser um objeto JSON com a seguinte estrutura:
+{
+  "title": "Um título atrativo e otimizado para SEO com no máximo 70 caracteres.",
+  "slug": "um-slug-para-url-baseado-no-titulo-sem-acentos-e-com-hifens",
+  "content": "O corpo do post em formato Markdown, refinado para ter um tom pessoal, envolvente e teologicamente sólido. Otimize para SEO, usando subtítulos (H2, H3) e palavras-chave relevantes. Não inclua o título principal (H1) aqui.",
+  "summary": "Um resumo conciso do post com no máximo 300 caracteres.",
+  "seo_title": "Um título para SEO, similar ao título principal, com no máximo 60 caracteres.",
+  "seo_description": "Uma meta descrição para SEO, otimizada para cliques, com no máximo 160 caracteres."
+}
+
+Instruções para o refinamento do conteúdo:
+1.  Reescreva o texto com um tom altamente pessoal e envolvente, falando diretamente ao leitor.
+2.  Melhore a profundidade teológica, a clareza e o tom inspirador.
+3.  Garanta que a estrutura do conteúdo seja clara, usando subtítulos (H2, H3) e listas quando apropriado.`;
+
       const userPrompt = `Refine este rascunho e crie o JSON completo:\n\n${content}`;
-      
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": process.env.CLAUDE_API_KEY,
-          "anthropic-version": "2023-06-01",
-        },
-        body: JSON.stringify({
-          model: model,
-          max_tokens: 4096,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userPrompt }],
-          temperature: 0.5,
-        }),
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o",
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.5,
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Claude API error with model ${model}: ${response.status} - ${errorText}`);
+      const jsonString = response.choices[0].message.content;
+      if (!jsonString) {
+        throw new Error("OpenAI (GPT-4o) did not return any content.");
       }
 
-      const data = await response.json();
-      const jsonString = data.content[0].text;
-      
-      const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error(`Claude model ${model} did not return a valid JSON object.`);
-      }
-      
-      const parsedJson = JSON.parse(jsonMatch[0]);
+      const parsedJson = JSON.parse(jsonString);
       const validatedData = postOutputSchema.parse(parsedJson);
       
-      console.log(`Content successfully finalized by Claude using model: ${model}.`);
+      console.log("Content successfully finalized by OpenAI using model: gpt-4o.");
       return validatedData;
 
-    } catch (error) {
-      console.warn(`Failed to use Claude model ${model}. Error: ${error.message}`);
-      if (model === modelsToTry[modelsToTry.length - 1]) {
-        // Se for o último modelo da lista e falhou, lança o erro.
-        console.error("All Claude models failed.");
-        throw error;
-      }
-      // Se não for o último, o loop continuará para o próximo modelo.
+    } catch (openAIError) {
+      console.error(`Fallback refinement with OpenAI also failed: ${openAIError.message}`);
+      throw openAIError;
     }
   }
-  // Se o loop terminar sem sucesso (improvável, mas seguro)
-  throw new Error("All Claude models failed to generate content.");
 }
 
 
@@ -106,17 +152,6 @@ const generationRequestSchema = z.object({
 });
 
 export type GenerationRequest = z.infer<typeof generationRequestSchema>;
-
-const postOutputSchema = z.object({
-  title: z.string(),
-  slug: z.string(),
-  content: z.string(),
-  summary: z.string().nullable(),
-  seo_title: z.string(),
-  seo_description: z.string(),
-});
-
-export type AIResponse = z.infer<typeof postOutputSchema>;
 
 // --- Função Principal de Geração de Post ---
 export async function generatePostWithAI(
@@ -166,8 +201,8 @@ export async function generatePostWithAI(
       throw new Error("A resposta da OpenAI (rascunho inicial) está vazia.");
     }
 
-    // 2. Refinar e finalizar com Claude
-    const finalPostObject = await refineAndFinalizeWithClaude(initialDraft);
+    // 2. Refinar e finalizar com Claude ou OpenAI
+    const finalPostObject = await refineAndFinalizeContent(initialDraft);
 
     return { success: true, data: finalPostObject };
   } catch (error) {

@@ -65,12 +65,15 @@ async function generateDraftWithOpenAI(postType, context) {
   return data.choices[0].message.content;
 }
 
-async function createFinalPostWithClaude(draftContent) {
-  const modelsToTry = ["claude-3-sonnet-20240229", "claude-3-haiku-20240307"];
+async function createFinalPost(draftContent) {
+  // 1. Tentar com o modelo principal (Claude 3.5 Sonnet)
+  try {
+    if (!Deno.env.get("CLAUDE_API_KEY")) {
+      throw new Error("CLAUDE_API_KEY not set. Skipping to fallback.");
+    }
 
-  for (const model of modelsToTry) {
-    try {
-      const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua tarefa é pegar um rascunho de post em Markdown e transformá-lo em um artigo completo e otimizado.
+    const model = "claude-3-5-sonnet-20240620";
+    const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua tarefa é pegar um rascunho de post em Markdown e transformá-lo em um artigo completo e otimizado.
 
 Sua saída DEVE ser um objeto JSON com a seguinte estrutura:
 {
@@ -88,44 +91,85 @@ Instruções para o refinamento do conteúdo:
 1.  Reescreva o texto com um tom altamente pessoal e envolvente, falando diretamente ao leitor.
 2.  Melhore a profundidade teológica, a clareza e o tom inspirador.
 3.  Garanta que a estrutura do conteúdo seja clara, usando subtítulos (H2, H3) e listas quando apropriado.`;
-      
+    
+    const userPrompt = `Refine este rascunho e crie o JSON completo:\n\n${draftContent}`;
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("CLAUDE_API_KEY"), "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: model,
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        temperature: 0.5,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Claude API error with model ${model}: ${await response.text()}`);
+    }
+    const data = await response.json();
+    const jsonString = data.content[0].text;
+
+    const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error(`Claude model ${model} did not return a valid JSON object.`);
+    }
+    
+    console.log(`Content successfully finalized by Claude using model: ${model}.`);
+    return JSON.parse(jsonMatch[0]);
+
+  } catch (claudeError) {
+    console.warn(`Primary refinement with Claude failed: ${claudeError.message}. Falling back to OpenAI GPT-4o.`);
+    
+    // 2. Se Claude falhar, usar o fallback (OpenAI GPT-4o)
+    try {
+      const systemPrompt = `Você é um editor teológico e especialista em SEO para conteúdo cristão. Sua tarefa é pegar um rascunho de post em Markdown e transformá-lo em um artigo completo e otimizado.
+
+Sua saída DEVE ser um objeto JSON com a seguinte estrutura:
+{
+  "title": "Um título atrativo e otimizado para SEO com no máximo 70 caracteres.",
+  "slug": "um-slug-para-url-baseado-no-titulo-sem-acentos-e-com-hifens",
+  "content": "O corpo do post em formato Markdown, refinado para ter um tom pessoal, envolvente e teologicamente sólido. Otimize para SEO, usando subtítulos (H2, H3) e palavras-chave relevantes. Não inclua o título principal (H1) aqui.",
+  "summary": "Um resumo conciso do post com no máximo 300 caracteres.",
+  "seo_title": "Um título para SEO, similar ao título principal, com no máximo 60 caracteres.",
+  "seo_description": "Uma meta descrição para SEO, otimizada para cliques, com no máximo 160 caracteres."
+}`;
       const userPrompt = `Refine este rascunho e crie o JSON completo:\n\n${draftContent}`;
 
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("CLAUDE_API_KEY"), "anthropic-version": "2023-06-01" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
         body: JSON.stringify({
-          model: model,
-          max_tokens: 4096,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userPrompt }],
+          model: "gpt-4o",
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
           temperature: 0.5,
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Claude API error with model ${model}: ${await response.text()}`);
+        throw new Error(`OpenAI (GPT-4o) API error: ${await response.text()}`);
       }
-      const data = await response.json();
-      const jsonString = data.content[0].text;
 
-      const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error(`Claude model ${model} did not return a valid JSON object.`);
+      const data = await response.json();
+      const jsonString = data.choices[0].message.content;
+      if (!jsonString) {
+        throw new Error("OpenAI (GPT-4o) did not return any content.");
       }
       
-      console.log(`Content successfully finalized by Claude using model: ${model}.`);
-      return JSON.parse(jsonMatch[0]);
+      console.log("Content successfully finalized by OpenAI using model: gpt-4o.");
+      return JSON.parse(jsonString);
 
-    } catch (error) {
-      console.warn(`Failed to use Claude model ${model}. Error: ${error.message}`);
-      if (model === modelsToTry[modelsToTry.length - 1]) {
-        console.error("All Claude models failed.");
-        throw error;
-      }
+    } catch (openAIError) {
+      console.error(`Fallback refinement with OpenAI also failed: ${openAIError.message}`);
+      throw openAIError;
     }
   }
-  throw new Error("All Claude models failed to generate content.");
 }
 
 async function generateImageAndUpload(prompt, userId, supabase) {
@@ -208,8 +252,8 @@ serve(async (req: Request) => {
     const initialDraft = await generateDraftWithOpenAI(schedule.post_type, context);
     console.log(`[LOG] Draft generated by OpenAI.`);
 
-    const draftPost = await createFinalPostWithClaude(initialDraft);
-    console.log(`[LOG] Post finalized by Claude: "${draftPost.title}"`);
+    const draftPost = await createFinalPost(initialDraft);
+    console.log(`[LOG] Post finalized: "${draftPost.title}"`);
 
     const imageUrl = await generateImageAndUpload(schedule.default_image_prompt, schedule.author_id, supabase);
     console.log(`[LOG] Image generated and uploaded: ${imageUrl}`);
