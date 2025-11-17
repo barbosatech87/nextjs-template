@@ -13,7 +13,7 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { BookCopy, BotMessageSquare, Image, LayoutDashboard, Users, Bell, FileText, Clock } from 'lucide-react';
+import { BookCopy, BotMessageSquare, Image, LayoutDashboard, Users, Bell, FileText, Clock, History } from 'lucide-react';
 import Link from 'next/link';
 import { Locale } from '@/lib/i18n/config';
 import { useProfile } from '@/hooks/use-profile';
@@ -29,6 +29,7 @@ const texts = {
     users: "Usuários",
     notifications: "Notificações",
     schedules: "Agendamentos",
+    logs: "Histórico",
     title: "Admin"
   },
   en: {
@@ -40,6 +41,7 @@ const texts = {
     users: "Users",
     notifications: "Notifications",
     schedules: "Schedules",
+    logs: "History",
     title: "Admin"
   },
   es: {
@@ -51,6 +53,7 @@ const texts = {
     users: "Usuarios",
     notifications: "Notificaciones",
     schedules: "Horarios",
+    logs: "Historial",
     title: "Admin"
   },
 };
@@ -72,6 +75,7 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
     { href: `/${lang}/admin/ai-image-generator`, label: t.aiImage, icon: <Image /> },
     { href: `/${lang}/admin/pages`, label: t.pages, icon: <FileText /> },
     { href: `/${lang}/admin/schedules`, label: t.schedules, icon: <Clock /> },
+    { href: `/${lang}/admin/schedules/logs`, label: t.logs, icon: <History /> },
     { href: `/${lang}/admin/users`, label: t.users, icon: <Users /> },
     { href: `/${lang}/admin/notifications`, label: t.notifications, icon: <Bell /> },
   ];
@@ -100,7 +104,7 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
             <Link href={item.href} passHref>
               <SidebarMenuButton
                 asChild
-                isActive={pathname.startsWith(item.href) && (item.href !== `/${lang}/admin` || pathname === `/${lang}/admin`)}
+                isActive={pathname === item.href}
                 tooltip={item.label}
               >
                 <span>

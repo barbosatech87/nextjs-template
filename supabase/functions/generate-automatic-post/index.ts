@@ -13,6 +13,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-secret',
 };
 
+// --- FUNÇÃO DE LOG ---
+async function logAutomationEvent(supabase, scheduleId, status, message, details = {}) {
+  try {
+    const { error } = await supabase.from('automation_logs').insert({
+      schedule_id: scheduleId,
+      status,
+      message,
+      details,
+    });
+    if (error) {
+      console.error(`[FATAL] Failed to log automation event:`, error.message);
+    }
+  } catch (logError) {
+    console.error(`[FATAL] Exception during logging:`, logError.message);
+  }
+}
+
+
 // --- FUNÇÕES DE IA E UTILITÁRIOS ---
 
 async function generateDraftWithOpenAI(postType, context) {
@@ -132,20 +150,23 @@ serve(async (req: Request) => {
     return new Response('Unauthorized', { status: 401, headers: corsHeaders });
   }
 
+  let scheduleId = null;
+  const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+
   try {
-    const { scheduleId } = await req.json();
+    const body = await req.json();
+    scheduleId = body.scheduleId;
     if (!scheduleId) {
       throw new Error("scheduleId is required in the request body.");
     }
 
     console.log(`[LOG] Starting automatic post generation for scheduleId: ${scheduleId}`);
 
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-
     const { data: schedule, error: scheduleError } = await supabase.from('automatic_post_schedules').select('*').eq('id', scheduleId).single();
     if (scheduleError || !schedule) throw new Error(`Error fetching schedule ${scheduleId}: ${scheduleError?.message || 'Not found.'}`);
     if (!schedule.is_active) {
         console.log(`[LOG] Schedule ${scheduleId} is not active. Skipping.`);
+        await logAutomationEvent(supabase, scheduleId, 'success', 'Agendamento inativo, execução pulada.');
         return new Response(JSON.stringify({ message: "Schedule is not active." }), { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 });
     }
     console.log(`[LOG] Processing schedule: ${schedule.name}`);
@@ -228,12 +249,15 @@ serve(async (req: Request) => {
       console.warn("[WARN] INTERNAL_SECRET_KEY not set. Skipping automatic translation.");
     }
 
+    await logAutomationEvent(supabase, scheduleId, 'success', `Post "${draftPost.title}" criado com sucesso.`);
+
     return new Response(JSON.stringify({ message: "Automatic post created and translation initiated.", postId: newPost.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200,
     });
 
   } catch (error) {
     console.error("[FATAL] Edge Function Error:", error);
+    await logAutomationEvent(supabase, scheduleId, 'error', error.message, { stack: error.stack });
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });

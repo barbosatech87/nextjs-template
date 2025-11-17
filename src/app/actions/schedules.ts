@@ -18,6 +18,20 @@ export type Schedule = {
   publish_automatically: boolean;
 };
 
+// Novo tipo para os logs
+export type AutomationLog = {
+  id: string;
+  schedule_id: string;
+  status: 'success' | 'error';
+  message: string;
+  details: Record<string, unknown> | null;
+  created_at: string;
+  automatic_post_schedules: {
+    name: string;
+  } | null;
+};
+
+
 function constructCronExpression(data: ScheduleFormData): string {
   if (data.frequencyType === 'custom') {
     return data.frequency_cron_expression!;
@@ -125,5 +139,26 @@ export async function deleteSchedule(id: string, lang: Locale) {
   } catch (e) {
     const message = e instanceof Error ? e.message : "Ocorreu um erro inesperado.";
     return { success: false, message };
+  }
+}
+
+export async function getAutomationLogs(): Promise<AutomationLog[]> {
+  try {
+    await checkAdmin();
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from('automation_logs')
+      .select('*, automatic_post_schedules(name)')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) {
+      console.error("Error fetching automation logs:", error);
+      return [];
+    }
+    return data as AutomationLog[];
+  } catch (e) {
+    console.error("Unexpected error in getAutomationLogs:", e);
+    return [];
   }
 }
