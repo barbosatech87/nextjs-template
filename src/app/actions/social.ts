@@ -17,6 +17,18 @@ export type SocialAutomation = {
   frequency_cron_expression: string;
 };
 
+export type SocialAutomationLog = {
+  id: string;
+  automation_id: string;
+  status: 'success' | 'error';
+  message: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string;
+  social_media_automations: {
+    name: string;
+  } | null;
+};
+
 async function checkAdmin() {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -100,5 +112,55 @@ export async function deleteSocialAutomation(id: string, lang: Locale) {
     return { success: true, message: "Automação deletada com sucesso." };
   } catch (e) {
     return { success: false, message: e instanceof Error ? e.message : "Ocorreu um erro." };
+  }
+}
+
+export async function triggerSocialAutomationManually(automationId: string, lang: Locale) {
+  try {
+    await checkAdmin();
+
+    const functionUrl = `https://xrwnftnfzwbrzijnbhfu.supabase.co/functions/v1/post-to-pinterest`;
+    const internalSecret = process.env.INTERNAL_SECRET_KEY;
+
+    if (!internalSecret) {
+      throw new Error("Chave secreta interna não configurada no servidor.");
+    }
+
+    fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Secret': internalSecret,
+      },
+      body: JSON.stringify({ automationId }),
+    });
+
+    revalidatePath(`/${lang}/admin/social/logs`);
+
+    return { success: true, message: "Execução manual iniciada. Verifique o histórico para ver o resultado." };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Ocorreu um erro inesperado.";
+    return { success: false, message };
+  }
+}
+
+export async function getSocialAutomationLogs(): Promise<SocialAutomationLog[]> {
+  try {
+    await checkAdmin();
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from('social_media_post_logs')
+      .select('*, social_media_automations(name)')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) {
+      console.error("Error fetching social automation logs:", error);
+      return [];
+    }
+    return data as SocialAutomationLog[];
+  } catch (e) {
+    console.error("Unexpected error in getSocialAutomationLogs:", e);
+    return [];
   }
 }

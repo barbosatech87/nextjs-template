@@ -1,9 +1,10 @@
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, History } from 'lucide-react';
 import { Locale } from '@/lib/i18n/config';
 import { getSocialAutomations } from '@/app/actions/social';
 import { AutomationsTable } from '@/components/admin/social/automations-table';
 import { AutomationFormDialog } from '@/components/admin/social/automation-form-dialog';
+import Link from 'next/link';
 
 interface ManageSocialPageProps {
   params: Promise<{ lang: Locale }>;
@@ -22,12 +23,20 @@ export default async function ManageSocialPage({ params }: ManageSocialPageProps
             Gerencie postagens automáticas para suas redes sociais.
           </p>
         </div>
-        <AutomationFormDialog lang={lang}>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Nova Automação
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href={`/${lang}/admin/social/logs`}>
+              <History className="mr-2 h-4 w-4" />
+              Ver Histórico
+            </Link>
           </Button>
-        </AutomationFormDialog>
+          <AutomationFormDialog lang={lang}>
+            <Button>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Nova Automação
+            </Button>
+          </AutomationFormDialog>
+        </div>
       </div>
       <AutomationsTable automations={automations} lang={lang} />
     </div>

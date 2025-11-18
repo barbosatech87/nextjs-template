@@ -30,7 +30,8 @@ const texts = {
     notifications: "Notificações",
     schedules: "Agendamentos",
     social: "Automação Social",
-    logs: "Histórico",
+    logs: "Histórico (Blog)",
+    socialLogs: "Histórico (Social)",
     title: "Admin"
   },
   en: {
@@ -43,7 +44,8 @@ const texts = {
     notifications: "Notifications",
     schedules: "Schedules",
     social: "Social Automation",
-    logs: "History",
+    logs: "History (Blog)",
+    socialLogs: "History (Social)",
     title: "Admin"
   },
   es: {
@@ -56,7 +58,8 @@ const texts = {
     notifications: "Notificaciones",
     schedules: "Horarios",
     social: "Automatización Social",
-    logs: "Historial",
+    logs: "Historial (Blog)",
+    socialLogs: "Historial (Social)",
     title: "Admin"
   },
 };
@@ -78,8 +81,9 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
     { href: `/${lang}/admin/ai-image-generator`, label: t.aiImage, icon: <Image /> },
     { href: `/${lang}/admin/pages`, label: t.pages, icon: <FileText /> },
     { href: `/${lang}/admin/schedules`, label: t.schedules, icon: <Clock /> },
-    { href: `/${lang}/admin/social`, label: t.social, icon: <Share2 /> },
     { href: `/${lang}/admin/schedules/logs`, label: t.logs, icon: <History /> },
+    { href: `/${lang}/admin/social`, label: t.social, icon: <Share2 /> },
+    { href: `/${lang}/admin/social/logs`, label: t.socialLogs, icon: <History /> },
     { href: `/${lang}/admin/users`, label: t.users, icon: <Users /> },
     { href: `/${lang}/admin/notifications`, label: t.notifications, icon: <Bell /> },
   ];
@@ -108,7 +112,7 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
             <Link href={item.href} passHref>
               <SidebarMenuButton
                 asChild
-                isActive={pathname.startsWith(item.href) && (item.href.length > `/${lang}/admin`.length || pathname === item.href)}
+                isActive={pathname === item.href}
                 tooltip={item.label}
               >
                 <span>
