@@ -172,13 +172,65 @@ Sua saída DEVE ser um objeto JSON com a seguinte estrutura:
   }
 }
 
+async function generateImagePrompt(postTitle, postSummary) {
+  const systemPrompt = `Você é um criador de prompts de imagem para DALL-E 3. Sua tarefa é criar um prompt de imagem único, conceitual e artístico, baseado no título e resumo do artigo fornecido. O estilo deve ser aquarela minimalista e suave. O prompt deve ter no máximo 150 palavras. Não inclua texto, letras ou números. Foque em simbolismo cristão e cores calmas. Retorne APENAS o prompt de imagem.`;
+  
+  const userPrompt = `Título: ${postTitle}\nResumo: ${postSummary}`;
+
+  // Usamos o Claude como primeira opção para prompts de imagem, pois ele é bom em criatividade
+  try {
+    if (!Deno.env.get("CLAUDE_API_KEY")) {
+      throw new Error("CLAUDE_API_KEY not set. Falling back to OpenAI.");
+    }
+    
+    const model = "claude-sonnet-4-5-20250929";
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("CLAUDE_API_KEY"), "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: model,
+        max_tokens: 500,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        temperature: 0.8,
+      }),
+    });
+
+    if (!response.ok) throw new Error(`Claude API error: ${await response.text()}`);
+    const data = await response.json();
+    return data.content[0].text.trim();
+
+  } catch (claudeError) {
+    console.warn(`Claude failed to generate image prompt: ${claudeError.message}. Falling back to OpenAI GPT-4o-mini.`);
+    
+    // Fallback para OpenAI
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.8,
+      }),
+    });
+
+    if (!response.ok) throw new Error(`OpenAI API error: ${await response.text()}`);
+    const data = await response.json();
+    return data.choices[0].message.content.trim();
+  }
+}
+
 async function generateImageAndUpload(prompt, userId, supabase) {
-  const fullPrompt = `High-quality, artistic, conceptual image for a Christian blog post. Abstract or symbolic representation. No text, letters, or numbers. Theme: ${prompt}`;
+  // O prompt já inclui o estilo (aquarela minimalista)
+  const finalPrompt = `High-quality, artistic, conceptual image for a Christian blog post. No text, letters, or numbers. Prompt: ${prompt}`;
   
   const openaiResponse = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
-    body: JSON.stringify({ model: "dall-e-3", prompt: fullPrompt, n: 1, size: "1024x1024", response_format: "url" }),
+    body: JSON.stringify({ model: "dall-e-3", prompt: finalPrompt, n: 1, size: "1024x1024", response_format: "url" }),
   });
 
   if (!openaiResponse.ok) throw new Error(`OpenAI Image API error: ${await openaiResponse.text()}`);
@@ -255,7 +307,11 @@ serve(async (req: Request) => {
     const { postData: draftPost, modelUsed } = await createFinalPost(initialDraft);
     console.log(`[LOG] Post finalized by ${modelUsed}: "${draftPost.title}"`);
 
-    const imageUrl = await generateImageAndUpload(schedule.default_image_prompt, schedule.author_id, supabase);
+    // --- NOVA ETAPA: Geração do Prompt de Imagem Dinâmico ---
+    const dynamicImagePrompt = await generateImagePrompt(draftPost.title, draftPost.summary);
+    console.log(`[LOG] Dynamic Image Prompt generated: ${dynamicImagePrompt}`);
+    
+    const imageUrl = await generateImageAndUpload(dynamicImagePrompt, schedule.author_id, supabase);
     console.log(`[LOG] Image generated and uploaded: ${imageUrl}`);
 
     const statusToSet = schedule.publish_automatically ? 'published' : 'draft';
@@ -312,7 +368,7 @@ serve(async (req: Request) => {
       console.warn("[WARN] INTERNAL_SECRET_KEY not set. Skipping automatic translation.");
     }
 
-    await logAutomationEvent(supabase, scheduleId, 'success', `Post "${draftPost.title}" criado com sucesso.`, { modelUsed });
+    await logAutomationEvent(supabase, scheduleId, 'success', `Post "${draftPost.title}" criado com sucesso.`, { modelUsed, imagePrompt: dynamicImagePrompt });
 
     return new Response(JSON.stringify({ message: "Automatic post created and translation initiated.", postId: newPost.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200,
