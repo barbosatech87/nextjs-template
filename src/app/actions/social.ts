@@ -126,7 +126,8 @@ export async function triggerSocialAutomationManually(automationId: string, lang
       throw new Error("Chave secreta interna não configurada no servidor.");
     }
 
-    fetch(functionUrl, {
+    // Aguarda a resposta da Edge Function para capturar erros
+    const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -134,6 +135,11 @@ export async function triggerSocialAutomationManually(automationId: string, lang
       },
       body: JSON.stringify({ automationId }),
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `A função retornou um erro ${response.status}.`);
+    }
 
     revalidatePath(`/${lang}/admin/social/logs`);
 
