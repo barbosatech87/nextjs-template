@@ -6,13 +6,22 @@ import { Badge } from "@/components/ui/badge";
 import { SocialAutomationLog } from "@/app/actions/social";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Eye } from "lucide-react";
+import { Eye, Loader2 } from "lucide-react";
 
 interface SocialLogsTableProps {
   logs: SocialAutomationLog[];
 }
 
 export function SocialLogsTable({ logs }: SocialLogsTableProps) {
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'error': return 'destructive';
+      case 'success': return 'default';
+      case 'processing': return 'secondary';
+      default: return 'outline';
+    }
+  };
+
   return (
     <div className="border rounded-lg">
       <Table>
@@ -30,7 +39,8 @@ export function SocialLogsTable({ logs }: SocialLogsTableProps) {
             <TableRow key={log.id}>
               <TableCell className="font-medium">{log.social_media_automations?.name || 'N/A'}</TableCell>
               <TableCell>
-                <Badge variant={log.status === 'error' ? 'destructive' : 'default'}>
+                <Badge variant={getStatusVariant(log.status)}>
+                  {log.status === 'processing' && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
                   {log.status}
                 </Badge>
               </TableCell>

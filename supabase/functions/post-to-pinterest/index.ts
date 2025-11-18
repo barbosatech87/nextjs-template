@@ -11,9 +11,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-secret',
 };
 
-async function logEvent(supabase, automationId, status, message, details = {}) {
+async function logEvent(supabase, automationId, original_post_id, status, message, details = {}) {
   const { error } = await supabase.from('social_media_post_logs').insert({
     automation_id: automationId,
+    original_post_id: original_post_id,
     status,
     message,
     details,
@@ -137,6 +138,7 @@ serve(async (req: Request) => {
   }
 
   let automationId = null;
+  let postId = null;
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
   try {
@@ -144,36 +146,36 @@ serve(async (req: Request) => {
     automationId = body.automationId;
     if (!automationId) throw new Error("automationId is required.");
 
+    await logEvent(supabase, automationId, null, 'processing', 'Iniciando postagem no Pinterest.');
+
     const { data: automation, error: autoError } = await supabase.from('social_media_automations').select('*').eq('id', automationId).single();
     if (autoError || !automation) throw new Error(`Automation rule not found: ${autoError?.message}`);
-    if (!automation.is_active) return new Response(JSON.stringify({ message: "Automation is not active." }), { headers: corsHeaders });
+    if (!automation.is_active) {
+      await logEvent(supabase, automationId, null, 'success', 'Automação inativa, execução pulada.');
+      return new Response(JSON.stringify({ message: "Automation is not active." }), { headers: corsHeaders });
+    }
 
     const post = await getUnpostedBlogPost(supabase, automation);
     if (!post) {
-      await logEvent(supabase, automationId, 'success', 'Nenhum post novo para publicar.');
+      await logEvent(supabase, automationId, null, 'success', 'Nenhum post novo para publicar.');
       return new Response(JSON.stringify({ message: "No new posts to publish." }), { headers: corsHeaders });
     }
+    postId = post.id; // Armazena o ID do post para logs de erro
 
     const pinDescription = await generatePinContent(automation.description_template, post);
     const pinImageUrl = await generateAndUploadImage(automation.image_prompt_template, post, supabase);
-    const postUrl = `https://www.paxword.com/pt/blog/${post.slug}`; // Ajuste o locale conforme necessário
+    const postUrl = `https://www.paxword.com/pt/blog/${post.slug}`;
 
     const pinId = await postToPinterest(automation.pinterest_board_id, postUrl, post.title, pinDescription, pinImageUrl);
 
-    await supabase.from('social_media_post_logs').insert({
-      automation_id: automationId,
-      original_post_id: post.id,
-      social_media_post_id: pinId,
-      status: 'success',
-      details: { message: `Pin created with ID: ${pinId}` },
-    });
+    await logEvent(supabase, automationId, postId, 'success', `Pin criado com sucesso: ${pinId}`, { pinId });
 
     return new Response(JSON.stringify({ message: "Successfully posted to Pinterest.", pinId }), { headers: corsHeaders });
 
   } catch (error) {
     console.error("Edge Function Error:", error);
     if (automationId) {
-      await logEvent(supabase, automationId, 'error', error.message, { stack: error.stack });
+      await logEvent(supabase, automationId, postId, 'error', error.message, { stack: error.stack });
     }
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
   }
