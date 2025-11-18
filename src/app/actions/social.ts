@@ -20,7 +20,7 @@ export type SocialAutomation = {
 export type SocialAutomationLog = {
   id: string;
   automation_id: string;
-  status: 'success' | 'error';
+  status: 'success' | 'error' | 'processing';
   message: string | null;
   details: Record<string, unknown> | null;
   created_at: string;
