@@ -2,7 +2,7 @@ import { ReactNode } from 'react';
 import { AdminSidebar } from '@/components/admin/admin-sidebar';
 import { Locale } from '@/lib/i18n/config';
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
-import SafeRedirect from '@/components/navigation/safe-redirect';
+import { redirect } from 'next/navigation';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -26,11 +26,15 @@ export default async function AdminLayout({ children, params }: AdminLayoutProps
     isAuthorized = profile?.role === 'admin' || profile?.role === 'writer';
   }
 
+  if (!isAuthorized) {
+    redirect(`/${lang}/auth`);
+  }
+
   return (
     <div className="flex min-h-screen">
       <AdminSidebar lang={lang}>
         <div className="p-6 bg-muted/40 h-full">
-          {isAuthorized ? children : <SafeRedirect href={`/${lang}/auth`} />}
+          {children}
         </div>
       </AdminSidebar>
     </div>
