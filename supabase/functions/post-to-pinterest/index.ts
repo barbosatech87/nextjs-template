@@ -88,15 +88,65 @@ async function generatePinContent(template, post) {
   return data.choices[0].message.content;
 }
 
-async function generateAndUploadImage(promptTemplate, post, supabase) {
-  const filledPrompt = promptTemplate
-    .replace('{post_title}', post.title)
-    .replace('{post_summary}', post.summary || '');
+async function generateImagePrompt(postTitle, postSummary) {
+  const systemPrompt = `Você é um criador de prompts de imagem para DALL-E 3. Sua tarefa é criar um prompt de imagem único, conceitual e artístico, baseado no título e resumo do artigo fornecido. O estilo deve ser aquarela minimalista e suave. O prompt deve ter no máximo 150 palavras. Não inclua texto, letras ou números. Foque em simbolismo cristão e cores calmas. Retorne APENAS o prompt de imagem.`;
+  
+  const userPrompt = `Título: ${postTitle}\nResumo: ${postSummary}`;
 
+  try {
+    if (!Deno.env.get("CLAUDE_API_KEY")) {
+      throw new Error("CLAUDE_API_KEY not set. Falling back to OpenAI.");
+    }
+    
+    const model = "claude-sonnet-4-5-20250929";
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("CLAUDE_API_KEY"), "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({
+        model: model,
+        max_tokens: 500,
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+        temperature: 0.8,
+      }),
+    });
+
+    if (!response.ok) throw new Error(`Claude API error: ${await response.text()}`);
+    const data = await response.json();
+    return data.content[0].text.trim();
+
+  } catch (claudeError) {
+    console.warn(`Claude failed to generate image prompt: ${claudeError.message}. Falling back to OpenAI GPT-4o-mini.`);
+    
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.8,
+      }),
+    });
+
+    if (!response.ok) throw new Error(`OpenAI API error: ${await response.text()}`);
+    const data = await response.json();
+    return data.choices[0].message.content.trim();
+  }
+}
+
+async function generateAndUploadImage(promptTemplate, post, supabase) {
+  // Usa a nova função para gerar um prompt dinâmico e artístico
+  const dynamicImagePrompt = await generateImagePrompt(post.title, post.summary);
+  
+  const finalPrompt = `High-quality, artistic, conceptual image for a Christian blog post. No text, letters, or numbers. Prompt: ${dynamicImagePrompt}`;
+  
   const openaiResponse = await fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
-    body: JSON.stringify({ model: "dall-e-3", prompt: filledPrompt, n: 1, size: "1024x1792", response_format: "url" }),
+    body: JSON.stringify({ model: "dall-e-3", prompt: finalPrompt, n: 1, size: "1024x1792", response_format: "url" }),
   });
   if (!openaiResponse.ok) throw new Error(`OpenAI image generation failed: ${await openaiResponse.text()}`);
   const data = await openaiResponse.json();
@@ -113,7 +163,7 @@ async function generateAndUploadImage(promptTemplate, post, supabase) {
   if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
 
   const { data: publicUrlData } = supabase.storage.from("blog_images").getPublicUrl(filePath);
-  return publicUrlData.publicUrl;
+  return { imageUrl: publicUrlData.publicUrl, usedPrompt: dynamicImagePrompt };
 }
 
 async function sendToN8n(webhookUrl, payload) {
@@ -132,7 +182,6 @@ async function sendToN8n(webhookUrl, payload) {
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
-  // Verifica autorização interna (cron ou chamada manual do admin)
   const internalSecret = req.headers.get('X-Internal-Secret');
   if (internalSecret !== Deno.env.get('INTERNAL_SECRET_KEY')) {
     return new Response('Unauthorized', { status: 401, headers: corsHeaders });
@@ -152,7 +201,6 @@ serve(async (req: Request) => {
     automationId = body.automationId;
     if (!automationId) throw new Error("automationId is required.");
 
-    // 1. Validar Automação
     const { data: automation, error: autoError } = await supabase.from('social_media_automations').select('*').eq('id', automationId).single();
     if (autoError || !automation) throw new Error(`Automation rule not found: ${autoError?.message}`);
     
@@ -160,18 +208,15 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ message: "Automation is not active." }), { headers: corsHeaders });
     }
 
-    // 2. Encontrar Post
     const post = await getUnpostedBlogPost(supabase, automation);
     if (!post) {
       return new Response(JSON.stringify({ message: "No new posts to publish." }), { headers: corsHeaders });
     }
 
-    // 3. Gerar Conteúdo
     const pinDescription = await generatePinContent(automation.description_template, post);
-    const pinImageUrl = await generateAndUploadImage(automation.image_prompt_template, post, supabase);
+    const { imageUrl: pinImageUrl, usedPrompt } = await generateAndUploadImage(automation.image_prompt_template, post, supabase);
     const postUrl = `https://www.paxword.com/pt/blog/${post.slug}`;
 
-    // 4. Criar Log Inicial (Status: Processing)
     logId = await createInitialLog(
       supabase, 
       automationId, 
@@ -180,25 +225,23 @@ serve(async (req: Request) => {
       { 
         generatedDescription: pinDescription, 
         generatedImageUrl: pinImageUrl,
+        imagePrompt: usedPrompt, // Salva o prompt usado
         targetUrl: postUrl
       }
     );
 
-    // 5. Enviar para n8n
     const n8nPayload = {
-      logId: logId, // Importante: o n8n deve devolver isso no callback
+      logId: logId,
       boardId: automation.pinterest_board_id,
       title: post.title,
       description: pinDescription,
       link: postUrl,
       imageUrl: pinImageUrl,
-      // Passamos o segredo para o n8n autenticar o callback de volta
       callbackSecret: Deno.env.get('INTERNAL_SECRET_KEY') 
     };
 
     await sendToN8n(n8nWebhookUrl, n8nPayload);
 
-    // 6. Atualizar mensagem do log (o status continua processing até o callback)
     await supabase.from('social_media_post_logs').update({
       message: 'Enviado ao n8n. Aguardando confirmação de postagem.'
     }).eq('id', logId);
@@ -207,7 +250,6 @@ serve(async (req: Request) => {
 
   } catch (error) {
     console.error("Edge Function Error:", error);
-    // Se já tivermos um log criado, atualizamos para erro. Se não, não temos onde logar no banco (apenas console).
     if (logId) {
       await updateLogToError(supabase, logId, `Erro interno antes do envio ao n8n: ${error.message}`);
     }
