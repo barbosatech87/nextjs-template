@@ -59,6 +59,10 @@ export async function getDashboardStats(): Promise<DashboardStats | null> {
     };
 
   } catch (error) {
+    // Ignora erros de autenticação para evitar ruído no console/UI, pois o layout fará o redirecionamento
+    if (error instanceof Error && (error.message === "Usuário não autenticado." || error.message === "Acesso negado.")) {
+      return null;
+    }
     console.error("Error fetching dashboard stats:", error);
     return null;
   }

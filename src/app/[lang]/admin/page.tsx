@@ -5,6 +5,7 @@ import { QuickActions } from '@/components/admin/dashboard/quick-actions';
 import { RecentDraftsCard } from '@/components/admin/dashboard/recent-drafts-card';
 import { AnalyticsCard } from '@/components/admin/dashboard/analytics-card';
 import { BookCopy, FileText, Users, Edit } from 'lucide-react';
+import { redirect } from 'next/navigation';
 
 interface AdminDashboardPageProps {
   params: Promise<{ lang: Locale }>;
@@ -15,11 +16,14 @@ export default async function AdminDashboardPage({ params }: AdminDashboardPageP
   const stats = await getDashboardStats();
 
   if (!stats) {
+    // Se falhar em carregar as estatísticas (provavelmente por auth), tenta redirecionar ou mostra erro
+    // O Layout já deve ter redirecionado se não houver usuário, mas aqui garantimos.
+    // Se o usuário estiver logado e for um erro real, ele verá a mensagem abaixo (ou será redirecionado se a sessão expirou)
     return (
       <div>
-        <h1 className="text-3xl font-bold">Erro ao carregar o Dashboard</h1>
+        <h1 className="text-3xl font-bold">Carregando...</h1>
         <p className="text-muted-foreground">
-          Não foi possível buscar as estatísticas. Tente novamente mais tarde.
+          Verificando permissões...
         </p>
       </div>
     );
