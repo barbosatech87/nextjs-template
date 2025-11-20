@@ -1,6 +1,7 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
+import { createSupabaseAdminClient } from "@/integrations/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { Locale } from "@/lib/i18n/config";
 import { socialAutomationSchema, SocialAutomationFormData } from "@/lib/schemas/social";
@@ -174,7 +175,7 @@ export async function getSocialAutomationLogs(): Promise<SocialAutomationLog[]> 
 export async function clearOldProcessingLogs(lang: Locale) {
   try {
     await checkAdmin();
-    const supabase = await createSupabaseServerClient();
+    const supabase = createSupabaseAdminClient(); // Usando o cliente admin
 
     // Define o tempo limite (1 hora atrás)
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
