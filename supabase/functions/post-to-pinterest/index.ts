@@ -11,15 +11,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-secret',
 };
 
-async function logEvent(supabase, automationId, original_post_id, status, message, details = {}) {
-  const { error } = await supabase.from('social_media_post_logs').insert({
+// Cria o log inicial e retorna o ID para passarmos ao n8n
+async function createInitialLog(supabase, automationId, original_post_id, message, details = {}) {
+  const { data, error } = await supabase.from('social_media_post_logs').insert({
     automation_id: automationId,
     original_post_id: original_post_id,
-    status,
+    status: 'processing', // Começa como processing até o n8n confirmar
     message,
     details,
-  });
-  if (error) console.error(`Failed to log event:`, error.message);
+  }).select('id').single();
+  
+  if (error) {
+    console.error(`Failed to create log:`, error.message);
+    throw error;
+  }
+  return data.id;
+}
+
+// Função de fallback para atualizar log em caso de erro fatal no script (antes de enviar pro n8n)
+async function updateLogToError(supabase, logId, message) {
+  if (!logId) return;
+  await supabase.from('social_media_post_logs').update({
+    status: 'error',
+    message: message
+  }).eq('id', logId);
 }
 
 async function getUnpostedBlogPost(supabase, automation) {
@@ -101,44 +116,35 @@ async function generateAndUploadImage(promptTemplate, post, supabase) {
   return publicUrlData.publicUrl;
 }
 
-async function postToPinterest(boardId, link, title, description, imageUrl) {
-  const accessToken = Deno.env.get("PINTEREST_ACCESS_TOKEN");
-  if (!accessToken) throw new Error("PINTEREST_ACCESS_TOKEN is not set.");
-
-  const response = await fetch("https://api.pinterest.com/v5/pins", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${accessToken}`,
-    },
-    body: JSON.stringify({
-      board_id: boardId,
-      link: link,
-      title: title,
-      alt_text: title,
-      description: description,
-      media_source: {
-        source_type: "image_url",
-        url: imageUrl,
-      },
-    }),
+async function sendToN8n(webhookUrl, payload) {
+  const response = await fetch(webhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
   });
 
-  if (!response.ok) throw new Error(`Pinterest API error: ${await response.text()}`);
-  const data = await response.json();
-  return data.id;
+  if (!response.ok) {
+    throw new Error(`Failed to send to n8n: ${response.statusText}`);
+  }
+  return true;
 }
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
+  // Verifica autorização interna (cron ou chamada manual do admin)
   const internalSecret = req.headers.get('X-Internal-Secret');
   if (internalSecret !== Deno.env.get('INTERNAL_SECRET_KEY')) {
     return new Response('Unauthorized', { status: 401, headers: corsHeaders });
   }
 
+  const n8nWebhookUrl = Deno.env.get("N8N_WEBHOOK_URL");
+  if (!n8nWebhookUrl) {
+    return new Response(JSON.stringify({ error: "Configuration Error: N8N_WEBHOOK_URL is not set." }), { status: 500, headers: corsHeaders });
+  }
+
   let automationId = null;
-  let postId = null;
+  let logId = null;
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
   try {
@@ -146,36 +152,64 @@ serve(async (req: Request) => {
     automationId = body.automationId;
     if (!automationId) throw new Error("automationId is required.");
 
-    await logEvent(supabase, automationId, null, 'processing', 'Iniciando postagem no Pinterest.');
-
+    // 1. Validar Automação
     const { data: automation, error: autoError } = await supabase.from('social_media_automations').select('*').eq('id', automationId).single();
     if (autoError || !automation) throw new Error(`Automation rule not found: ${autoError?.message}`);
+    
     if (!automation.is_active) {
-      await logEvent(supabase, automationId, null, 'success', 'Automação inativa, execução pulada.');
       return new Response(JSON.stringify({ message: "Automation is not active." }), { headers: corsHeaders });
     }
 
+    // 2. Encontrar Post
     const post = await getUnpostedBlogPost(supabase, automation);
     if (!post) {
-      await logEvent(supabase, automationId, null, 'success', 'Nenhum post novo para publicar.');
       return new Response(JSON.stringify({ message: "No new posts to publish." }), { headers: corsHeaders });
     }
-    postId = post.id; // Armazena o ID do post para logs de erro
 
+    // 3. Gerar Conteúdo
     const pinDescription = await generatePinContent(automation.description_template, post);
     const pinImageUrl = await generateAndUploadImage(automation.image_prompt_template, post, supabase);
     const postUrl = `https://www.paxword.com/pt/blog/${post.slug}`;
 
-    const pinId = await postToPinterest(automation.pinterest_board_id, postUrl, post.title, pinDescription, pinImageUrl);
+    // 4. Criar Log Inicial (Status: Processing)
+    logId = await createInitialLog(
+      supabase, 
+      automationId, 
+      post.id, 
+      'Conteúdo gerado. Enviando para n8n...', 
+      { 
+        generatedDescription: pinDescription, 
+        generatedImageUrl: pinImageUrl,
+        targetUrl: postUrl
+      }
+    );
 
-    await logEvent(supabase, automationId, postId, 'success', `Pin criado com sucesso: ${pinId}`, { pinId });
+    // 5. Enviar para n8n
+    const n8nPayload = {
+      logId: logId, // Importante: o n8n deve devolver isso no callback
+      boardId: automation.pinterest_board_id,
+      title: post.title,
+      description: pinDescription,
+      link: postUrl,
+      imageUrl: pinImageUrl,
+      // Passamos o segredo para o n8n autenticar o callback de volta
+      callbackSecret: Deno.env.get('INTERNAL_SECRET_KEY') 
+    };
 
-    return new Response(JSON.stringify({ message: "Successfully posted to Pinterest.", pinId }), { headers: corsHeaders });
+    await sendToN8n(n8nWebhookUrl, n8nPayload);
+
+    // 6. Atualizar mensagem do log (o status continua processing até o callback)
+    await supabase.from('social_media_post_logs').update({
+      message: 'Enviado ao n8n. Aguardando confirmação de postagem.'
+    }).eq('id', logId);
+
+    return new Response(JSON.stringify({ message: "Sent to n8n for processing.", logId }), { headers: corsHeaders });
 
   } catch (error) {
     console.error("Edge Function Error:", error);
-    if (automationId) {
-      await logEvent(supabase, automationId, postId, 'error', error.message, { stack: error.stack });
+    // Se já tivermos um log criado, atualizamos para erro. Se não, não temos onde logar no banco (apenas console).
+    if (logId) {
+      await updateLogToError(supabase, logId, `Erro interno antes do envio ao n8n: ${error.message}`);
     }
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
   }
