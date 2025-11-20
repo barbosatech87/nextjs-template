@@ -170,3 +170,34 @@ export async function getSocialAutomationLogs(): Promise<SocialAutomationLog[]> 
     return [];
   }
 }
+
+export async function clearOldProcessingLogs(lang: Locale) {
+  try {
+    await checkAdmin();
+    const supabase = await createSupabaseServerClient();
+
+    // Define o tempo limite (1 hora atrás)
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+    const { count, error } = await supabase
+      .from('social_media_post_logs')
+      .delete({ count: 'exact' })
+      .eq('status', 'processing')
+      .lt('created_at', oneHourAgo);
+
+    if (error) {
+      throw error;
+    }
+
+    revalidatePath(`/${lang}/admin/social/logs`);
+    
+    if (count === 0) {
+        return { success: true, message: "Nenhum log antigo para limpar." };
+    }
+
+    return { success: true, message: `${count} log(s) antigo(s) foram limpos com sucesso.` };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Ocorreu um erro inesperado.";
+    return { success: false, message };
+  }
+}
