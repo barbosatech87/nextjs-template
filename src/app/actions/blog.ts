@@ -267,7 +267,7 @@ export type PostDetail = {
   summary: string | null;
   content: string;
   language_code: string;
-  categories: { name: string; slug: string }[]; // Atualizado
+  categories: { id: string; name: string; slug: string }[]; // Atualizado
 };
 
 export type EditablePostData = Omit<BlogPost, 'author_id' | 'created_at' | 'updated_at'> & {
@@ -426,13 +426,13 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
   // 3. Buscar as categorias do post
   const { data: postCategoriesData, error: categoryError } = await supabase
     .from('blog_post_categories')
-    .select('blog_categories(name, slug)')
+    .select('blog_categories(id, name, slug)')
     .eq('post_id', post.id);
 
   if (categoryError) {
     console.error(`Error fetching categories for post ${post.id}:`, categoryError);
   }
-  const categories = postCategoriesData ? postCategoriesData.map(pc => pc.blog_categories).filter(Boolean) as { name: string; slug: string }[] : [];
+  const categories = postCategoriesData ? postCategoriesData.map(pc => pc.blog_categories).filter(Boolean) as { id: string; name: string; slug: string }[] : [];
 
 
   const contentWithoutTitle = removeFirstH1(post.content || '');

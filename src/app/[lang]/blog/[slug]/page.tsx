@@ -103,7 +103,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   const relatedPosts = await getRelatedPosts({
     postId: post.id,
-    categoryIds: post.categories.map(c => c.slug), // Usando slugs para buscar relacionados
+    categoryIds: post.categories.map(c => c.id), // Corrigido para usar o ID
     authorId: post.author_id,
     lang,
   });
