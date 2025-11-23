@@ -76,7 +76,7 @@ export default async function HomePage({ params }: HomePageProps) {
           lang={lang} 
           posts={devotionalPosts} 
           title={t.postSection.devotional.title} 
-          viewAllLink={`/${lang}/blog?category=devocional`}
+          viewAllLink={`/${lang}/blog/category/devocional`}
           viewAllText={t.postSection.devotional.viewAll}
         />
         <PostSection 
