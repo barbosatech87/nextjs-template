@@ -38,7 +38,7 @@ Sua saída DEVE ser um objeto JSON com a seguinte estrutura:
   "title": "Um título atrativo e otimizado para SEO com no máximo 70 caracteres.",
   "slug": "um-slug-para-url-baseado-no-titulo-sem-acentos-e-com-hifens",
   "content": "O corpo do post em formato Markdown, refinado para ter um tom pessoal, envolvente e teologicamente sólido. Otimize para SEO, usando subtítulos (H2, H3) e palavras-chave relevantes. Não inclua o título principal (H1) aqui.",
-  "summary": "Um resumo conciso do post com no máximo 300 caracteres.",
+  "summary": "Um resumo instigante e direto com no máximo 300 caracteres. PROIBIDO começar com clichês como 'Descubra', 'Aprenda', 'Veja', 'Neste artigo' ou 'Explore'. Comece com uma pergunta retórica, uma afirmação impactante ou vá direto ao ponto central da reflexão.",
   "seo_title": "Um título para SEO, similar ao título principal, com no máximo 60 caracteres.",
   "seo_description": "Uma meta descrição para SEO, otimizada para cliques, com no máximo 160 caracteres."
 }
@@ -99,7 +99,7 @@ Sua saída DEVE ser um objeto JSON com a seguinte estrutura:
   "title": "Um título atrativo e otimizado para SEO com no máximo 70 caracteres.",
   "slug": "um-slug-para-url-baseado-no-titulo-sem-acentos-e-com-hifens",
   "content": "O corpo do post em formato Markdown, refinado para ter um tom pessoal, envolvente e teologicamente sólido. Otimize para SEO, usando subtítulos (H2, H3) e palavras-chave relevantes. Não inclua o título principal (H1) aqui.",
-  "summary": "Um resumo conciso do post com no máximo 300 caracteres.",
+  "summary": "Um resumo instigante e direto com no máximo 300 caracteres. PROIBIDO começar com clichês como 'Descubra', 'Aprenda', 'Veja', 'Neste artigo' ou 'Explore'. Comece com uma pergunta retórica, uma afirmação impactante ou vá direto ao ponto central da reflexão.",
   "seo_title": "Um título para SEO, similar ao título principal, com no máximo 60 caracteres.",
   "seo_description": "Uma meta descrição para SEO, otimizada para cliques, com no máximo 160 caracteres."
 }
