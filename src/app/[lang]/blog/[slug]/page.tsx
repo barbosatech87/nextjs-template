@@ -56,6 +56,7 @@ export async function generateMetadata(
     : 'PaxWord';
 
   const imageUrl = post.image_url || '/social-share.png';
+  const imageAlt = post.image_alt_text || post.title;
 
   return {
     title: post.title,
@@ -68,9 +69,8 @@ export async function generateMetadata(
       images: [
         {
           url: imageUrl,
-          width: 1200,
-          height: 630,
-          alt: post.image_alt_text || post.title,
+          alt: imageAlt,
+          // Removido width/height fixos para evitar conflito com imagens de proporções variadas
         },
       ],
       locale: lang,
@@ -82,7 +82,10 @@ export async function generateMetadata(
       card: 'summary_large_image',
       title: post.title,
       description: post.summary || '',
-      images: [imageUrl],
+      images: {
+        url: imageUrl,
+        alt: imageAlt,
+      },
     },
   };
 }
