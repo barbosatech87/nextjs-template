@@ -432,7 +432,7 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
   if (categoryError) {
     console.error(`Error fetching categories for post ${post.id}:`, categoryError);
   }
-  const categories = postCategoriesData ? postCategoriesData.map(pc => pc.blog_categories).filter(Boolean) as { id: string; name: string; slug: string }[] : [];
+  const categories = postCategoriesData ? postCategoriesData.map(pc => pc.blog_categories).filter(Boolean) as unknown as { id: string; name: string; slug: string }[] : [];
 
 
   const contentWithoutTitle = removeFirstH1(post.content || '');
