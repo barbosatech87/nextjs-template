@@ -11,12 +11,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-secret',
 };
 
-// Cria o log inicial e retorna o ID para passarmos ao n8n
+// Cria o log inicial e retorna o ID para passarmos a Make
 async function createInitialLog(supabase, automationId, original_post_id, message, details = {}) {
   const { data, error } = await supabase.from('social_media_post_logs').insert({
     automation_id: automationId,
     original_post_id: original_post_id,
-    status: 'processing', // Começa como processing até o n8n confirmar
+    status: 'processing', // Começa como processing até a Make confirmar
     message,
     details,
   }).select('id').single();
@@ -28,7 +28,7 @@ async function createInitialLog(supabase, automationId, original_post_id, messag
   return data.id;
 }
 
-// Função de fallback para atualizar log em caso de erro fatal no script (antes de enviar pro n8n)
+// Função de fallback para atualizar log em caso de erro fatal no script
 async function updateLogToError(supabase, logId, message) {
   if (!logId) return;
   await supabase.from('social_media_post_logs').update({
@@ -138,7 +138,6 @@ async function generateImagePrompt(postTitle, postSummary) {
 }
 
 async function generateAndUploadImage(promptTemplate, post, supabase) {
-  // Usa a nova função para gerar um prompt dinâmico e artístico
   const dynamicImagePrompt = await generateImagePrompt(post.title, post.summary);
   
   const finalPrompt = `High-quality, artistic, conceptual image for a Christian blog post. No text, letters, or numbers. Prompt: ${dynamicImagePrompt}`;
@@ -166,16 +165,25 @@ async function generateAndUploadImage(promptTemplate, post, supabase) {
   return { imageUrl: publicUrlData.publicUrl, usedPrompt: dynamicImagePrompt };
 }
 
-async function sendToN8n(webhookUrl, payload) {
+async function sendToMake(webhookUrl, apiKey, payload) {
+  const headers = { 'Content-Type': 'application/json' };
+  
+  // Adiciona o header de API Key se fornecido
+  if (apiKey) {
+    headers['x-make-apikey'] = apiKey;
+  }
+
   const response = await fetch(webhookUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: headers,
     body: JSON.stringify(payload)
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to send to n8n: ${response.statusText}`);
+    throw new Error(`Failed to send to Make: ${response.statusText} (${response.status})`);
   }
+  
+  // Make webhooks sometimes return text "Accepted" or JSON
   return true;
 }
 
@@ -187,9 +195,12 @@ serve(async (req: Request) => {
     return new Response('Unauthorized', { status: 401, headers: corsHeaders });
   }
 
-  const n8nWebhookUrl = Deno.env.get("N8N_WEBHOOK_URL");
-  if (!n8nWebhookUrl) {
-    return new Response(JSON.stringify({ error: "Configuration Error: N8N_WEBHOOK_URL is not set." }), { status: 500, headers: corsHeaders });
+  // Configurações da Make
+  const makeWebhookUrl = Deno.env.get("MAKE_WEBHOOK_URL");
+  const makeApiKey = Deno.env.get("MAKE_API_KEY");
+
+  if (!makeWebhookUrl) {
+    return new Response(JSON.stringify({ error: "Configuration Error: MAKE_WEBHOOK_URL is not set." }), { status: 500, headers: corsHeaders });
   }
 
   let automationId = null;
@@ -213,26 +224,30 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ message: "No new posts to publish." }), { headers: corsHeaders });
     }
 
+    // Geração de conteúdo
     const pinDescription = await generatePinContent(automation.description_template, post);
     const { imageUrl: pinImageUrl, usedPrompt } = await generateAndUploadImage(automation.image_prompt_template, post, supabase);
     const postUrl = `https://www.paxword.com/pt/blog/${post.slug}`;
 
+    // Cria o log inicial
     logId = await createInitialLog(
       supabase, 
       automationId, 
       post.id, 
-      'Conteúdo gerado. Enviando para n8n...', 
+      'Conteúdo gerado. Enviando para Make...', 
       { 
         generatedDescription: pinDescription, 
         generatedImageUrl: pinImageUrl,
-        imagePrompt: usedPrompt, // Salva o prompt usado
-        targetUrl: postUrl
+        imagePrompt: usedPrompt,
+        targetUrl: postUrl,
+        targetPlatform: 'make'
       }
     );
 
-    const n8nPayload = {
+    // Payload para a Make
+    const makePayload = {
       logId: logId,
-      boardId: automation.pinterest_board_id,
+      boardId: automation.pinterest_board_id, // Importante: ID do board do Pinterest
       title: post.title,
       description: pinDescription,
       link: postUrl,
@@ -240,18 +255,18 @@ serve(async (req: Request) => {
       callbackSecret: Deno.env.get('INTERNAL_SECRET_KEY') 
     };
 
-    await sendToN8n(n8nWebhookUrl, n8nPayload);
+    await sendToMake(makeWebhookUrl, makeApiKey, makePayload);
 
     await supabase.from('social_media_post_logs').update({
-      message: 'Enviado ao n8n. Aguardando confirmação de postagem.'
+      message: 'Enviado para Make. Aguardando callback.'
     }).eq('id', logId);
 
-    return new Response(JSON.stringify({ message: "Sent to n8n for processing.", logId }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ message: "Sent to Make for processing.", logId }), { headers: corsHeaders });
 
   } catch (error) {
     console.error("Edge Function Error:", error);
     if (logId) {
-      await updateLogToError(supabase, logId, `Erro interno antes do envio ao n8n: ${error.message}`);
+      await updateLogToError(supabase, logId, `Erro interno antes do envio para Make: ${error.message}`);
     }
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
   }
