@@ -267,7 +267,7 @@ export type PostDetail = {
   summary: string | null;
   content: string;
   language_code: string;
-  category_ids: string[];
+  categories: { name: string; slug: string }[]; // Atualizado
 };
 
 export type EditablePostData = Omit<BlogPost, 'author_id' | 'created_at' | 'updated_at'> & {
@@ -424,15 +424,16 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
   }
 
   // 3. Buscar as categorias do post
-  const { data: postCategories, error: categoryError } = await supabase
+  const { data: postCategoriesData, error: categoryError } = await supabase
     .from('blog_post_categories')
-    .select('category_id')
+    .select('blog_categories(name, slug)')
     .eq('post_id', post.id);
 
   if (categoryError) {
     console.error(`Error fetching categories for post ${post.id}:`, categoryError);
   }
-  const category_ids = postCategories ? postCategories.map(pc => pc.category_id) : [];
+  const categories = postCategoriesData ? postCategoriesData.map(pc => pc.blog_categories).filter(Boolean) as { name: string; slug: string }[] : [];
+
 
   const contentWithoutTitle = removeFirstH1(post.content || '');
   let contentToParse = contentWithoutTitle;
@@ -477,7 +478,7 @@ export async function getPostBySlug(slug: string, lang: string): Promise<PostDet
     summary: finalSummary,
     content: parsedContent,
     language_code: finalLanguageCode,
-    category_ids,
+    categories,
   };
 }
 
@@ -827,4 +828,78 @@ export async function getBlogCategories(): Promise<BlogCategory[]> {
     return [];
   }
   return data as BlogCategory[];
+}
+
+export async function getPublishedPostsByCategory(lang: string, categorySlug: string, page: number = 1) {
+  const supabase = await createSupabaseServerClient();
+  const offset = (page - 1) * POSTS_PER_PAGE;
+
+  // 1. Encontrar a categoria pelo slug
+  const { data: category, error: categoryError } = await supabase
+    .from('blog_categories')
+    .select('id, name')
+    .eq('slug', categorySlug)
+    .single();
+
+  if (categoryError || !category) {
+    console.error(`Category with slug "${categorySlug}" not found.`);
+    return { posts: [], totalPages: 0, currentPage: page, categoryName: null };
+  }
+
+  // 2. Buscar posts associados a essa categoria
+  const { data: originalPosts, count, error: postsError } = await supabase
+    .from('blog_posts')
+    .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code, blog_post_categories!inner(category_id)', { count: 'exact' })
+    .eq('status', 'published')
+    .eq('blog_post_categories.category_id', category.id)
+    .order('published_at', { ascending: false })
+    .range(offset, offset + POSTS_PER_PAGE - 1);
+
+  if (postsError) {
+    console.error("Error fetching posts by category:", postsError);
+    return { posts: [], totalPages: 0, currentPage: page, categoryName: category.name };
+  }
+
+  if (!originalPosts || originalPosts.length === 0) {
+    return { posts: [], totalPages: 0, currentPage: page, categoryName: category.name };
+  }
+
+  const postIds = originalPosts.map(p => p.id);
+  
+  // 3. Lógica de tradução (similar a getPublishedPosts)
+  let finalPosts: PostListItem[] = originalPosts.map(p => ({
+    id: p.id,
+    slug: p.slug,
+    image_url: p.image_url,
+    image_alt_text: p.image_alt_text,
+    published_at: p.published_at,
+    title: p.title,
+    summary: p.summary,
+    language_code: p.language_code,
+  }));
+
+  if (lang !== 'pt') {
+    const { data: translations } = await supabase
+      .from('blog_post_translations')
+      .select('post_id, translated_title, translated_summary, language_code')
+      .in('post_id', postIds)
+      .eq('language_code', lang);
+
+    if (translations) {
+      const translationMap = new Map(translations.map(t => [t.post_id, t]));
+      finalPosts = finalPosts.map(post => {
+        const translation = translationMap.get(post.id);
+        return translation ? { ...post, title: translation.translated_title, summary: translation.translated_summary, language_code: translation.language_code } : post;
+      });
+    }
+  }
+
+  const totalPages = count ? Math.ceil(count / POSTS_PER_PAGE) : 0;
+
+  return { 
+    posts: finalPosts, 
+    totalPages, 
+    currentPage: page,
+    categoryName: category.name,
+  };
 }

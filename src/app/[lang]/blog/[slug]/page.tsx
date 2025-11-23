@@ -7,6 +7,7 @@ import { Locale } from "@/lib/i18n/config";
 import { PostSection } from "@/components/home/post-section";
 import { Metadata, ResolvingMetadata } from "next";
 import { ShareButtons } from "@/components/social/share-buttons";
+import Link from "next/link";
 
 const texts = {
   pt: {
@@ -102,7 +103,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   const relatedPosts = await getRelatedPosts({
     postId: post.id,
-    categoryIds: post.category_ids,
+    categoryIds: post.categories.map(c => c.slug), // Usando slugs para buscar relacionados
     authorId: post.author_id,
     lang,
   });
@@ -140,6 +141,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     },
     'datePublished': post.published_at,
     'dateModified': post.updated_at || post.published_at,
+    'articleSection': post.categories.map(c => c.name).join(', '),
   };
 
   return (
@@ -179,6 +181,18 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               <span className="uppercase">{post.language_code}</span>
             </Badge>
           </div>
+
+          {post.categories.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mb-6">
+              {post.categories.map(category => (
+                <Link key={category.slug} href={`/${lang}/blog/category/${category.slug}`}>
+                  <Badge variant="outline" className="hover:bg-accent transition-colors">
+                    {category.name}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          )}
 
           <ShareButtons 
             title={post.title}
