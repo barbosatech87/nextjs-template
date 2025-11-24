@@ -20,6 +20,16 @@ function removeFirstH1(markdown: string): string {
   return markdown;
 }
 
+// Helper function to shuffle array (Fisher-Yates shuffle)
+function shuffleArray<T>(array: T[]): T[] {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+}
+
 // Tipos para a função de criação
 export type NewPostData = Omit<BlogPost, 'id' | 'author_id' | 'created_at' | 'updated_at' | 'status' | 'language_code'> & {
   category_ids: string[];
@@ -694,35 +704,48 @@ export async function getRelatedPosts({
   let relatedPosts: PostListItem[] = [];
   const foundPostIds = new Set<string>([postId]);
 
-  // 1. Find posts by category
+  // 1. Find posts by category (with randomization)
   if (categoryIds.length > 0) {
-    const { data: postCategoryData, error: pcError } = await supabase
-      .from('blog_post_categories')
-      .select('post_id')
-      .in('category_id', categoryIds)
-      .not('post_id', 'eq', postId);
+    // Fetch all published posts in the same categories (except current)
+    // Using !inner join to filter by category and status at once
+    const { data: availablePostsData, error: pcError } = await supabase
+      .from('blog_posts')
+      .select('id, blog_post_categories!inner(category_id)')
+      .eq('status', 'published')
+      .in('blog_post_categories.category_id', categoryIds)
+      .not('id', 'eq', postId);
 
     if (pcError) console.error("Error fetching related post IDs by category:", pcError);
 
-    if (postCategoryData && postCategoryData.length > 0) {
-      const postIds = [...new Set(postCategoryData.map(pc => pc.post_id))];
-      const { data: posts, error: postsError } = await supabase
-        .from('blog_posts')
-        .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code')
-        .in('id', postIds)
-        .eq('status', 'published')
-        .limit(limit);
+    if (availablePostsData && availablePostsData.length > 0) {
+      // Get unique IDs from the results
+      let postIds = [...new Set(availablePostsData.map(p => p.id))];
       
-      if (postsError) console.error("Error fetching related posts by category:", postsError);
+      // Shuffle IDs to ensure randomness
+      postIds = shuffleArray(postIds);
       
-      if (posts) {
-        relatedPosts.push(...posts as PostListItem[]);
-        posts.forEach(p => foundPostIds.add(p.id));
+      // Take the random subset we need
+      const selectedIds = postIds.slice(0, limit);
+
+      if (selectedIds.length > 0) {
+        const { data: posts, error: postsError } = await supabase
+          .from('blog_posts')
+          .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code')
+          .in('id', selectedIds);
+        
+        if (postsError) console.error("Error fetching related posts details:", postsError);
+        
+        if (posts) {
+           // Shuffle again to mix display order, just in case DB returns ordered results
+           const shuffledPosts = shuffleArray(posts as PostListItem[]);
+           relatedPosts.push(...shuffledPosts);
+           posts.forEach(p => foundPostIds.add(p.id));
+        }
       }
     }
   }
 
-  // 2. Find posts by author if needed
+  // 2. Find posts by author if needed (fallback)
   if (relatedPosts.length < limit && authorId) {
     const { data: authorPosts, error: authorError } = await supabase
       .from('blog_posts')
@@ -741,7 +764,7 @@ export async function getRelatedPosts({
     }
   }
 
-  // 3. Find recent posts if needed
+  // 3. Find recent posts if needed (last fallback)
   if (relatedPosts.length < limit) {
     const { data: recentPosts, error: recentError } = await supabase
       .from('blog_posts')
@@ -758,7 +781,7 @@ export async function getRelatedPosts({
     }
   }
 
-  // Ensure unique posts and correct limit
+  // Ensure unique posts (just in case) and correct limit
   const finalPosts = Array.from(new Map(relatedPosts.map(p => [p.id, p])).values()).slice(0, limit);
 
   // 4. Handle translations
