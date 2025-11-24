@@ -100,6 +100,7 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
     const [noteDialogOpen, setNoteDialogOpen] = useState(false);
     const [selectedVerseForNote, setSelectedVerseForNote] = useState<Verse | null>(null);
 
+    const router = useRouter();
     const locale = t[lang] || t.pt;
 
     const isCurrentDayCompleted = completedDays.has(currentDay);
@@ -143,6 +144,22 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
 
     const handleNoteSave = (verseId: string, newNote: string) => {
         setOptimisticNotes(prev => ({ ...prev, [verseId]: newNote }));
+    };
+    
+    const handleNextDayClick = () => {
+        if (!isCurrentDayCompleted) {
+            // Fire and forget, don't await. The user navigates immediately.
+            updateReadingProgress(plan.id, currentDay, true, lang).then(result => {
+                if (result.success) {
+                    toast.success(locale.updateSuccess);
+                } else {
+                    // Log error but don't block user. They might not even see the toast if navigation is fast.
+                    console.error("Failed to auto-mark day as read:", result.message);
+                    toast.error(locale.updateError);
+                }
+            });
+        }
+        router.push(`/${lang}/plans/${plan.id}?day=${currentDay + 1}`);
     };
     
     const readingReference = chaptersToRead.map(c => `${getTranslatedBookName(c.book, lang)} ${c.chapter}`).join(', ');
@@ -214,11 +231,9 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
                         {locale.prevDay}
                     </Link>
                 </Button>
-                <Button asChild variant="outline" disabled={currentDay >= totalDays}>
-                    <Link href={`/${lang}/plans/${plan.id}?day=${currentDay + 1}`}>
-                        {locale.nextDay}
-                        <ChevronRight className="ml-2 h-4 w-4" />
-                    </Link>
+                <Button variant="outline" disabled={currentDay >= totalDays} onClick={handleNextDayClick}>
+                    {locale.nextDay}
+                    <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
             </footer>
 
