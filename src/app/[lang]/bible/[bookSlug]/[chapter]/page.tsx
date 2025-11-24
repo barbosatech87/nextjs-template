@@ -6,6 +6,8 @@ import { VerseDisplay } from '@/components/bible/verse-display';
 import { BibleNavigation } from '@/components/bible/bible-navigation';
 import { ShareButtons } from '@/components/social/share-buttons';
 import { Metadata, ResolvingMetadata } from "next";
+import { getFavoriteVerseIds } from '@/app/actions/favorites';
+import { getNotesForVerses } from '@/app/actions/notes';
 
 const pageTexts = {
   pt: {
@@ -102,7 +104,7 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
   // Fetch verses for the current chapter
   const { data: verses, error: versesError } = await supabase
     .from('verses')
-    .select('verse_number, text')
+    .select('*') // Changed to select all verse data
     .eq('book', bookName)
     .eq('chapter', chapterNumber)
     .eq('language_code', lang)
@@ -122,6 +124,16 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
     console.error("Error fetching chapter data:", { versesError, chapterError });
     notFound();
   }
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const verseIds = (verses || []).map(v => v.id);
+  const [favoriteVerseIds, initialNotes] = user
+    ? await Promise.all([
+        getFavoriteVerseIds(user.id),
+        getNotesForVerses(verseIds)
+      ])
+    : [new Set<string>(), {}];
 
   const totalChapters = chapterData.chapter;
   const translatedBookName = getTranslatedBookName(bookName, lang);
@@ -210,7 +222,13 @@ export default async function ChapterPage({ params }: ChapterPageProps) {
         />
 
         <div className="mt-8">
-          <VerseDisplay verses={verses || []} />
+          <VerseDisplay
+            lang={lang}
+            verses={verses || []}
+            user={user}
+            initialFavoriteVerseIds={favoriteVerseIds}
+            initialNotes={initialNotes}
+          />
         </div>
 
         <div className="mt-8">
