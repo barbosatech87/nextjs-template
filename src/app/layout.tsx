@@ -6,6 +6,7 @@ import './globals.css';
 import { Metadata } from 'next';
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import AdsenseScript from '@/components/ads/adsense-script';
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 interface RootLayoutProps {
   children: ReactNode;
@@ -79,6 +80,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
         <SessionContextProvider>
           <GoogleAnalytics />
           {children}
+          <SpeedInsights />
           <Toaster />
         </SessionContextProvider>
       </body>
