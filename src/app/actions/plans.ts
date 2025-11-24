@@ -15,6 +15,12 @@ interface ChapterReference {
   chapter: number;
 }
 
+// Novo tipo para planos com progresso
+export type UserReadingPlanWithProgress = UserReadingPlan & {
+  completed_days_count: number;
+};
+
+
 export async function getPublicReadingPlans(): Promise<PredefinedPlan[]> {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
@@ -130,7 +136,7 @@ export async function deleteUserReadingPlan(planId: string, lang: Locale): Promi
     return { success: true, message: "Plano de leitura excluído com sucesso!" };
 }
 
-export async function getUserActiveReadingPlans(): Promise<UserReadingPlan[]> {
+export async function getUserActiveReadingPlans(): Promise<UserReadingPlanWithProgress[]> {
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -138,18 +144,49 @@ export async function getUserActiveReadingPlans(): Promise<UserReadingPlan[]> {
     return [];
   }
 
-  const { data, error } = await supabase
+  // 1. Fetch user's plans
+  const { data: plans, error: plansError } = await supabase
     .from("user_reading_plans")
     .select("*")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error("Erro ao buscar planos de leitura:", error);
+  if (plansError) {
+    console.error("Erro ao buscar planos de leitura:", plansError);
     return [];
   }
+  
+  if (!plans || plans.length === 0) {
+      return [];
+  }
 
-  return data as UserReadingPlan[];
+  const planIds = plans.map(p => p.id);
+
+  // 2. Fetch progress for all those plans
+  const { data: progress, error: progressError } = await supabase
+    .from("user_reading_progress")
+    .select("user_plan_id")
+    .in("user_plan_id", planIds);
+
+  if (progressError) {
+    console.error("Erro ao buscar progresso dos planos:", progressError);
+  }
+
+  // 3. Map progress to each plan
+  const progressMap = new Map<string, number>();
+  if (progress) {
+      for (const p of progress) {
+          progressMap.set(p.user_plan_id, (progressMap.get(p.user_plan_id) || 0) + 1);
+      }
+  }
+
+  // 4. Combine data
+  const plansWithProgress: UserReadingPlanWithProgress[] = plans.map(plan => ({
+      ...plan,
+      completed_days_count: progressMap.get(plan.id) || 0,
+  }));
+
+  return plansWithProgress;
 }
 
 export async function getPlanAndProgress(planId: string): Promise<{ plan: UserReadingPlan; completedDays: Set<number> }> {

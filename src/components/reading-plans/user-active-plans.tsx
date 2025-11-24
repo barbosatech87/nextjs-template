@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from 'react';
+import React, { useTransition } from 'react';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { ptBR, enUS, es } from 'date-fns/locale';
@@ -8,8 +8,8 @@ import { BookOpen, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Locale } from '@/lib/i18n/config';
-import { UserReadingPlan } from '@/types/supabase';
 import { deleteUserReadingPlan } from '@/app/actions/plans';
+import type { UserReadingPlanWithProgress } from '@/app/actions/plans';
 
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ import {
 
 interface UserActivePlansProps {
   lang: Locale;
-  plans: UserReadingPlan[];
+  plans: UserReadingPlanWithProgress[];
 }
 
 const locales = { pt: ptBR, en: enUS, es: es };
@@ -100,8 +100,13 @@ export const UserActivePlans: React.FC<UserActivePlansProps> = ({ lang, plans })
     });
   };
 
-  const calculateProgress = (plan: UserReadingPlan) => {
-    return 5; // TODO: Implementar cálculo real do progresso
+  const calculateProgress = (plan: UserReadingPlanWithProgress) => {
+    const totalDays = Object.keys(plan.daily_reading_schedule).length;
+    if (totalDays === 0) {
+      return 0;
+    }
+    const progress = (plan.completed_days_count / totalDays) * 100;
+    return Math.round(progress);
   };
 
   if (!plans || plans.length === 0) {
