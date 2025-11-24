@@ -4,7 +4,7 @@ import * as React from "react"
 import * as LabelPrimitive from "@radix-ui/react-label"
 import { Slot } from "@radix-ui/react-slot"
 import {
-  Controller as HookFormController,
+  Controller as RHFController, // Renomeado para evitar qualquer conflito
   FormProvider,
   useFormContext,
   type ControllerProps,
@@ -14,6 +14,9 @@ import {
 
 import { cn } from "@/lib/utils"
 import { Label } from "@/components/ui/label"
+
+// Re-exportando o Controller para garantir que ele esteja sempre definido
+export const Controller = RHFController;
 
 const Form = FormProvider
 
@@ -36,7 +39,7 @@ const FormField = <
 }: ControllerProps<TFieldValues, TName>) => {
   return (
     <FormFieldContext.Provider value={{ name: props.name }}>
-      <HookFormController {...props} />
+      <RHFController {...props} />
     </FormFieldContext.Provider>
   )
 }
