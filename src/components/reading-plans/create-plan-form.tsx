@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Check, ChevronsUpDown, X, BookStack } from 'lucide-react';
+import { Check, ChevronsUpDown, X, Library } from 'lucide-react';
 
 import { Locale } from '@/lib/i18n/config';
 import { getBibleMetadata } from '@/app/actions/ai';
@@ -251,7 +251,7 @@ export const CreatePlanForm: React.FC<{ lang: Locale }> = ({ lang }) => {
                               onSelect={handleSelectAll}
                               className="font-medium text-primary"
                             >
-                              <BookStack className="mr-2 h-4 w-4" />
+                              <Library className="mr-2 h-4 w-4" />
                               {t.form.allBooks}
                               {isAllSelected && <Check className="ml-auto h-4 w-4" />}
                             </CommandItem>
