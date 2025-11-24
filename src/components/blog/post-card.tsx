@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { PostListItem } from '@/app/actions/blog';
 import { Locale } from '@/lib/i18n/config';
@@ -21,10 +22,12 @@ const PostCard: React.FC<PostCardProps> = ({ post, lang }) => {
       <Card className="h-full flex flex-col overflow-hidden transition-shadow hover:shadow-lg">
         {post.image_url && (
           <div className="relative h-48 w-full overflow-hidden">
-            <img 
+            <Image 
               src={post.image_url} 
               alt={post.image_alt_text || post.title} 
-              className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+              fill
+              className="object-cover transition-transform duration-300 hover:scale-105"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
           </div>
         )}

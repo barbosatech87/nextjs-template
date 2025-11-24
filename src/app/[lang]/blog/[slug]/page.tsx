@@ -8,6 +8,7 @@ import { PostSection } from "@/components/home/post-section";
 import { Metadata, ResolvingMetadata } from "next";
 import { ShareButtons } from "@/components/social/share-buttons";
 import Link from "next/link";
+import Image from "next/image";
 
 const texts = {
   pt: {
@@ -157,11 +158,14 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <div className="container px-4 md:px-8 py-12">
         <article className="max-w-3xl mx-auto">
           {post.image_url && (
-            <div className="mb-8 rounded-lg overflow-hidden shadow-xl">
-              <img 
+            <div className="mb-8 relative w-full h-64 md:h-96 rounded-lg overflow-hidden shadow-xl">
+              <Image 
                 src={post.image_url} 
                 alt={post.image_alt_text || post.title} 
-                className="w-full h-auto max-h-96 object-cover"
+                fill
+                priority
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 800px"
               />
             </div>
           )}
