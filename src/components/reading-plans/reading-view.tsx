@@ -4,7 +4,7 @@ import React, { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, CheckCircle, Circle, Star } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, Circle, Star, FilePenLine } from 'lucide-react';
 
 import { Locale } from '@/lib/i18n/config';
 import { UserReadingPlan, Verse } from '@/types/supabase';
@@ -15,6 +15,7 @@ import { toggleFavoriteVerse } from '@/app/actions/favorites';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { VerseNoteDialog } from '@/components/bible/verse-note-dialog';
 
 interface ReadingViewProps {
     lang: Locale;
@@ -25,6 +26,7 @@ interface ReadingViewProps {
     completedDays: Set<number>;
     chaptersToRead: { book: string; chapter: number }[];
     initialFavoriteVerseIds: Set<string>;
+    initialNotes: Record<string, string>;
 }
 
 const t = {
@@ -42,6 +44,7 @@ const t = {
         favoriteSuccess: "Adicionado aos favoritos!",
         unfavoriteSuccess: "Removido dos favoritos!",
         favoriteError: "Erro ao gerenciar favoritos.",
+        addNote: "Adicionar/Editar anotação",
     },
     en: {
         day: "Day",
@@ -57,6 +60,7 @@ const t = {
         favoriteSuccess: "Added to favorites!",
         unfavoriteSuccess: "Removed from favorites!",
         favoriteError: "Error managing favorites.",
+        addNote: "Add/Edit note",
     },
     es: {
         day: "Día",
@@ -72,6 +76,7 @@ const t = {
         favoriteSuccess: "¡Añadido a favoritos!",
         unfavoriteSuccess: "¡Quitado de favoritos!",
         favoriteError: "Error al gestionar favoritos.",
+        addNote: "Añadir/Editar anotación",
     }
 };
 
@@ -83,11 +88,18 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
     totalDays,
     completedDays,
     chaptersToRead,
-    initialFavoriteVerseIds
+    initialFavoriteVerseIds,
+    initialNotes
 }) => {
     const [isProgressPending, startProgressTransition] = useTransition();
     const [isFavoritePending, startFavoriteTransition] = useTransition();
+    
     const [optimisticFavorites, setOptimisticFavorites] = useState(initialFavoriteVerseIds);
+    const [optimisticNotes, setOptimisticNotes] = useState(initialNotes);
+
+    const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+    const [selectedVerseForNote, setSelectedVerseForNote] = useState<Verse | null>(null);
+
     const locale = t[lang] || t.pt;
 
     const isCurrentDayCompleted = completedDays.has(currentDay);
@@ -106,14 +118,10 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
     const handleToggleFavorite = (verse: Verse) => {
         const isFavorited = optimisticFavorites.has(verse.id);
         
-        // Optimistic update
         setOptimisticFavorites(prev => {
             const newSet = new Set(prev);
-            if (isFavorited) {
-                newSet.delete(verse.id);
-            } else {
-                newSet.add(verse.id);
-            }
+            if (isFavorited) newSet.delete(verse.id);
+            else newSet.add(verse.id);
             return newSet;
         });
 
@@ -123,10 +131,18 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
                 toast.success(isFavorited ? locale.unfavoriteSuccess : locale.favoriteSuccess);
             } else {
                 toast.error(locale.favoriteError);
-                // Revert optimistic update on error
                 setOptimisticFavorites(initialFavoriteVerseIds);
             }
         });
+    };
+
+    const handleOpenNoteDialog = (verse: Verse) => {
+        setSelectedVerseForNote(verse);
+        setNoteDialogOpen(true);
+    };
+
+    const handleNoteSave = (verseId: string, newNote: string) => {
+        setOptimisticNotes(prev => ({ ...prev, [verseId]: newNote }));
     };
     
     const readingReference = chaptersToRead.map(c => `${getTranslatedBookName(c.book, lang)} ${c.chapter}`).join(', ');
@@ -158,22 +174,31 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
                     <div className="prose prose-lg dark:prose-invert max-w-none">
                         {verses.map((verse) => {
                             const isFavorited = optimisticFavorites.has(verse.id);
+                            const hasNote = !!optimisticNotes[verse.id];
                             return (
                                 <div key={verse.id} className="flex items-start gap-2 group">
                                     <p className="flex-1">
                                         <sup>{verse.verse_number}</sup> {verse.text}
                                     </p>
                                     <TooltipProvider>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8" onClick={() => handleToggleFavorite(verse)} disabled={isFavoritePending}>
-                                                    <Star className={`h-4 w-4 ${isFavorited ? 'text-yellow-500 fill-yellow-400' : 'text-muted-foreground'}`} />
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>{isFavorited ? locale.unfavorite : locale.favorite}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
+                                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenNoteDialog(verse)}>
+                                                        <FilePenLine className={`h-4 w-4 ${hasNote ? 'text-primary' : 'text-muted-foreground'}`} />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent><p>{locale.addNote}</p></TooltipContent>
+                                            </Tooltip>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleFavorite(verse)} disabled={isFavoritePending}>
+                                                        <Star className={`h-4 w-4 ${isFavorited ? 'text-yellow-500 fill-yellow-400' : 'text-muted-foreground'}`} />
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent><p>{isFavorited ? locale.unfavorite : locale.favorite}</p></TooltipContent>
+                                            </Tooltip>
+                                        </div>
                                     </TooltipProvider>
                                 </div>
                             );
@@ -196,6 +221,17 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
                     </Link>
                 </Button>
             </footer>
+
+            {selectedVerseForNote && (
+                <VerseNoteDialog
+                    lang={lang}
+                    verse={selectedVerseForNote}
+                    initialNote={optimisticNotes[selectedVerseForNote.id] || ''}
+                    open={noteDialogOpen}
+                    onOpenChange={setNoteDialogOpen}
+                    onNoteSave={handleNoteSave}
+                />
+            )}
         </div>
     );
 };

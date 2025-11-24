@@ -8,6 +8,7 @@ import { NotesTab } from '@/components/profile/notes-tab';
 import { getHydratedFavorites } from '@/app/actions/favorites';
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { LoginPrompt } from '@/components/auth/login-prompt';
+import { getHydratedNotes } from '@/app/actions/notes';
 
 interface ProfilePageProps {
   params: Promise<{ lang: Locale }>;
@@ -60,7 +61,10 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     );
   }
 
-  const favorites = await getHydratedFavorites();
+  const [favorites, notes] = await Promise.all([
+    getHydratedFavorites(),
+    getHydratedNotes()
+  ]);
 
   return (
     <div className="container mx-auto max-w-4xl py-12">
@@ -99,7 +103,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         </TabsContent>
         
         <TabsContent value="notes" className="mt-6">
-          <NotesTab lang={lang} />
+          <NotesTab lang={lang} notes={notes} />
         </TabsContent>
       </Tabs>
     </div>

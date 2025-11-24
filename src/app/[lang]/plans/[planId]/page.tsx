@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import { Locale } from "@/lib/i18n/config";
 import { getPlanAndProgress, getChaptersText } from "@/app/actions/plans";
 import { getFavoriteVerseIds } from '@/app/actions/favorites';
+import { getNotesForVerses } from '@/app/actions/notes';
 import { ReadingView } from '@/components/reading-plans/reading-view';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
@@ -38,8 +39,7 @@ export default async function PlanPage({ params, searchParams }: PlanPageProps) 
     const { data: { user } } = await supabase.auth.getUser();
 
     const { plan, completedDays } = await getPlanAndProgress(planId);
-    const favoriteVerseIds = user ? await getFavoriteVerseIds(user.id) : new Set<string>();
-
+    
     const scheduleKeys = Object.keys(plan.daily_reading_schedule).sort((a, b) => parseInt(a.split('_')[1]) - parseInt(b.split('_')[1]));
     const totalDays = scheduleKeys.length;
 
@@ -55,6 +55,14 @@ export default async function PlanPage({ params, searchParams }: PlanPageProps) 
     const chaptersToRead = plan.daily_reading_schedule[currentDayKey] || [];
     const verses = await getChaptersText(chaptersToRead, lang);
 
+    const verseIds = verses.map(v => v.id);
+    const [favoriteVerseIds, initialNotes] = user 
+        ? await Promise.all([
+            getFavoriteVerseIds(user.id),
+            getNotesForVerses(verseIds)
+        ])
+        : [new Set<string>(), {}];
+
     return (
         <div className="container mx-auto py-10">
             <Suspense fallback={<ReadingSkeleton />}>
@@ -67,6 +75,7 @@ export default async function PlanPage({ params, searchParams }: PlanPageProps) 
                     completedDays={completedDays}
                     chaptersToRead={chaptersToRead}
                     initialFavoriteVerseIds={favoriteVerseIds}
+                    initialNotes={initialNotes}
                 />
             </Suspense>
         </div>
