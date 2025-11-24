@@ -6,6 +6,7 @@ import { getNotesForVerses } from '@/app/actions/notes';
 import { ReadingView } from '@/components/reading-plans/reading-view';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
+import { User } from '@supabase/supabase-js';
 
 interface PlanPageProps {
     params: Promise<{
@@ -76,6 +77,7 @@ export default async function PlanPage({ params, searchParams }: PlanPageProps) 
                     chaptersToRead={chaptersToRead}
                     initialFavoriteVerseIds={favoriteVerseIds}
                     initialNotes={initialNotes}
+                    user={user}
                 />
             </Suspense>
         </div>

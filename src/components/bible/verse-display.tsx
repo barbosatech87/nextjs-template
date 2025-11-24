@@ -13,6 +13,7 @@ import { toggleFavoriteVerse } from '@/app/actions/favorites';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { VerseNoteDialog } from '@/components/bible/verse-note-dialog';
+import { AuthPromptDialog } from '@/components/auth/auth-prompt-dialog';
 
 interface VerseDisplayProps {
   lang: Locale;
@@ -30,7 +31,6 @@ const t = {
         unfavoriteSuccess: "Removido dos favoritos!",
         favoriteError: "Erro ao gerenciar favoritos.",
         addNote: "Adicionar/Editar anotação",
-        loginRequired: "Faça login para usar este recurso.",
     },
     en: {
         favorite: "Favorite",
@@ -39,7 +39,6 @@ const t = {
         unfavoriteSuccess: "Removed from favorites!",
         favoriteError: "Error managing favorites.",
         addNote: "Add/Edit note",
-        loginRequired: "Please log in to use this feature.",
     },
     es: {
         favorite: "Marcar como favorito",
@@ -48,7 +47,6 @@ const t = {
         unfavoriteSuccess: "¡Quitado de favoritos!",
         favoriteError: "Error al gestionar favoritos.",
         addNote: "Añadir/Editar anotación",
-        loginRequired: "Inicia sesión para usar esta función.",
     }
 };
 
@@ -68,15 +66,19 @@ export const VerseDisplay: React.FC<VerseDisplayProps> = ({
 
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [selectedVerseForNote, setSelectedVerseForNote] = useState<Verse | null>(null);
+  const [authPromptOpen, setAuthPromptOpen] = useState(false);
 
-  const handleAuthRedirect = () => {
-    toast.info(locale.loginRequired);
+  const handleAuthPrompt = () => {
+    setAuthPromptOpen(true);
+  };
+
+  const handleConfirmAuth = () => {
     router.push(`/${lang}/auth`);
   };
 
   const handleToggleFavorite = (verse: Verse) => {
     if (!user) {
-      handleAuthRedirect();
+      handleAuthPrompt();
       return;
     }
 
@@ -102,7 +104,7 @@ export const VerseDisplay: React.FC<VerseDisplayProps> = ({
 
   const handleOpenNoteDialog = (verse: Verse) => {
     if (!user) {
-      handleAuthRedirect();
+      handleAuthPrompt();
       return;
     }
     setSelectedVerseForNote(verse);
@@ -163,6 +165,12 @@ export const VerseDisplay: React.FC<VerseDisplayProps> = ({
           onNoteSave={handleNoteSave}
         />
       )}
+      <AuthPromptDialog
+        lang={lang}
+        open={authPromptOpen}
+        onOpenChange={setAuthPromptOpen}
+        onConfirm={handleConfirmAuth}
+      />
     </div>
   );
 };

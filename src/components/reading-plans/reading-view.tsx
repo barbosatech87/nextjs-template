@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { ChevronLeft, ChevronRight, CheckCircle, Circle, Star, FilePenLine } from 'lucide-react';
+import { User } from '@supabase/supabase-js';
 
 import { Locale } from '@/lib/i18n/config';
 import { UserReadingPlan, Verse } from '@/types/supabase';
@@ -16,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { VerseNoteDialog } from '@/components/bible/verse-note-dialog';
+import { AuthPromptDialog } from '@/components/auth/auth-prompt-dialog';
 
 interface ReadingViewProps {
     lang: Locale;
@@ -27,6 +29,7 @@ interface ReadingViewProps {
     chaptersToRead: { book: string; chapter: number }[];
     initialFavoriteVerseIds: Set<string>;
     initialNotes: Record<string, string>;
+    user: User | null;
 }
 
 const t = {
@@ -89,7 +92,8 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
     completedDays,
     chaptersToRead,
     initialFavoriteVerseIds,
-    initialNotes
+    initialNotes,
+    user
 }) => {
     const [isProgressPending, startProgressTransition] = useTransition();
     const [isFavoritePending, startFavoriteTransition] = useTransition();
@@ -99,13 +103,26 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
 
     const [noteDialogOpen, setNoteDialogOpen] = useState(false);
     const [selectedVerseForNote, setSelectedVerseForNote] = useState<Verse | null>(null);
+    const [authPromptOpen, setAuthPromptOpen] = useState(false);
 
     const router = useRouter();
     const locale = t[lang] || t.pt;
 
     const isCurrentDayCompleted = completedDays.has(currentDay);
 
+    const handleAuthPrompt = () => {
+        setAuthPromptOpen(true);
+    };
+
+    const handleConfirmAuth = () => {
+        router.push(`/${lang}/auth`);
+    };
+
     const handleToggleComplete = () => {
+        if (!user) {
+            handleAuthPrompt();
+            return;
+        }
         startProgressTransition(async () => {
             const result = await updateReadingProgress(plan.id, currentDay, !isCurrentDayCompleted, lang);
             if (result.success) {
@@ -117,6 +134,10 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
     };
 
     const handleToggleFavorite = (verse: Verse) => {
+        if (!user) {
+            handleAuthPrompt();
+            return;
+        }
         const isFavorited = optimisticFavorites.has(verse.id);
         
         setOptimisticFavorites(prev => {
@@ -138,6 +159,10 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
     };
 
     const handleOpenNoteDialog = (verse: Verse) => {
+        if (!user) {
+            handleAuthPrompt();
+            return;
+        }
         setSelectedVerseForNote(verse);
         setNoteDialogOpen(true);
     };
@@ -147,13 +172,15 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
     };
     
     const handleNextDayClick = () => {
+        if (!user) {
+            router.push(`/${lang}/plans/${plan.id}?day=${currentDay + 1}`);
+            return;
+        }
         if (!isCurrentDayCompleted) {
-            // Fire and forget, don't await. The user navigates immediately.
             updateReadingProgress(plan.id, currentDay, true, lang).then(result => {
                 if (result.success) {
                     toast.success(locale.updateSuccess);
                 } else {
-                    // Log error but don't block user. They might not even see the toast if navigation is fast.
                     console.error("Failed to auto-mark day as read:", result.message);
                     toast.error(locale.updateError);
                 }
@@ -247,6 +274,12 @@ export const ReadingView: React.FC<ReadingViewProps> = ({
                     onNoteSave={handleNoteSave}
                 />
             )}
+            <AuthPromptDialog
+                lang={lang}
+                open={authPromptOpen}
+                onOpenChange={setAuthPromptOpen}
+                onConfirm={handleConfirmAuth}
+            />
         </div>
     );
 };
