@@ -8,11 +8,104 @@ import { addDays } from "date-fns";
 import { createPlanSchema, CreatePlanData } from "@/lib/schemas/plans";
 import { UserReadingPlan, Verse } from "@/types/supabase";
 import { notFound } from "next/navigation";
+import { PredefinedPlan } from "./reading-plans";
 
 interface ChapterReference {
   book: string;
   chapter: number;
 }
+
+export async function getPublicReadingPlans(): Promise<PredefinedPlan[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('reading_plans')
+    .select('*')
+    .eq('is_public', true)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error("Error fetching public reading plans:", error);
+    return [];
+  }
+  return data as PredefinedPlan[];
+}
+
+export async function startPredefinedPlan(planId: string, lang: Locale): Promise<{ success: boolean; message: string }> {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, message: "Usuário não autenticado." };
+  }
+
+  const { data: plan, error: planError } = await supabase
+    .from('reading_plans')
+    .select('*')
+    .eq('id', planId)
+    .single();
+
+  if (planError || !plan) {
+    return { success: false, message: "Plano de leitura não encontrado." };
+  }
+
+  const bibleMetadata = await getBibleMetadata(lang);
+  if (!bibleMetadata || bibleMetadata.length === 0) {
+    return { success: false, message: "Não foi possível carregar os dados da Bíblia." };
+  }
+
+  const allChapters: ChapterReference[] = [];
+  for (const bookName of plan.books) {
+    const bookMeta = bibleMetadata.find((b: { book: string }) => b.book === bookName);
+    if (bookMeta) {
+      for (let i = 1; i <= bookMeta.total_chapters; i++) {
+        allChapters.push({ book: bookName, chapter: i });
+      }
+    }
+  }
+
+  if (allChapters.length === 0) {
+    return { success: false, message: "Nenhum capítulo encontrado para os livros selecionados." };
+  }
+
+  const totalChapters = allChapters.length;
+  const dailyReadingSchedule: Record<string, ChapterReference[]> = {};
+  let chapterIndex = 0;
+
+  for (let day = 1; day <= plan.duration_days; day++) {
+    const chaptersForThisDay: ChapterReference[] = [];
+    const chaptersToReadCount = Math.ceil((totalChapters - chapterIndex) / (plan.duration_days - day + 1));
+    
+    for (let i = 0; i < chaptersToReadCount && chapterIndex < totalChapters; i++) {
+      chaptersForThisDay.push(allChapters[chapterIndex]);
+      chapterIndex++;
+    }
+    
+    if (chaptersForThisDay.length > 0) {
+      dailyReadingSchedule[`day_${day}`] = chaptersForThisDay;
+    }
+  }
+
+  const startDate = new Date();
+  const endDate = addDays(startDate, plan.duration_days - 1);
+
+  const { error } = await supabase.from("user_reading_plans").insert({
+    user_id: user.id,
+    plan_id: plan.id,
+    custom_plan_name: plan.name,
+    start_date: startDate.toISOString().split('T')[0],
+    end_date: endDate.toISOString().split('T')[0],
+    daily_reading_schedule: dailyReadingSchedule,
+  });
+
+  if (error) {
+    console.error("Error starting predefined plan:", error);
+    return { success: false, message: error.message };
+  }
+
+  revalidatePath(`/${lang}/plans`);
+  return { success: true, message: "Plano iniciado com sucesso!" };
+}
+
 
 export async function deleteUserReadingPlan(planId: string, lang: Locale): Promise<{ success: boolean; message: string }> {
     const supabase = await createSupabaseServerClient();

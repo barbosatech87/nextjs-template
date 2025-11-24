@@ -1,5 +1,5 @@
 import { Locale } from "@/lib/i18n/config";
-import { getUserActiveReadingPlans } from "@/app/actions/plans";
+import { getUserActiveReadingPlans, getPublicReadingPlans } from "@/app/actions/plans";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserActivePlans } from "@/components/reading-plans/user-active-plans";
 import { CreatePlanForm } from "@/components/reading-plans/create-plan-form";
@@ -47,7 +47,10 @@ export default async function PlansPage({ params }: PlansPageProps) {
     return <PlansLoginPrompt lang={lang} />;
   }
 
-  const userPlans = await getUserActiveReadingPlans();
+  const [userPlans, publicPlans] = await Promise.all([
+    getUserActiveReadingPlans(),
+    getPublicReadingPlans()
+  ]);
 
   return (
     <div className="container mx-auto py-10">
@@ -69,7 +72,7 @@ export default async function PlansPage({ params }: PlansPageProps) {
           <CreatePlanForm lang={lang} />
         </TabsContent>
         <TabsContent value="explore" className="py-6">
-          <PredefinedPlansList lang={lang} />
+          <PredefinedPlansList lang={lang} plans={publicPlans} />
         </TabsContent>
       </Tabs>
     </div>

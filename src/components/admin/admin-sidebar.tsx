@@ -13,7 +13,7 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { BookCopy, BotMessageSquare, Image, LayoutDashboard, Users, Bell, FileText, Clock, History, Share2 } from 'lucide-react';
+import { BookCopy, BotMessageSquare, Image, LayoutDashboard, Users, Bell, FileText, Clock, History, Share2, Library } from 'lucide-react';
 import Link from 'next/link';
 import { Locale } from '@/lib/i18n/config';
 import { useProfile } from '@/hooks/use-profile';
@@ -24,6 +24,7 @@ const texts = {
     dashboard: "Painel",
     blogPosts: "Posts do Blog",
     pages: "Páginas",
+    readingPlans: "Planos de Leitura",
     aiPost: "Post com IA",
     aiImage: "Gerador de Imagens",
     users: "Usuários",
@@ -38,6 +39,7 @@ const texts = {
     dashboard: "Dashboard",
     blogPosts: "Blog Posts",
     pages: "Pages",
+    readingPlans: "Reading Plans",
     aiPost: "AI Post",
     aiImage: "Image Generator",
     users: "Users",
@@ -52,6 +54,7 @@ const texts = {
     dashboard: "Panel",
     blogPosts: "Entradas del Blog",
     pages: "Páginas",
+    readingPlans: "Planes de Lectura",
     aiPost: "Entrada con IA",
     aiImage: "Generador de Imágenes",
     users: "Usuarios",
@@ -80,6 +83,7 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
     { href: `/${lang}/admin/ai-writer`, label: t.aiPost, icon: <BotMessageSquare /> },
     { href: `/${lang}/admin/ai-image-generator`, label: t.aiImage, icon: <Image /> },
     { href: `/${lang}/admin/pages`, label: t.pages, icon: <FileText /> },
+    { href: `/${lang}/admin/reading-plans`, label: t.readingPlans, icon: <Library /> },
     { href: `/${lang}/admin/schedules`, label: t.schedules, icon: <Clock /> },
     { href: `/${lang}/admin/schedules/logs`, label: t.logs, icon: <History /> },
     { href: `/${lang}/admin/social`, label: t.social, icon: <Share2 /> },
