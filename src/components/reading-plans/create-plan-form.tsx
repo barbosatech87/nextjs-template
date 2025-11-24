@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Check, ChevronsUpDown, X } from 'lucide-react';
+import { Check, ChevronsUpDown, X, BookStack } from 'lucide-react';
 
 import { Locale } from '@/lib/i18n/config';
 import { getBibleMetadata } from '@/app/actions/ai';
@@ -18,9 +18,20 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+
+// Ordem Canônica (nomes em Inglês conforme banco de dados) para garantir a ordem correta do plano
+const CANONICAL_ORDER = [
+  "Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy", "Joshua", "Judges", "Ruth",
+  "I Samuel", "II Samuel", "I Kings", "II Kings", "I Chronicles", "II Chronicles", "Ezra", "Nehemiah", "Esther",
+  "Job", "Psalms", "Proverbs", "Ecclesiastes", "Song of Solomon", "Isaiah", "Jeremiah", "Lamentations", "Ezekiel", "Daniel",
+  "Hosea", "Joel", "Amos", "Obadiah", "Jonah", "Micah", "Nahum", "Habakkuk", "Zephaniah", "Haggai", "Zechariah", "Malachi",
+  "Matthew", "Mark", "Luke", "John", "Acts", "Romans", "I Corinthians", "II Corinthians", "Galatians", "Ephesians", "Philippians", "Colossians",
+  "I Thessalonians", "II Thessalonians", "I Timothy", "II Timothy", "Titus", "Philemon", "Hebrews", "James",
+  "I Peter", "II Peter", "I John", "II John", "III John", "Jude", "Revelation of John"
+];
 
 interface BibleMeta {
   book: string;
@@ -41,6 +52,7 @@ const texts = {
       selectBooks: "Selecione os livros...",
       searchBooks: "Buscar livro...",
       noBookFound: "Nenhum livro encontrado.",
+      allBooks: "Bíblia Completa (Todos os livros)",
       duration: "Duração (em dias)",
       durationPlaceholder: "Ex: 90",
       submit: "Criar Plano",
@@ -62,6 +74,7 @@ const texts = {
       selectBooks: "Select books...",
       searchBooks: "Search book...",
       noBookFound: "No book found.",
+      allBooks: "Complete Bible (All books)",
       duration: "Duration (in days)",
       durationPlaceholder: "Ex: 90",
       submit: "Create Plan",
@@ -83,6 +96,7 @@ const texts = {
       selectBooks: "Selecciona los libros...",
       searchBooks: "Buscar libro...",
       noBookFound: "No se encontró ningún libro.",
+      allBooks: "Biblia Completa (Todos los libros)",
       duration: "Duración (en días)",
       durationPlaceholder: "Ej: 90",
       submit: "Crear Plan",
@@ -141,11 +155,34 @@ export const CreatePlanForm: React.FC<{ lang: Locale }> = ({ lang }) => {
     form.setValue("books", newSelectedBooks, { shouldValidate: true });
   };
 
+  const handleSelectAll = () => {
+    // Se já estiverem todos selecionados, remove tudo. Caso contrário, seleciona todos na ordem canônica.
+    const allBooksAvailable = CANONICAL_ORDER.filter(canonical => 
+      bibleMetadata.some(meta => meta.book === canonical)
+    );
+
+    if (selectedBooks.length === allBooksAvailable.length) {
+      setSelectedBooks([]);
+      form.setValue("books", [], { shouldValidate: true });
+    } else {
+      setSelectedBooks(allBooksAvailable);
+      form.setValue("books", allBooksAvailable, { shouldValidate: true });
+      // Define um nome padrão se estiver vazio
+      if (!form.getValues("name")) {
+        form.setValue("name", t.form.allBooks.split('(')[0].trim());
+        form.setValue("duration", 365); // Sugere 1 ano para bíblia completa
+      }
+    }
+    setPopoverOpen(false);
+  };
+
   const handleBookRemove = (bookName: string) => {
     const newSelectedBooks = selectedBooks.filter(b => b !== bookName);
     setSelectedBooks(newSelectedBooks);
     form.setValue("books", newSelectedBooks, { shouldValidate: true });
   };
+
+  const isAllSelected = bibleMetadata.length > 0 && selectedBooks.length === bibleMetadata.length;
 
   return (
     <Card>
@@ -196,7 +233,9 @@ export const CreatePlanForm: React.FC<{ lang: Locale }> = ({ lang }) => {
                           role="combobox"
                           className={cn("w-full justify-between", !field.value?.length && "text-muted-foreground")}
                         >
-                          {t.form.selectBooks}
+                          {field.value?.length 
+                            ? `${field.value.length} livros selecionados` 
+                            : t.form.selectBooks}
                           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                         </Button>
                       </FormControl>
@@ -207,10 +246,25 @@ export const CreatePlanForm: React.FC<{ lang: Locale }> = ({ lang }) => {
                         <CommandList>
                           <CommandEmpty>{t.form.noBookFound}</CommandEmpty>
                           <CommandGroup>
-                            {bibleMetadata.map((book) => (
+                            <CommandItem
+                              value="all_books_option"
+                              onSelect={handleSelectAll}
+                              className="font-medium text-primary"
+                            >
+                              <BookStack className="mr-2 h-4 w-4" />
+                              {t.form.allBooks}
+                              {isAllSelected && <Check className="ml-auto h-4 w-4" />}
+                            </CommandItem>
+                          </CommandGroup>
+                          <CommandSeparator />
+                          <CommandGroup>
+                            {bibleMetadata
+                              // Ordena alfabeticamente para a lista de seleção individual (opcional, mas ajuda a encontrar)
+                              .sort((a, b) => getTranslatedBookName(a.book, lang).localeCompare(getTranslatedBookName(b.book, lang)))
+                              .map((book) => (
                               <CommandItem
                                 key={book.book}
-                                value={book.book}
+                                value={getTranslatedBookName(book.book, lang)} // Search by translated name
                                 onSelect={() => handleBookSelect(book.book)}
                               >
                                 <Check
@@ -225,7 +279,7 @@ export const CreatePlanForm: React.FC<{ lang: Locale }> = ({ lang }) => {
                     </PopoverContent>
                   </Popover>
                   <FormDescription>{t.form.booksDescription}</FormDescription>
-                  <div className="flex flex-wrap gap-2 pt-2">
+                  <div className="flex flex-wrap gap-2 pt-2 max-h-40 overflow-y-auto">
                     {selectedBooks.map(book => (
                       <Badge key={book} variant="secondary" className="flex items-center gap-1">
                         {getTranslatedBookName(book, lang)}
