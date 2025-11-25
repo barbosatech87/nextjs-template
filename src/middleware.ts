@@ -17,22 +17,18 @@ function getLocale(request: NextRequest): string {
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  // 1. Lógica de internacionalização (i18n) - EXECUTA PRIMEIRO (Rápido)
-  // Verifica se o caminho atual não possui um prefixo de localidade
+  // 1. Lógica de internacionalização (i18n) - EXECUTA PRIMEIRO
   const pathnameIsMissingLocale = i18n.locales.every(
     (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
   );
 
-  // Se faltar o locale, redireciona imediatamente. 
-  // NÃO carregamos o Supabase aqui para economizar tempo de processamento (TTFB).
-  // O Supabase rodará na próxima requisição (para a URL redirecionada).
   if (pathnameIsMissingLocale) {
     const locale = getLocale(request);
     const newPath = pathname === '/' ? `/${locale}` : `/${locale}${pathname}`;
     return NextResponse.redirect(new URL(newPath, request.url));
   }
 
-  // 2. Lógica do Supabase (Auth) - Só roda se a URL já estiver correta
+  // 2. Lógica do Supabase (Auth)
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -69,15 +65,21 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Atualiza a sessão do usuário
   await supabase.auth.getSession();
 
   return response;
 }
 
-// Executa em todas as rotas, exceto estáticas/api
 export const config = {
   matcher: [
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico, sitemap.xml, robots.txt (metadata files)
+     * - manifest.json, icon, etc
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt|manifest.json|icon-.*\\.svg|sw.js|workbox-.*\\.js).*)',
   ],
 };

@@ -71,7 +71,6 @@ export async function generateMetadata(
         {
           url: imageUrl,
           alt: imageAlt,
-          // Removido width/height fixos para evitar conflito com imagens de proporções variadas
         },
       ],
       locale: lang,
@@ -107,7 +106,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   const relatedPosts = await getRelatedPosts({
     postId: post.id,
-    categoryIds: post.categories.map(c => c.id), // Corrigido para usar o ID
+    categoryIds: post.categories.map(c => c.id),
     authorId: post.author_id,
     lang,
   });
@@ -120,7 +119,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     ? new Date(post.published_at).toLocaleDateString(lang, { year: 'numeric', month: 'long', day: 'numeric' })
     : 'N/A';
 
-  // Construção do objeto JSON-LD para Schema.org
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
@@ -138,10 +136,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     'publisher': {
       '@type': 'Organization',
       'name': 'PaxWord',
-      // 'logo': {
-      //   '@type': 'ImageObject',
-      //   'url': 'https://www.paxword.com/logo.png' // URL do logo
-      // }
     },
     'datePublished': post.published_at,
     'dateModified': post.updated_at || post.published_at,
@@ -150,7 +144,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   return (
     <>
-      {/* Script de Dados Estruturados (JSON-LD) */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

@@ -7,14 +7,16 @@ import { Metadata } from 'next';
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import AdsenseScript from '@/components/ads/adsense-script';
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 interface RootLayoutProps {
   children: ReactNode;
 }
 
-// Adicionando metadados base para SEO e a metatag do AdSense
 export const metadata: Metadata = {
-  metadataBase: new URL('https://www.paxword.com'), // Substitua pelo seu domínio
+  metadataBase: new URL('https://www.paxword.com'),
   title: {
     default: 'PaxWord - Explore a Palavra',
     template: '%s | PaxWord',
@@ -47,12 +49,11 @@ export const metadata: Metadata = {
   },
 };
 
-
 export default async function RootLayout({ children }: RootLayoutProps) {
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser();
 
-  let shouldShowAds = true; // Padrão é mostrar anúncios
+  let shouldShowAds = true;
 
   if (user) {
     const { data: profile } = await supabase
@@ -61,7 +62,6 @@ export default async function RootLayout({ children }: RootLayoutProps) {
       .eq('id', user.id)
       .single();
 
-    // Esconde anúncios se o usuário estiver logado e seu status NÃO for 'free'
     if (profile && profile.subscription_status !== 'free') {
       shouldShowAds = false;
     }
@@ -70,13 +70,11 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   const adsenseClientId = 'ca-pub-5872513184553634';
 
   return (
-    // O atributo lang será definido no layout [lang]
-    <html suppressHydrationWarning>
+    <html suppressHydrationWarning className={inter.variable}>
       <head>
-        {/* O script do AdSense só será renderizado se a condição for verdadeira */}
         {shouldShowAds && <AdsenseScript adsenseClientId={adsenseClientId} />}
       </head>
-      <body>
+      <body className="font-sans antialiased">
         <SessionContextProvider>
           <GoogleAnalytics />
           {children}
