@@ -6,6 +6,8 @@ import { BlogPost } from "@/types/supabase";
 import { marked } from 'marked';
 import { createClient } from "@supabase/supabase-js";
 
+const POSTS_PER_PAGE = 9;
+
 // Cliente Supabase para dados públicos (dentro do cache)
 // Isso evita o uso de cookies() dentro do unstable_cache, o que quebraria a geração estática
 const getPublicClient = () => {
@@ -319,7 +321,6 @@ export async function getPostById(postId: string): Promise<EditablePostData | nu
 export const getPublishedPosts = unstable_cache(
   async (lang: string, page: number = 1) => {
     const supabase = getPublicClient();
-    const POSTS_PER_PAGE = 9;
     const offset = (page - 1) * POSTS_PER_PAGE;
 
     let query = supabase
