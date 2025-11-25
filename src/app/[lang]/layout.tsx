@@ -9,6 +9,12 @@ interface LangLayoutProps {
   params: Promise<{ lang: Locale }>;
 }
 
+// Esta função diz ao Next.js para gerar estaticamente as rotas /pt, /en e /es
+// Isso elimina o tempo de espera do servidor (FCP) quase totalmente.
+export async function generateStaticParams() {
+  return i18n.locales.map((lang) => ({ lang }));
+}
+
 export default async function LangLayout({ children, params }: LangLayoutProps) {
   const { lang } = await params;
 
