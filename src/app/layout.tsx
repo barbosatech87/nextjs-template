@@ -9,7 +9,11 @@ import AdsenseScript from '@/components/ads/adsense-script';
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Inter } from 'next/font/google';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const inter = Inter({ 
+  subsets: ['latin'], 
+  variable: '--font-inter',
+  display: 'swap', 
+});
 
 interface RootLayoutProps {
   children: ReactNode;
@@ -70,7 +74,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   const adsenseClientId = 'ca-pub-5872513184553634';
 
   return (
-    <html suppressHydrationWarning className={inter.variable}>
+    <html suppressHydrationWarning className={inter.variable} lang="pt">
       <head>
         {shouldShowAds && <AdsenseScript adsenseClientId={adsenseClientId} />}
       </head>
