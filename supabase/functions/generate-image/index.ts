@@ -123,6 +123,7 @@ serve(async (req: Request) => {
       .upload(filePath, bytes, {
         contentType,
         upsert: false,
+        cacheControl: '31536000, immutable' // Cache de 1 ano
       })
 
     if (uploadError) {

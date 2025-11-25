@@ -7,6 +7,18 @@ const pwaConfig = withPWA({
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
   runtimeCaching: [
+    // Cache para imagens otimizadas pelo Next.js
+    {
+      urlPattern: /^\/_next\/image\?/,
+      handler: 'StaleWhileRevalidate',
+      options: {
+        cacheName: 'next-image-cache',
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 7 * 24 * 60 * 60, // 7 dias
+        },
+      },
+    },
     // Estratégia para páginas (HTML)
     {
       urlPattern: ({ request }: { request: Request }) => request.mode === 'navigate',
@@ -19,7 +31,7 @@ const pwaConfig = withPWA({
         },
       },
     },
-    // Estratégia para imagens
+    // Estratégia para imagens estáticas
     {
       urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i,
       handler: 'CacheFirst',

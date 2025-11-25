@@ -39,7 +39,7 @@ export async function uploadImage(file: File) {
     const { data, error } = await supabase.storage
       .from(BUCKET_NAME)
       .upload(filePath, file, {
-        cacheControl: '3600',
+        cacheControl: '31536000, immutable', // Cache de 1 ano
         upsert: false,
       });
 
