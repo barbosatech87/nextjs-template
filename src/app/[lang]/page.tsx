@@ -55,9 +55,12 @@ export default async function HomePage({ params }: HomePageProps) {
   const { lang } = await params;
   const t = homeTexts[lang] || homeTexts.pt;
 
-  const dailyVerse = await getDailyVerse(lang);
-  const devotionalPosts = await getRecentPosts({ lang, limit: 3, includeCategorySlug: 'devocional' });
-  const recentPosts = await getRecentPosts({ lang, limit: 6, excludeCategorySlug: 'devocional' });
+  // Buscando dados em paralelo para reduzir o TTFB
+  const [dailyVerse, devotionalPosts, recentPosts] = await Promise.all([
+    getDailyVerse(lang),
+    getRecentPosts({ lang, limit: 3, includeCategorySlug: 'devocional' }),
+    getRecentPosts({ lang, limit: 6, excludeCategorySlug: 'devocional' })
+  ]);
 
   return (
     <div className="container mx-auto px-4 py-8">

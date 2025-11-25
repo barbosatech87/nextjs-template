@@ -1,17 +1,26 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
 import { BlogPost } from "@/types/supabase";
 import { marked } from 'marked';
+import { createClient } from "@supabase/supabase-js";
+
+// Cliente Supabase para dados públicos (dentro do cache)
+// Isso evita o uso de cookies() dentro do unstable_cache, o que quebraria a geração estática
+const getPublicClient = () => {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+};
 
 // Helper function to remove the first H1 from markdown content
 function removeFirstH1(markdown: string): string {
   if (!markdown) return '';
   const lines = markdown.split('\n');
-  // Check if the first non-empty line is an H1
   const firstLineIndex = lines.findIndex(line => line.trim() !== '');
-  if (firstLineIndex === -1) return markdown; // All lines are empty
+  if (firstLineIndex === -1) return markdown;
 
   if (lines[firstLineIndex].trim().startsWith('# ')) {
     lines.splice(firstLineIndex, 1);
@@ -20,7 +29,6 @@ function removeFirstH1(markdown: string): string {
   return markdown;
 }
 
-// Helper function to shuffle array (Fisher-Yates shuffle)
 function shuffleArray<T>(array: T[]): T[] {
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
@@ -30,17 +38,14 @@ function shuffleArray<T>(array: T[]): T[] {
   return newArray;
 }
 
-// Tipos para a função de criação
 export type NewPostData = Omit<BlogPost, 'id' | 'author_id' | 'created_at' | 'updated_at' | 'status' | 'language_code'> & {
   category_ids: string[];
   status: 'draft' | 'published' | 'archived';
-  // Adicionando campos que foram omitidos, mas são necessários no payload
   published_at: string | null;
   scheduled_for: string | null;
-  image_alt_text: string | null; // Novo campo
+  image_alt_text: string | null;
 };
 
-// Tipo de retorno para criação bem-sucedida (necessário para o diálogo de tradução)
 type CreatePostSuccess = {
   success: true;
   message: string;
@@ -54,7 +59,6 @@ export async function createPost(postData: NewPostData, lang: string): Promise<A
   try {
     const supabase = await createSupabaseServerClient();
     
-    // 1. Verificar autenticação e permissão
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuário não autenticado." };
 
@@ -70,15 +74,14 @@ export async function createPost(postData: NewPostData, lang: string): Promise<A
 
     const { category_ids, ...postDetails } = postData;
 
-    // 2. Inserir o post principal
     const { data: newPost, error: postError } = await supabase
       .from("blog_posts")
       .insert({
         ...postDetails,
         author_id: user.id,
-        language_code: lang, // Garante que o código do idioma seja salvo
+        language_code: lang,
       })
-      .select('id, title, summary, content') // Seleciona o conteúdo para a tradução
+      .select('id, title, summary, content')
       .single();
 
     if (postError) {
@@ -86,7 +89,6 @@ export async function createPost(postData: NewPostData, lang: string): Promise<A
       return { success: false, message: `Falha ao criar o post principal: ${postError.message}` };
     }
 
-    // 3. Inserir as categorias
     if (category_ids && category_ids.length > 0) {
       const postCategories = category_ids.map(categoryId => ({
         post_id: newPost.id,
@@ -99,11 +101,14 @@ export async function createPost(postData: NewPostData, lang: string): Promise<A
 
       if (categoryError) {
         console.error("Error inserting post categories:", categoryError);
-        // Nota: Não falhamos a operação inteira, mas logamos o erro.
       }
     }
 
     revalidatePath(`/${lang}/admin/blog`);
+    // Invalida o cache público
+    revalidatePath(`/${lang}`); 
+    revalidatePath(`/${lang}/blog`);
+    
     return { 
       success: true, 
       message: "Post criado com sucesso.", 
@@ -124,7 +129,6 @@ export async function updatePost(postId: string, postData: NewPostData, lang: st
   try {
     const supabase = await createSupabaseServerClient();
     
-    // 1. Verificar autenticação e permissão
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuário não autenticado." };
 
@@ -134,7 +138,6 @@ export async function updatePost(postId: string, postData: NewPostData, lang: st
       .eq('id', user.id)
       .single();
 
-    // Permite que admins editem qualquer post, e writers editem seus próprios posts.
     if (profile?.role === 'writer') {
       const { data: post, error: fetchError } = await supabase
         .from('blog_posts')
@@ -151,7 +154,6 @@ export async function updatePost(postId: string, postData: NewPostData, lang: st
 
     const { category_ids, ...postDetails } = postData;
 
-    // 2. Atualizar o post principal
     const { error: postError } = await supabase
       .from("blog_posts")
       .update({
@@ -165,8 +167,6 @@ export async function updatePost(postId: string, postData: NewPostData, lang: st
       return { success: false, message: `Falha ao atualizar o post principal: ${postError.message}` };
     }
 
-    // 3. Atualizar as categorias (Deleta todas e insere as novas)
-    // Deletar categorias existentes
     const { error: deleteError } = await supabase
       .from('blog_post_categories')
       .delete()
@@ -174,10 +174,8 @@ export async function updatePost(postId: string, postData: NewPostData, lang: st
 
     if (deleteError) {
       console.error("Error deleting existing categories:", deleteError);
-      // Continua, mas loga o erro
     }
 
-    // Inserir novas categorias
     if (category_ids && category_ids.length > 0) {
       const postCategories = category_ids.map(categoryId => ({
         post_id: postId,
@@ -195,6 +193,10 @@ export async function updatePost(postId: string, postData: NewPostData, lang: st
 
     revalidatePath(`/${lang}/admin/blog`);
     revalidatePath(`/${lang}/blog/${postDetails.slug}`);
+    // Invalida caches públicos
+    revalidatePath(`/${lang}`);
+    revalidatePath(`/${lang}/blog`);
+
     return { success: true, message: "Post atualizado com sucesso." };
   } catch (e) {
     console.error("Unexpected error in updatePost:", e);
@@ -206,7 +208,6 @@ export async function deletePost(postId: string, lang: string) {
   try {
     const supabase = await createSupabaseServerClient();
     
-    // Adicionar verificação de permissão de administrador/writer
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuário não autenticado." };
 
@@ -216,7 +217,6 @@ export async function deletePost(postId: string, lang: string) {
       .eq('id', user.id)
       .single();
 
-    // Permite que admins deletem qualquer post, e writers deletem seus próprios posts.
     if (profile?.role === 'writer') {
       const { data: post, error: fetchError } = await supabase
         .from('blog_posts')
@@ -239,6 +239,9 @@ export async function deletePost(postId: string, lang: string) {
     }
 
     revalidatePath(`/${lang}/admin/blog`);
+    revalidatePath(`/${lang}`);
+    revalidatePath(`/${lang}/blog`);
+    
     return { success: true, message: "Post deletado com sucesso." };
   } catch (e) {
     console.error("Unexpected error in deletePost:", e);
@@ -246,17 +249,12 @@ export async function deletePost(postId: string, lang: string) {
   }
 }
 
-// --- Funções para o Blog Público ---
-
-const POSTS_PER_PAGE = 9;
-
 export type PostListItem = {
   id: string;
   slug: string;
   image_url: string | null;
-  image_alt_text: string | null; // Novo campo
+  image_alt_text: string | null;
   published_at: string | null;
-  // Campos que podem vir da tradução ou do original
   title: string;
   summary: string | null;
   language_code: string;
@@ -266,32 +264,27 @@ export type PostDetail = {
   id: string;
   slug: string;
   image_url: string | null;
-  image_alt_text: string | null; // Novo campo
+  image_alt_text: string | null;
   published_at: string | null;
-  updated_at: string | null; // Adicionado
+  updated_at: string | null;
   author_id: string | null;
   author_first_name: string | null;
   author_last_name: string | null;
-  // Campos que podem vir da tradução ou do original
   title: string;
   summary: string | null;
   content: string;
   language_code: string;
-  categories: { id: string; name: string; slug: string }[]; // Atualizado
+  categories: { id: string; name: string; slug: string }[];
 };
 
 export type EditablePostData = Omit<BlogPost, 'author_id' | 'created_at' | 'updated_at'> & {
   category_ids: string[];
-  image_alt_text: string | null; // Novo campo
+  image_alt_text: string | null;
 };
 
-/**
- * Busca um post específico por ID, incluindo categorias, para edição.
- */
 export async function getPostById(postId: string): Promise<EditablePostData | null> {
   const supabase = await createSupabaseServerClient();
 
-  // 1. Buscar o post principal
   const { data: post, error: postError } = await supabase
     .from('blog_posts')
     .select('*')
@@ -303,7 +296,6 @@ export async function getPostById(postId: string): Promise<EditablePostData | nu
     return null;
   }
 
-  // 2. Buscar as categorias associadas
   const { data: postCategories, error: categoryError } = await supabase
     .from('blog_post_categories')
     .select('category_id')
@@ -311,12 +303,10 @@ export async function getPostById(postId: string): Promise<EditablePostData | nu
 
   if (categoryError) {
     console.error("Error fetching post categories:", categoryError);
-    // Continua, mas sem categorias
   }
 
   const category_ids = postCategories ? postCategories.map(pc => pc.category_id) : [];
 
-  // Remove campos que não são necessários no formulário ou que são gerenciados automaticamente
   const { author_id, created_at, updated_at, ...rest } = post;
 
   return {
@@ -325,174 +315,158 @@ export async function getPostById(postId: string): Promise<EditablePostData | nu
   } as EditablePostData;
 }
 
+// OTIMIZAÇÃO: Cacheando a busca de posts publicados
+export const getPublishedPosts = unstable_cache(
+  async (lang: string, page: number = 1) => {
+    const supabase = getPublicClient();
+    const POSTS_PER_PAGE = 9;
+    const offset = (page - 1) * POSTS_PER_PAGE;
 
-/**
- * Busca posts publicados com paginação, priorizando a tradução para o idioma solicitado.
- */
-export async function getPublishedPosts(lang: string, page: number = 1) {
-  const supabase = await createSupabaseServerClient();
-  const offset = (page - 1) * POSTS_PER_PAGE;
+    let query = supabase
+      .from('blog_posts')
+      .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code', { count: 'exact' })
+      .eq('status', 'published')
+      .order('published_at', { ascending: false })
+      .range(offset, offset + POSTS_PER_PAGE - 1);
 
-  // 1. Buscar posts originais publicados, ordenados por data de publicação
-  let query = supabase
-    .from('blog_posts')
-    .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code', { count: 'exact' })
-    .eq('status', 'published')
-    .order('published_at', { ascending: false })
-    .range(offset, offset + POSTS_PER_PAGE - 1);
+    const { data: originalPosts, count, error } = await query;
 
-  const { data: originalPosts, count, error } = await query;
-
-  if (error) {
-    console.error("Error fetching published posts:", error);
-    return { posts: [], totalPages: 0, currentPage: page };
-  }
-
-  if (!originalPosts || originalPosts.length === 0) {
-    return { posts: [], totalPages: 0, currentPage: page };
-  }
-
-  const postIds = originalPosts.map(p => p.id);
-  
-  // 2. Se o idioma solicitado não for o idioma original (pt), buscar traduções
-  let finalPosts: PostListItem[] = originalPosts.map(p => ({
-    id: p.id,
-    slug: p.slug,
-    image_url: p.image_url,
-    image_alt_text: p.image_alt_text,
-    published_at: p.published_at,
-    title: p.title,
-    summary: p.summary,
-    language_code: p.language_code,
-  }));
-
-  if (lang !== 'pt') {
-    const { data: translations, error: transError } = await supabase
-      .from('blog_post_translations')
-      .select('post_id, translated_title, translated_summary, language_code')
-      .in('post_id', postIds)
-      .eq('language_code', lang);
-
-    if (transError) {
-      console.error("Error fetching translations:", transError);
-      // Continua com os posts originais se a tradução falhar
-    } else if (translations) {
-      const translationMap = new Map(translations.map(t => [t.post_id, t]));
-
-      finalPosts = finalPosts.map(post => {
-        const translation = translationMap.get(post.id);
-        if (translation) {
-          return {
-            ...post,
-            title: translation.translated_title,
-            summary: translation.translated_summary,
-            language_code: translation.language_code, // Atualiza o código do idioma para o traduzido
-          };
-        }
-        return post;
-      });
+    if (error) {
+      console.error("Error fetching published posts:", error);
+      return { posts: [], totalPages: 0, currentPage: page };
     }
-  }
 
-  const totalPages = count ? Math.ceil(count / POSTS_PER_PAGE) : 0;
+    if (!originalPosts || originalPosts.length === 0) {
+      return { posts: [], totalPages: 0, currentPage: page };
+    }
 
-  return { 
-    posts: finalPosts, 
-    totalPages, 
-    currentPage: page 
-  };
-}
+    const postIds = originalPosts.map(p => p.id);
+    
+    let finalPosts: PostListItem[] = originalPosts.map(p => ({
+      id: p.id,
+      slug: p.slug,
+      image_url: p.image_url,
+      image_alt_text: p.image_alt_text,
+      published_at: p.published_at,
+      title: p.title,
+      summary: p.summary,
+      language_code: p.language_code,
+    }));
 
-/**
- * Busca um post específico por slug, priorizando a tradução para o idioma solicitado.
- */
-export async function getPostBySlug(slug: string, lang: string): Promise<PostDetail | null> {
-  const supabase = await createSupabaseServerClient();
+    if (lang !== 'pt') {
+      const { data: translations } = await supabase
+        .from('blog_post_translations')
+        .select('post_id, translated_title, translated_summary, language_code')
+        .in('post_id', postIds)
+        .eq('language_code', lang);
 
-  // 1. Buscar o post original pelo slug
-  const { data: post, error: postError } = await supabase
-    .from('blog_posts')
-    .select('id, slug, title, summary, content, image_url, image_alt_text, published_at, updated_at, language_code, author_id')
-    .eq('slug', slug)
-    .eq('status', 'published')
-    .single();
+      if (translations) {
+        const translationMap = new Map(translations.map(t => [t.post_id, t]));
 
-  if (postError || !post) {
-    console.error("Error fetching post by slug:", postError);
-    return null;
-  }
+        finalPosts = finalPosts.map(post => {
+          const translation = translationMap.get(post.id);
+          if (translation) {
+            return {
+              ...post,
+              title: translation.translated_title,
+              summary: translation.translated_summary,
+              language_code: translation.language_code,
+            };
+          }
+          return post;
+        });
+      }
+    }
 
-  // 2. Buscar o perfil do autor separadamente para maior robustez
-  let authorProfile: { first_name: string | null, last_name: string | null } | null = null;
-  if (post.author_id) {
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('first_name, last_name')
-      .eq('id', post.author_id)
-      .single();
-    authorProfile = profileData;
-  }
+    const totalPages = count ? Math.ceil(count / POSTS_PER_PAGE) : 0;
 
-  // 3. Buscar as categorias do post
-  const { data: postCategoriesData, error: categoryError } = await supabase
-    .from('blog_post_categories')
-    .select('blog_categories(id, name, slug)')
-    .eq('post_id', post.id);
+    return { 
+      posts: finalPosts, 
+      totalPages, 
+      currentPage: page 
+    };
+  },
+  ['published-posts'], // Key parts
+  { revalidate: 3600, tags: ['blog'] } // Revalidate every hour
+);
 
-  if (categoryError) {
-    console.error(`Error fetching categories for post ${post.id}:`, categoryError);
-  }
-  const categories = postCategoriesData ? postCategoriesData.map(pc => pc.blog_categories).filter(Boolean) as unknown as { id: string; name: string; slug: string }[] : [];
+// OTIMIZAÇÃO: Cacheando busca de post por slug
+export const getPostBySlug = unstable_cache(
+  async (slug: string, lang: string): Promise<PostDetail | null> => {
+    const supabase = getPublicClient();
 
-
-  const contentWithoutTitle = removeFirstH1(post.content || '');
-  let contentToParse = contentWithoutTitle;
-  let finalLanguageCode = post.language_code;
-  let finalTitle = post.title;
-  let finalSummary = post.summary;
-
-  // 4. Se o idioma solicitado não for o idioma original, buscar tradução
-  if (lang !== post.language_code) {
-    const { data: translation, error: transError } = await supabase
-      .from('blog_post_translations')
-      .select('translated_title, translated_summary, translated_content')
-      .eq('post_id', post.id)
-      .eq('language_code', lang)
+    const { data: post, error: postError } = await supabase
+      .from('blog_posts')
+      .select('id, slug, title, summary, content, image_url, image_alt_text, published_at, updated_at, language_code, author_id')
+      .eq('slug', slug)
+      .eq('status', 'published')
       .single();
 
-    if (transError && transError.code !== 'PGRST116') { // PGRST116 = No rows found
-      console.warn(`Translation query error for post ${post.id} in language ${lang}:`, transError);
+    if (postError || !post) {
+      return null;
     }
 
-    if (translation) {
-      finalTitle = translation.translated_title;
-      finalSummary = translation.translated_summary;
-      contentToParse = removeFirstH1(translation.translated_content || '');
-      finalLanguageCode = lang;
+    let authorProfile: { first_name: string | null, last_name: string | null } | null = null;
+    if (post.author_id) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', post.author_id)
+        .single();
+      authorProfile = profileData;
     }
-  }
-  
-  const parsedContent = await marked.parse(contentToParse);
 
-  return {
-    id: post.id,
-    slug: post.slug,
-    image_url: post.image_url,
-    image_alt_text: post.image_alt_text,
-    published_at: post.published_at,
-    updated_at: post.updated_at,
-    author_id: post.author_id,
-    author_first_name: authorProfile?.first_name || null,
-    author_last_name: authorProfile?.last_name || null,
-    title: finalTitle,
-    summary: finalSummary,
-    content: parsedContent,
-    language_code: finalLanguageCode,
-    categories,
-  };
-}
+    const { data: postCategoriesData } = await supabase
+      .from('blog_post_categories')
+      .select('blog_categories(id, name, slug)')
+      .eq('post_id', post.id);
 
-// --- Funções para a Página Inicial ---
+    const categories = postCategoriesData ? postCategoriesData.map(pc => pc.blog_categories).filter(Boolean) as unknown as { id: string; name: string; slug: string }[] : [];
+
+    const contentWithoutTitle = removeFirstH1(post.content || '');
+    let contentToParse = contentWithoutTitle;
+    let finalLanguageCode = post.language_code;
+    let finalTitle = post.title;
+    let finalSummary = post.summary;
+
+    if (lang !== post.language_code) {
+      const { data: translation } = await supabase
+        .from('blog_post_translations')
+        .select('translated_title, translated_summary, translated_content')
+        .eq('post_id', post.id)
+        .eq('language_code', lang)
+        .single();
+
+      if (translation) {
+        finalTitle = translation.translated_title;
+        finalSummary = translation.translated_summary;
+        contentToParse = removeFirstH1(translation.translated_content || '');
+        finalLanguageCode = lang;
+      }
+    }
+    
+    const parsedContent = await marked.parse(contentToParse);
+
+    return {
+      id: post.id,
+      slug: post.slug,
+      image_url: post.image_url,
+      image_alt_text: post.image_alt_text,
+      published_at: post.published_at,
+      updated_at: post.updated_at,
+      author_id: post.author_id,
+      author_first_name: authorProfile?.first_name || null,
+      author_last_name: authorProfile?.last_name || null,
+      title: finalTitle,
+      summary: finalSummary,
+      content: parsedContent,
+      language_code: finalLanguageCode,
+      categories,
+    };
+  },
+  ['post-by-slug'],
+  { revalidate: 3600, tags: ['blog'] }
+);
 
 export type DailyVerseData = {
   book: string;
@@ -501,7 +475,6 @@ export type DailyVerseData = {
   text: string;
 };
 
-// Interface para tipar o resultado do RPC get_random_verse
 interface VerseReference {
     book: string;
     chapter: number;
@@ -509,183 +482,168 @@ interface VerseReference {
     version: string;
 }
 
-export async function getDailyVerse(lang: string): Promise<DailyVerseData | null> {
-  // Define o tempo de revalidação para 24 horas (86400 segundos)
-  const supabase = await createSupabaseServerClient();
-  const today = new Date().toISOString().split('T')[0];
+// OTIMIZAÇÃO: Cacheando o versículo do dia
+export const getDailyVerse = unstable_cache(
+  async (lang: string): Promise<DailyVerseData | null> => {
+    const supabase = getPublicClient();
+    const today = new Date().toISOString().split('T')[0];
 
-  // 1. Buscar o versículo do dia (já traduzido e com texto)
-  const { data: dailyVerse, error: dailyVerseError } = await supabase
-    .from('daily_verse')
-    .select('book, chapter, verse_number, text')
-    .eq('date', today)
-    .eq('language_code', lang)
-    .single();
+    const { data: dailyVerse, error: dailyVerseError } = await supabase
+      .from('daily_verse')
+      .select('book, chapter, verse_number, text')
+      .eq('date', today)
+      .eq('language_code', lang)
+      .single();
 
-  if (dailyVerseError || !dailyVerse) {
-    console.warn(`Daily verse not found for today (${lang}), fetching fallback reference.`, dailyVerseError?.message);
-    
-    // 2. Se não encontrar o registro do dia, tentamos buscar uma referência aleatória para o idioma do usuário.
-    let refLang = lang;
-    const { data: fallbackRefPrimary, error: fallbackErrorPrimary } = await supabase
-      .rpc('get_random_verse', { lang_code: lang })
-      .maybeSingle();
-
-    let typedFallbackRef = fallbackRefPrimary as VerseReference | null;
-
-    // Se não houver referência no idioma solicitado, tenta em 'pt'
-    if (!typedFallbackRef) {
-      const { data: fallbackRefPt, error: fallbackErrorPt } = await supabase
-        .rpc('get_random_verse', { lang_code: 'pt' })
+    if (dailyVerseError || !dailyVerse) {
+      // Fallback logic (mantida, mas dentro do cache)
+      let refLang = lang;
+      const { data: fallbackRefPrimary } = await supabase
+        .rpc('get_random_verse', { lang_code: lang })
         .maybeSingle();
 
-      if (fallbackErrorPrimary) {
-        console.warn('Primary fallback reference query error:', fallbackErrorPrimary);
-      }
-      if (fallbackErrorPt) {
-        console.warn('PT fallback reference query error:', fallbackErrorPt);
-      }
+      let typedFallbackRef = fallbackRefPrimary as VerseReference | null;
 
-      if (fallbackRefPt) {
-        typedFallbackRef = fallbackRefPt as VerseReference;
-        refLang = 'pt';
-      }
-    }
-    
-    if (!typedFallbackRef) {
-      console.error("Failed to get any fallback verse reference.");
-      return null;
-    }
-    
-    // 3. Se encontrarmos uma referência, buscamos o texto do versículo na tabela 'verses'
-    const { data: verseText, error: verseTextError } = await supabase
-      .from('verses')
-      .select('text')
-      .eq('book', typedFallbackRef.book)
-      .eq('chapter', typedFallbackRef.chapter)
-      .eq('verse_number', typedFallbackRef.verse_number)
-      .eq('language_code', refLang)
-      .single();
+      if (!typedFallbackRef) {
+        const { data: fallbackRefPt } = await supabase
+          .rpc('get_random_verse', { lang_code: 'pt' })
+          .maybeSingle();
 
-    if (verseTextError || !verseText) {
-      console.error("Failed to fetch verse text for fallback reference:", verseTextError);
-      return null;
-    }
-    
-    // Retorna o fallback completo
-    return {
-      book: typedFallbackRef.book,
-      chapter: typedFallbackRef.chapter,
-      verse_number: typedFallbackRef.verse_number,
-      text: verseText.text,
-    };
-  }
-
-  // 4. Se o registro do dia foi encontrado, retorna-o diretamente
-  return dailyVerse as DailyVerseData;
-}
-
-export async function getRecentPosts({
-  lang,
-  limit,
-  includeCategorySlug,
-  excludeCategorySlug,
-}: {
-  lang: string;
-  limit: number;
-  includeCategorySlug?: string;
-  excludeCategorySlug?: string;
-}): Promise<PostListItem[]> {
-  const supabase = await createSupabaseServerClient();
-
-  const selectString = `id, slug, title, summary, image_url, image_alt_text, published_at, language_code${includeCategorySlug ? ',blog_post_categories!inner(blog_categories!inner(slug))' : ''}`;
-
-  let query = supabase
-    .from('blog_posts')
-    .select(selectString)
-    .eq('status', 'published');
-
-  if (includeCategorySlug) {
-    query = query.eq('blog_post_categories.blog_categories.slug', includeCategorySlug);
-  }
-  
-  if (excludeCategorySlug) {
-    const { data: categoryToExclude } = await supabase
-      .from('blog_categories')
-      .select('id')
-      .eq('slug', excludeCategorySlug)
-      .single();
-
-    if (categoryToExclude) {
-      const { data: postsToExclude } = await supabase
-        .from('blog_post_categories')
-        .select('post_id')
-        .eq('category_id', categoryToExclude.id);
-
-      if (postsToExclude && postsToExclude.length > 0) {
-        const postIdsToExclude = postsToExclude.map(p => p.post_id);
-        query = query.not('id', 'in', `(${postIdsToExclude.join(',')})`);
-      }
-    }
-  }
-
-  query = query.order('published_at', { ascending: false }).limit(limit);
-
-  const { data: originalPosts, error } = await query;
-
-  if (error) {
-    console.error("Error fetching recent posts:", error);
-    return [];
-  }
-
-  if (!originalPosts || originalPosts.length === 0) {
-    return [];
-  }
-
-  // Type assertion to fix TS inference issue with complex Supabase queries
-  const typedPosts = originalPosts as unknown as PostListItem[];
-
-  const postIds = typedPosts.map(p => p.id);
-  
-  let finalPosts: PostListItem[] = typedPosts.map(p => ({
-    id: p.id,
-    slug: p.slug,
-    image_url: p.image_url,
-    image_alt_text: p.image_alt_text,
-    published_at: p.published_at,
-    title: p.title,
-    summary: p.summary,
-    language_code: p.language_code,
-  }));
-
-  if (lang !== 'pt') {
-    const { data: translations, error: transError } = await supabase
-      .from('blog_post_translations')
-      .select('post_id, translated_title, translated_summary, language_code')
-      .in('post_id', postIds)
-      .eq('language_code', lang);
-
-    if (transError) {
-      console.error("Error fetching translations for recent posts:", transError);
-    } else if (translations) {
-      const translationMap = new Map(translations.map(t => [t.post_id, t]));
-      finalPosts = finalPosts.map(post => {
-        const translation = translationMap.get(post.id);
-        if (translation) {
-          return {
-            ...post,
-            title: translation.translated_title,
-            summary: translation.translated_summary,
-            language_code: translation.language_code,
-          };
+        if (fallbackRefPt) {
+          typedFallbackRef = fallbackRefPt as VerseReference;
+          refLang = 'pt';
         }
-        return post;
-      });
-    }
-  }
+      }
+      
+      if (!typedFallbackRef) return null;
+      
+      const { data: verseText } = await supabase
+        .from('verses')
+        .select('text')
+        .eq('book', typedFallbackRef.book)
+        .eq('chapter', typedFallbackRef.chapter)
+        .eq('verse_number', typedFallbackRef.verse_number)
+        .eq('language_code', refLang)
+        .single();
 
-  return finalPosts;
-}
+      if (!verseText) return null;
+      
+      return {
+        book: typedFallbackRef.book,
+        chapter: typedFallbackRef.chapter,
+        verse_number: typedFallbackRef.verse_number,
+        text: verseText.text,
+      };
+    }
+
+    return dailyVerse as DailyVerseData;
+  },
+  ['daily-verse'],
+  { revalidate: 3600, tags: ['daily-verse'] } // Revalida a cada hora
+);
+
+// OTIMIZAÇÃO: Cacheando posts recentes
+export const getRecentPosts = unstable_cache(
+  async ({
+    lang,
+    limit,
+    includeCategorySlug,
+    excludeCategorySlug,
+  }: {
+    lang: string;
+    limit: number;
+    includeCategorySlug?: string;
+    excludeCategorySlug?: string;
+  }): Promise<PostListItem[]> => {
+    const supabase = getPublicClient();
+
+    const selectString = `id, slug, title, summary, image_url, image_alt_text, published_at, language_code${includeCategorySlug ? ',blog_post_categories!inner(blog_categories!inner(slug))' : ''}`;
+
+    let query = supabase
+      .from('blog_posts')
+      .select(selectString)
+      .eq('status', 'published');
+
+    if (includeCategorySlug) {
+      query = query.eq('blog_post_categories.blog_categories.slug', includeCategorySlug);
+    }
+    
+    if (excludeCategorySlug) {
+      const { data: categoryToExclude } = await supabase
+        .from('blog_categories')
+        .select('id')
+        .eq('slug', excludeCategorySlug)
+        .single();
+
+      if (categoryToExclude) {
+        const { data: postsToExclude } = await supabase
+          .from('blog_post_categories')
+          .select('post_id')
+          .eq('category_id', categoryToExclude.id);
+
+        if (postsToExclude && postsToExclude.length > 0) {
+          const postIdsToExclude = postsToExclude.map(p => p.post_id);
+          query = query.not('id', 'in', `(${postIdsToExclude.join(',')})`);
+        }
+      }
+    }
+
+    query = query.order('published_at', { ascending: false }).limit(limit);
+
+    const { data: originalPosts, error } = await query;
+
+    if (error) {
+      console.error("Error fetching recent posts:", error);
+      return [];
+    }
+
+    if (!originalPosts || originalPosts.length === 0) {
+      return [];
+    }
+
+    const typedPosts = originalPosts as unknown as PostListItem[];
+    const postIds = typedPosts.map(p => p.id);
+    
+    let finalPosts: PostListItem[] = typedPosts.map(p => ({
+      id: p.id,
+      slug: p.slug,
+      image_url: p.image_url,
+      image_alt_text: p.image_alt_text,
+      published_at: p.published_at,
+      title: p.title,
+      summary: p.summary,
+      language_code: p.language_code,
+    }));
+
+    if (lang !== 'pt') {
+      const { data: translations } = await supabase
+        .from('blog_post_translations')
+        .select('post_id, translated_title, translated_summary, language_code')
+        .in('post_id', postIds)
+        .eq('language_code', lang);
+
+      if (translations) {
+        const translationMap = new Map(translations.map(t => [t.post_id, t]));
+        finalPosts = finalPosts.map(post => {
+          const translation = translationMap.get(post.id);
+          if (translation) {
+            return {
+              ...post,
+              title: translation.translated_title,
+              summary: translation.translated_summary,
+              language_code: translation.language_code,
+            };
+          }
+          return post;
+        });
+      }
+    }
+
+    return finalPosts;
+  },
+  ['recent-posts'],
+  { revalidate: 1800, tags: ['blog'] } // 30 minutos
+);
 
 export async function getRelatedPosts({
   postId,
@@ -700,43 +658,32 @@ export async function getRelatedPosts({
   lang: string;
   limit?: number;
 }): Promise<PostListItem[]> {
+  // Esta função pode continuar dinâmica pois geralmente é usada na página do post
+  // que já está sendo cacheada pelo getPostBySlug ou renderizada dinamicamente
   const supabase = await createSupabaseServerClient();
   let relatedPosts: PostListItem[] = [];
   const foundPostIds = new Set<string>([postId]);
 
-  // 1. Find posts by category (with randomization)
   if (categoryIds.length > 0) {
-    // Fetch all published posts in the same categories (except current)
-    // Using !inner join to filter by category and status at once
-    const { data: availablePostsData, error: pcError } = await supabase
+    const { data: availablePostsData } = await supabase
       .from('blog_posts')
       .select('id, blog_post_categories!inner(category_id)')
       .eq('status', 'published')
       .in('blog_post_categories.category_id', categoryIds)
       .not('id', 'eq', postId);
 
-    if (pcError) console.error("Error fetching related post IDs by category:", pcError);
-
     if (availablePostsData && availablePostsData.length > 0) {
-      // Get unique IDs from the results
       let postIds = [...new Set(availablePostsData.map(p => p.id))];
-      
-      // Shuffle IDs to ensure randomness
       postIds = shuffleArray(postIds);
-      
-      // Take the random subset we need
       const selectedIds = postIds.slice(0, limit);
 
       if (selectedIds.length > 0) {
-        const { data: posts, error: postsError } = await supabase
+        const { data: posts } = await supabase
           .from('blog_posts')
           .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code')
           .in('id', selectedIds);
         
-        if (postsError) console.error("Error fetching related posts details:", postsError);
-        
         if (posts) {
-           // Shuffle again to mix display order, just in case DB returns ordered results
            const shuffledPosts = shuffleArray(posts as PostListItem[]);
            relatedPosts.push(...shuffledPosts);
            posts.forEach(p => foundPostIds.add(p.id));
@@ -745,9 +692,8 @@ export async function getRelatedPosts({
     }
   }
 
-  // 2. Find posts by author if needed (fallback)
   if (relatedPosts.length < limit && authorId) {
-    const { data: authorPosts, error: authorError } = await supabase
+    const { data: authorPosts } = await supabase
       .from('blog_posts')
       .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code')
       .eq('author_id', authorId)
@@ -756,17 +702,14 @@ export async function getRelatedPosts({
       .order('published_at', { ascending: false })
       .limit(limit - relatedPosts.length);
 
-    if (authorError) console.error("Error fetching related posts by author:", authorError);
-
     if (authorPosts) {
       relatedPosts.push(...authorPosts as PostListItem[]);
       authorPosts.forEach(p => foundPostIds.add(p.id));
     }
   }
 
-  // 3. Find recent posts if needed (last fallback)
   if (relatedPosts.length < limit) {
-    const { data: recentPosts, error: recentError } = await supabase
+    const { data: recentPosts } = await supabase
       .from('blog_posts')
       .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code')
       .eq('status', 'published')
@@ -774,28 +717,22 @@ export async function getRelatedPosts({
       .order('published_at', { ascending: false })
       .limit(limit - relatedPosts.length);
 
-    if (recentError) console.error("Error fetching recent posts:", recentError);
-
     if (recentPosts) {
       relatedPosts.push(...recentPosts as PostListItem[]);
     }
   }
 
-  // Ensure unique posts (just in case) and correct limit
   const finalPosts = Array.from(new Map(relatedPosts.map(p => [p.id, p])).values()).slice(0, limit);
 
-  // 4. Handle translations
   if (lang !== 'pt' && finalPosts.length > 0) {
     const postIds = finalPosts.map(p => p.id);
-    const { data: translations, error: transError } = await supabase
+    const { data: translations } = await supabase
       .from('blog_post_translations')
       .select('post_id, translated_title, translated_summary, language_code')
       .in('post_id', postIds)
       .eq('language_code', lang);
 
-    if (transError) {
-      console.error("Error fetching translations for related posts:", transError);
-    } else if (translations) {
+    if (translations) {
       const translationMap = new Map(translations.map(t => [t.post_id, t]));
       return finalPosts.map(post => {
         const translation = translationMap.get(post.id);
@@ -815,7 +752,6 @@ export async function getRelatedPosts({
   return finalPosts;
 }
 
-// --- Funções para o Admin ---
 export type AdminPostListItem = PostListItem & {
   status: string;
   author_first_name: string | null;
@@ -857,7 +793,6 @@ export async function getPublishedPostsByCategory(lang: string, categorySlug: st
   const supabase = await createSupabaseServerClient();
   const offset = (page - 1) * POSTS_PER_PAGE;
 
-  // 1. Encontrar a categoria pelo slug
   const { data: category, error: categoryError } = await supabase
     .from('blog_categories')
     .select('id, name')
@@ -865,11 +800,9 @@ export async function getPublishedPostsByCategory(lang: string, categorySlug: st
     .single();
 
   if (categoryError || !category) {
-    console.error(`Category with slug "${categorySlug}" not found.`);
     return { posts: [], totalPages: 0, currentPage: page, categoryName: null };
   }
 
-  // 2. Buscar posts associados a essa categoria
   const { data: originalPosts, count, error: postsError } = await supabase
     .from('blog_posts')
     .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code, blog_post_categories!inner(category_id)', { count: 'exact' })
@@ -879,7 +812,6 @@ export async function getPublishedPostsByCategory(lang: string, categorySlug: st
     .range(offset, offset + POSTS_PER_PAGE - 1);
 
   if (postsError) {
-    console.error("Error fetching posts by category:", postsError);
     return { posts: [], totalPages: 0, currentPage: page, categoryName: category.name };
   }
 
@@ -889,7 +821,6 @@ export async function getPublishedPostsByCategory(lang: string, categorySlug: st
 
   const postIds = originalPosts.map(p => p.id);
   
-  // 3. Lógica de tradução (similar a getPublishedPosts)
   let finalPosts: PostListItem[] = originalPosts.map(p => ({
     id: p.id,
     slug: p.slug,
