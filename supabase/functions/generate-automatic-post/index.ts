@@ -246,7 +246,13 @@ async function generateImageAndUpload(prompt, userId, supabase) {
   const fileName = `${crypto.randomUUID()}.png`;
   const filePath = `generated/${userId}/${fileName}`;
 
-  const { error: uploadError } = await supabase.storage.from("blog_images").upload(filePath, arrayBuffer, { contentType, upsert: false });
+  // Adicionado cacheControl aqui para 1 ano (immutable)
+  const { error: uploadError } = await supabase.storage.from("blog_images").upload(filePath, arrayBuffer, { 
+    contentType, 
+    upsert: false,
+    cacheControl: '31536000, immutable'
+  });
+  
   if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
 
   const { data: publicUrlData } = supabase.storage.from("blog_images").getPublicUrl(filePath);
