@@ -15,15 +15,30 @@ function getLocale(request: NextRequest): string {
 }
 
 export async function middleware(request: NextRequest) {
-  // Cria uma resposta inicial. Isso permite que a lógica do Supabase
-  // modifique os cookies da resposta se necessário.
+  const pathname = request.nextUrl.pathname;
+
+  // 1. Lógica de internacionalização (i18n) - EXECUTA PRIMEIRO (Rápido)
+  // Verifica se o caminho atual não possui um prefixo de localidade
+  const pathnameIsMissingLocale = i18n.locales.every(
+    (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
+  );
+
+  // Se faltar o locale, redireciona imediatamente. 
+  // NÃO carregamos o Supabase aqui para economizar tempo de processamento (TTFB).
+  // O Supabase rodará na próxima requisição (para a URL redirecionada).
+  if (pathnameIsMissingLocale) {
+    const locale = getLocale(request);
+    const newPath = pathname === '/' ? `/${locale}` : `/${locale}${pathname}`;
+    return NextResponse.redirect(new URL(newPath, request.url));
+  }
+
+  // 2. Lógica do Supabase (Auth) - Só roda se a URL já estiver correta
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
 
-  // Cria um cliente Supabase para o middleware.
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -33,7 +48,6 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value;
         },
         set(name: string, value: string, options: CookieOptions) {
-          // Se um cookie for definido, atualize os cookies na requisição e na resposta.
           request.cookies.set({ name, value, ...options });
           response = NextResponse.next({
             request: {
@@ -43,7 +57,6 @@ export async function middleware(request: NextRequest) {
           response.cookies.set({ name, value, ...options });
         },
         remove(name: string, options: CookieOptions) {
-          // Se um cookie for removido, atualize os cookies na requisição e na resposta.
           request.cookies.set({ name, value: '', ...options });
           response = NextResponse.next({
             request: {
@@ -56,40 +69,15 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Atualiza a sessão do usuário. Isso é crucial para Server Components.
+  // Atualiza a sessão do usuário
   await supabase.auth.getSession();
 
-  // Lógica de internacionalização (i18n)
-  const pathname = request.nextUrl.pathname;
-
-  // Verifica se o caminho atual não possui um prefixo de localidade
-  const pathnameIsMissingLocale = i18n.locales.every(
-    (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
-  );
-
-  // Redireciona para o locale detectado se não houver localidade no caminho
-  if (pathnameIsMissingLocale) {
-    const locale = getLocale(request);
-    const newPath = pathname === '/' ? `/${locale}` : `/${locale}${pathname}`;
-    // Retorna um novo objeto de redirecionamento.
-    return NextResponse.redirect(new URL(newPath, request.url));
-  }
-
-  // Se nenhuma outra ação for tomada, retorna a resposta (possivelmente com cookies atualizados).
   return response;
 }
 
-// Executa em todas as rotas — o próprio middleware ignora as internas/estáticas acima
+// Executa em todas as rotas, exceto estáticas/api
 export const config = {
   matcher: [
-    /*
-     * Corresponde a todas as rotas de requisição, exceto as que começam com:
-     * - api (rotas de API)
-     * - _next/static (arquivos estáticos)
-     * - _next/image (otimização de imagem)
-     * - qualquer arquivo com uma extensão (ex: .ico, .svg, .png, .js, .json)
-     * Isso evita que o middleware seja executado em requisições desnecessárias.
-     */
-    '/((?!api|_next/static|_next/image|.*\\..*).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 };
