@@ -4,7 +4,6 @@ import { Toaster } from '@/components/ui/sonner';
 import GoogleAnalytics from '@/components/analytics/google-analytics';
 import './globals.css';
 import { Metadata } from 'next';
-import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import AdsenseScript from '@/components/ads/adsense-script';
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Inter } from 'next/font/google';
@@ -53,33 +52,19 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootLayout({ children }: RootLayoutProps) {
-  const supabase = await createSupabaseServerClient()
-  const { data: { user } } = await supabase.auth.getUser();
-
-  let shouldShowAds = true;
-
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('subscription_status')
-      .eq('id', user.id)
-      .single();
-
-    if (profile && profile.subscription_status !== 'free') {
-      shouldShowAds = false;
-    }
-  }
-
+export default function RootLayout({ children }: RootLayoutProps) {
   const adsenseClientId = 'ca-pub-5872513184553634';
 
   return (
     <html suppressHydrationWarning className={inter.variable} lang="pt">
       <head>
-        {shouldShowAds && <AdsenseScript adsenseClientId={adsenseClientId} />}
+        <link rel="preconnect" href="https://xrwnftnfzwbrzijnbhfu.supabase.co" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className="font-sans antialiased">
         <SessionContextProvider>
+          <AdsenseScript adsenseClientId={adsenseClientId} />
           <GoogleAnalytics />
           {children}
           <SpeedInsights />
