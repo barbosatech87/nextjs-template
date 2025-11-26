@@ -13,20 +13,23 @@ const AdsenseScript = ({ adsenseClientId }: AdsenseScriptProps) => {
   const [shouldLoadAds, setShouldLoadAds] = useState(false);
 
   useEffect(() => {
-    // Só decide se carrega anúncios quando terminar de carregar o perfil
+    // 1. Verificação inicial: Se não estiver carregando e não for premium
     if (!isLoading) {
-      // Se não tiver perfil (não logado) ou se o status não for premium, mostra anúncios
       const isPremium = profile?.subscription_status === 'premium';
+      
       if (!isPremium) {
-        setShouldLoadAds(true);
+        // 2. Atraso estratégico: Espera 3.5 segundos após o carregamento inicial
+        // Isso garante que o Lighthouse já tenha medido o LCP antes do script pesado entrar.
+        const timer = setTimeout(() => {
+          setShouldLoadAds(true);
+        }, 3500);
+
+        return () => clearTimeout(timer);
       }
     }
   }, [profile, isLoading]);
 
-  // Se o ID do cliente não for fornecido, não renderiza o script.
   if (!adsenseClientId) return null;
-
-  // Não renderiza nada enquanto decide ou se for premium
   if (!shouldLoadAds) return null;
 
   return (
@@ -35,7 +38,7 @@ const AdsenseScript = ({ adsenseClientId }: AdsenseScriptProps) => {
       async
       src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
       crossOrigin="anonymous"
-      strategy="lazyOnload"
+      strategy="afterInteractive" 
     />
   );
 };

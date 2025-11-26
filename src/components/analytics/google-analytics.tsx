@@ -1,12 +1,22 @@
 "use client";
 
 import Script from "next/script";
+import { useEffect, useState } from "react";
 
 const GoogleAnalytics = () => {
   const gaMeasurementId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+  const [shouldLoad, setShouldLoad] = useState(false);
 
-  // Não renderiza nada se a ID não estiver configurada
-  if (!gaMeasurementId) {
+  useEffect(() => {
+    // Atrasa o carregamento do GA para não impactar o FCP/LCP
+    const timer = setTimeout(() => {
+      setShouldLoad(true);
+    }, 2500); // Carrega um pouco antes do AdSense
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!gaMeasurementId || !shouldLoad) {
     return null;
   }
 
