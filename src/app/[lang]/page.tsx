@@ -72,12 +72,25 @@ export default async function HomePage({ params }: HomePageProps) {
   const { lang } = params;
   const t = pageTexts[lang] || pageTexts.pt;
 
-  // Buscando dados em paralelo para reduzir o TTFB
-  const [dailyVerse, devotionalPosts, recentPosts] = await Promise.all([
+  const [dailyVerseResult, devotionalPostsResult, recentPostsResult] = await Promise.allSettled([
     getDailyVerse(lang),
     getRecentPosts({ lang, limit: 3, includeCategorySlug: 'devocional' }),
     getRecentPosts({ lang, limit: 6, excludeCategorySlug: 'devocional' })
   ]);
+
+  const dailyVerse = dailyVerseResult.status === 'fulfilled' ? dailyVerseResult.value : null;
+  const devotionalPosts = devotionalPostsResult.status === 'fulfilled' ? devotionalPostsResult.value : [];
+  const recentPosts = recentPostsResult.status === 'fulfilled' ? recentPostsResult.value : [];
+
+  if (dailyVerseResult.status === 'rejected') {
+    console.error("Failed to fetch daily verse:", dailyVerseResult.reason);
+  }
+  if (devotionalPostsResult.status === 'rejected') {
+    console.error("Failed to fetch devotional posts:", devotionalPostsResult.reason);
+  }
+  if (recentPostsResult.status === 'rejected') {
+    console.error("Failed to fetch recent posts:", recentPostsResult.reason);
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">

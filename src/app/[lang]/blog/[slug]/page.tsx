@@ -44,7 +44,14 @@ export async function generateMetadata(
   parent: ResolvingMetadata
 ): Promise<Metadata> {
   const { lang, slug } = await params;
-  const post = await getPostBySlug(slug, lang);
+  let post;
+  try {
+    post = await getPostBySlug(slug, lang);
+  } catch (error) {
+    return {
+      title: "Post não encontrado",
+    };
+  }
 
   if (!post) {
     return {
@@ -98,7 +105,13 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     notFound();
   }
 
-  const post = await getPostBySlug(slug, lang);
+  let post;
+  try {
+    post = await getPostBySlug(slug, lang);
+  } catch (error) {
+    console.error(`Error fetching post by slug "${slug}":`, error);
+    notFound();
+  }
 
   if (!post) {
     notFound();

@@ -9,7 +9,6 @@ import { createClient } from "@supabase/supabase-js";
 const POSTS_PER_PAGE = 9;
 
 // Cliente Supabase para dados públicos (dentro do cache)
-// Isso evita o uso de cookies() dentro do unstable_cache, o que quebraria a geração estática
 const getPublicClient = () => {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -107,7 +106,6 @@ export async function createPost(postData: NewPostData, lang: string): Promise<A
     }
 
     revalidatePath(`/${lang}/admin/blog`);
-    // Invalida o cache público
     revalidatePath(`/${lang}`); 
     revalidatePath(`/${lang}/blog`);
     
@@ -195,7 +193,6 @@ export async function updatePost(postId: string, postData: NewPostData, lang: st
 
     revalidatePath(`/${lang}/admin/blog`);
     revalidatePath(`/${lang}/blog/${postDetails.slug}`);
-    // Invalida caches públicos
     revalidatePath(`/${lang}`);
     revalidatePath(`/${lang}/blog`);
 
@@ -386,9 +383,8 @@ export async function getPublishedPosts(lang: string, page: number = 1) {
   };
 }
 
-// OTIMIZAÇÃO: Cacheando busca de post por slug
 export const getPostBySlug = unstable_cache(
-  async (slug: string, lang: string): Promise<PostDetail | null> => {
+  async (slug: string, lang: string): Promise<PostDetail> => {
     const supabase = getPublicClient();
 
     const { data: post, error: postError } = await supabase
@@ -399,7 +395,7 @@ export const getPostBySlug = unstable_cache(
       .single();
 
     if (postError || !post) {
-      return null;
+      throw new Error(`Post not found: ${slug}`);
     }
 
     let authorProfile: { first_name: string | null, last_name: string | null } | null = null;
@@ -443,7 +439,7 @@ export const getPostBySlug = unstable_cache(
     
     const parsedContent = await marked.parse(contentToParse);
 
-    return {
+    const finalPost = {
       id: post.id,
       slug: post.slug,
       image_url: post.image_url,
@@ -459,6 +455,12 @@ export const getPostBySlug = unstable_cache(
       language_code: finalLanguageCode,
       categories,
     };
+
+    if (!finalPost) {
+      throw new Error(`Failed to construct post object for slug: ${slug}`);
+    }
+
+    return finalPost;
   },
   ['post-by-slug'],
   { revalidate: 3600, tags: ['blog'] }
@@ -478,9 +480,8 @@ interface VerseReference {
     version: string;
 }
 
-// OTIMIZAÇÃO: Cacheando o versículo do dia
 export const getDailyVerse = unstable_cache(
-  async (lang: string): Promise<DailyVerseData | null> => {
+  async (lang: string): Promise<DailyVerseData> => {
     const supabase = getPublicClient();
     const today = new Date().toISOString().split('T')[0];
 
@@ -491,54 +492,56 @@ export const getDailyVerse = unstable_cache(
       .eq('language_code', lang)
       .single();
 
-    if (dailyVerseError || !dailyVerse) {
-      // Fallback logic (mantida, mas dentro do cache)
-      let refLang = lang;
-      const { data: fallbackRefPrimary } = await supabase
-        .rpc('get_random_verse', { lang_code: lang })
-        .maybeSingle();
-
-      let typedFallbackRef = fallbackRefPrimary as VerseReference | null;
-
-      if (!typedFallbackRef) {
-        const { data: fallbackRefPt } = await supabase
-          .rpc('get_random_verse', { lang_code: 'pt' })
-          .maybeSingle();
-
-        if (fallbackRefPt) {
-          typedFallbackRef = fallbackRefPt as VerseReference;
-          refLang = 'pt';
-        }
-      }
-      
-      if (!typedFallbackRef) return null;
-      
-      const { data: verseText } = await supabase
-        .from('verses')
-        .select('text')
-        .eq('book', typedFallbackRef.book)
-        .eq('chapter', typedFallbackRef.chapter)
-        .eq('verse_number', typedFallbackRef.verse_number)
-        .eq('language_code', refLang)
-        .single();
-
-      if (!verseText) return null;
-      
-      return {
-        book: typedFallbackRef.book,
-        chapter: typedFallbackRef.chapter,
-        verse_number: typedFallbackRef.verse_number,
-        text: verseText.text,
-      };
+    if (!dailyVerseError && dailyVerse) {
+      return dailyVerse as DailyVerseData;
     }
 
-    return dailyVerse as DailyVerseData;
+    // Fallback logic
+    let refLang = lang;
+    const { data: fallbackRefPrimary } = await supabase
+      .rpc('get_random_verse', { lang_code: lang })
+      .maybeSingle();
+
+    let typedFallbackRef = fallbackRefPrimary as VerseReference | null;
+
+    if (!typedFallbackRef) {
+      const { data: fallbackRefPt } = await supabase
+        .rpc('get_random_verse', { lang_code: 'pt' })
+        .maybeSingle();
+      if (fallbackRefPt) {
+        typedFallbackRef = fallbackRefPt as VerseReference;
+        refLang = 'pt';
+      }
+    }
+    
+    if (!typedFallbackRef) {
+      throw new Error("Could not find any verse for daily verse fallback.");
+    }
+    
+    const { data: verseText } = await supabase
+      .from('verses')
+      .select('text')
+      .eq('book', typedFallbackRef.book)
+      .eq('chapter', typedFallbackRef.chapter)
+      .eq('verse_number', typedFallbackRef.verse_number)
+      .eq('language_code', refLang)
+      .single();
+
+    if (!verseText) {
+      throw new Error("Could not find verse text for daily verse fallback.");
+    }
+    
+    return {
+      book: typedFallbackRef.book,
+      chapter: typedFallbackRef.chapter,
+      verse_number: typedFallbackRef.verse_number,
+      text: verseText.text,
+    };
   },
   ['daily-verse'],
-  { revalidate: 14400, tags: ['daily-verse'] } // Revalida a cada 4 horas (14400s)
+  { revalidate: 14400, tags: ['daily-verse'] }
 );
 
-// OTIMIZAÇÃO: Cacheando posts recentes
 export const getRecentPosts = unstable_cache(
   async ({
     lang,
@@ -590,10 +593,10 @@ export const getRecentPosts = unstable_cache(
 
     if (error) {
       console.error("Error fetching recent posts:", error);
-      return [];
+      throw new Error(`Database error while fetching recent posts: ${error.message}`);
     }
 
-    if (!originalPosts || originalPosts.length === 0) {
+    if (!originalPosts) {
       return [];
     }
 
@@ -638,7 +641,7 @@ export const getRecentPosts = unstable_cache(
     return finalPosts;
   },
   ['recent-posts'],
-  { revalidate: 3600, tags: ['blog'] } // 1 hora
+  { revalidate: 3600, tags: ['blog'] }
 );
 
 export async function getRelatedPosts({
@@ -654,8 +657,6 @@ export async function getRelatedPosts({
   lang: string;
   limit?: number;
 }): Promise<PostListItem[]> {
-  // Esta função pode continuar dinâmica pois geralmente é usada na página do post
-  // que já está sendo cacheada pelo getPostBySlug ou renderizada dinamicamente
   const supabase = await createSupabaseServerClient();
   let relatedPosts: PostListItem[] = [];
   const foundPostIds = new Set<string>([postId]);
