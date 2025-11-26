@@ -317,79 +317,74 @@ export async function getPostById(postId: string): Promise<EditablePostData | nu
   } as EditablePostData;
 }
 
-// OTIMIZAÇÃO: Cacheando a busca de posts publicados
-export const getPublishedPosts = unstable_cache(
-  async (lang: string, page: number = 1) => {
-    const supabase = getPublicClient();
-    const offset = (page - 1) * POSTS_PER_PAGE;
+export async function getPublishedPosts(lang: string, page: number = 1) {
+  const supabase = await createSupabaseServerClient();
+  const offset = (page - 1) * POSTS_PER_PAGE;
 
-    let query = supabase
-      .from('blog_posts')
-      .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code', { count: 'exact' })
-      .eq('status', 'published')
-      .order('published_at', { ascending: false })
-      .range(offset, offset + POSTS_PER_PAGE - 1);
+  let query = supabase
+    .from('blog_posts')
+    .select('id, slug, title, summary, image_url, image_alt_text, published_at, language_code', { count: 'exact' })
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .range(offset, offset + POSTS_PER_PAGE - 1);
 
-    const { data: originalPosts, count, error } = await query;
+  const { data: originalPosts, count, error } = await query;
 
-    if (error) {
-      console.error("Error fetching published posts:", error);
-      return { posts: [], totalPages: 0, currentPage: page };
+  if (error) {
+    console.error("Error fetching published posts:", error);
+    return { posts: [], totalPages: 0, currentPage: page };
+  }
+
+  if (!originalPosts || originalPosts.length === 0) {
+    return { posts: [], totalPages: 0, currentPage: page };
+  }
+
+  const postIds = originalPosts.map(p => p.id);
+  
+  let finalPosts: PostListItem[] = originalPosts.map(p => ({
+    id: p.id,
+    slug: p.slug,
+    image_url: p.image_url,
+    image_alt_text: p.image_alt_text,
+    published_at: p.published_at,
+    title: p.title,
+    summary: p.summary,
+    language_code: p.language_code,
+  }));
+
+  if (lang !== 'pt') {
+    const { data: translations } = await supabase
+      .from('blog_post_translations')
+      .select('post_id, translated_title, translated_summary, language_code')
+      .in('post_id', postIds)
+      .eq('language_code', lang);
+
+    if (translations) {
+      const translationMap = new Map(translations.map(t => [t.post_id, t]));
+
+      finalPosts = finalPosts.map(post => {
+        const translation = translationMap.get(post.id);
+        if (translation) {
+          return {
+            ...post,
+            title: translation.translated_title,
+            summary: translation.translated_summary,
+            language_code: translation.language_code,
+          };
+        }
+        return post;
+      });
     }
+  }
 
-    if (!originalPosts || originalPosts.length === 0) {
-      return { posts: [], totalPages: 0, currentPage: page };
-    }
+  const totalPages = count ? Math.ceil(count / POSTS_PER_PAGE) : 0;
 
-    const postIds = originalPosts.map(p => p.id);
-    
-    let finalPosts: PostListItem[] = originalPosts.map(p => ({
-      id: p.id,
-      slug: p.slug,
-      image_url: p.image_url,
-      image_alt_text: p.image_alt_text,
-      published_at: p.published_at,
-      title: p.title,
-      summary: p.summary,
-      language_code: p.language_code,
-    }));
-
-    if (lang !== 'pt') {
-      const { data: translations } = await supabase
-        .from('blog_post_translations')
-        .select('post_id, translated_title, translated_summary, language_code')
-        .in('post_id', postIds)
-        .eq('language_code', lang);
-
-      if (translations) {
-        const translationMap = new Map(translations.map(t => [t.post_id, t]));
-
-        finalPosts = finalPosts.map(post => {
-          const translation = translationMap.get(post.id);
-          if (translation) {
-            return {
-              ...post,
-              title: translation.translated_title,
-              summary: translation.translated_summary,
-              language_code: translation.language_code,
-            };
-          }
-          return post;
-        });
-      }
-    }
-
-    const totalPages = count ? Math.ceil(count / POSTS_PER_PAGE) : 0;
-
-    return { 
-      posts: finalPosts, 
-      totalPages, 
-      currentPage: page 
-    };
-  },
-  ['published-posts'], // Key parts
-  { revalidate: 3600, tags: ['blog'] } // Revalidate every hour
-);
+  return { 
+    posts: finalPosts, 
+    totalPages, 
+    currentPage: page 
+  };
+}
 
 // OTIMIZAÇÃO: Cacheando busca de post por slug
 export const getPostBySlug = unstable_cache(
