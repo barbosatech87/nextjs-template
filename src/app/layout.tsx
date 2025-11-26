@@ -63,9 +63,28 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: RootLayoutProps) {
   const adsenseClientId = 'ca-pub-5872513184553634';
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    'name': 'PaxWord',
+    'url': 'https://www.paxword.com',
+    'potentialAction': {
+      '@type': 'SearchAction',
+      'target': {
+        '@type': 'EntryPoint',
+        'urlTemplate': 'https://www.paxword.com/search?q={search_term_string}',
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  };
+
   return (
     <html suppressHydrationWarning className={inter.variable} lang="pt">
       <body className="font-sans antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         <SessionContextProvider>
           <AdsenseScript adsenseClientId={adsenseClientId} />
           <GoogleAnalytics />
