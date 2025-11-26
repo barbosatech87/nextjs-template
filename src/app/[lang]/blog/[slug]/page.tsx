@@ -157,6 +157,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 alt={post.image_alt_text || post.title} 
                 fill
                 priority
+                quality={75}
                 className="object-cover"
                 sizes="(max-width: 768px) 100vw, 800px"
               />

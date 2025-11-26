@@ -65,11 +65,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
 
   return (
     <html suppressHydrationWarning className={inter.variable} lang="pt">
-      <head>
-        <link rel="preconnect" href="https://xrwnftnfzwbrzijnbhfu.supabase.co" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      </head>
       <body className="font-sans antialiased">
         <SessionContextProvider>
           <AdsenseScript adsenseClientId={adsenseClientId} />

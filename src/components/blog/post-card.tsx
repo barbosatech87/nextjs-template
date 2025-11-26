@@ -26,8 +26,9 @@ const PostCard: React.FC<PostCardProps> = ({ post, lang }) => {
               src={post.image_url} 
               alt={post.image_alt_text || post.title} 
               fill
+              quality={65}
               className="object-cover transition-transform duration-300 hover:scale-105"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
           </div>
         )}
