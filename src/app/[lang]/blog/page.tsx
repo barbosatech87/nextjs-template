@@ -2,35 +2,48 @@ import { getPublishedPosts } from "@/app/actions/blog";
 import PostCard from "@/components/blog/post-card";
 import { PaginationControls } from "@/components/blog/pagination-controls";
 import { Locale } from "@/lib/i18n/config";
+import { Metadata } from "next";
 
-const texts = {
+const pageTexts = {
   pt: {
-    title: "Artigos do Blog",
+    title: "Blog - Artigos e Devocionais Cristãos",
+    description: "Leia nossos últimos artigos, estudos bíblicos e devocionais para fortalecer sua fé e aprofundar seu conhecimento da Palavra.",
     noPosts: "Nenhuma postagem encontrada.",
   },
   en: {
-    title: "Blog Articles",
+    title: "Blog - Christian Articles and Devotionals",
+    description: "Read our latest articles, Bible studies, and devotionals to strengthen your faith and deepen your knowledge of the Word.",
     noPosts: "No posts found.",
   },
   es: {
-    title: "Artículos del Blog",
+    title: "Blog - Artículos y Devocionales Cristianos",
+    description: "Lee nuestros últimos artículos, estudios bíblicos y devocionales para fortalecer tu fe y profundizar tu conocimiento de la Palabra.",
     noPosts: "No se encontraron entradas.",
   },
 };
 
+interface BlogListPageProps {
+  params: { lang: Locale };
+  searchParams?: { page?: string };
+}
+
+export async function generateMetadata({ params }: BlogListPageProps): Promise<Metadata> {
+  const { lang } = params;
+  const t = pageTexts[lang] || pageTexts.pt;
+  return {
+    title: t.title,
+    description: t.description,
+  };
+}
+
 export default async function BlogListPage({
   params,
   searchParams,
-}: {
-  params: Promise<{ lang: Locale }>;
-  searchParams?: Promise<{ page?: string }>;
-}) {
-  const { lang } = await params;
-  const sp = searchParams ? await searchParams : undefined;
+}: BlogListPageProps) {
+  const { lang } = params;
+  const t = pageTexts[lang] || pageTexts.pt;
 
-  const t = texts[lang] || texts.pt;
-
-  const pageParam = sp?.page;
+  const pageParam = searchParams?.page;
   const pageStr = Array.isArray(pageParam) ? pageParam[0] : pageParam;
   const currentPage = parseInt(pageStr || '1', 10);
 

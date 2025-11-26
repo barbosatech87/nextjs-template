@@ -1,32 +1,41 @@
 import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { Locale } from '@/lib/i18n/config';
 import { BookSelection } from '@/components/bible/book-selection';
+import { Metadata } from 'next';
 
 const pageTexts = {
   pt: {
-    title: "Ler a Bíblia",
-    description: "Escolha um livro para começar a sua leitura.",
+    title: "Bíblia Sagrada Online",
+    description: "Leia e estude a Bíblia Sagrada. Escolha um livro do Antigo ou Novo Testamento para começar sua leitura e aprofundar seu conhecimento.",
     error: "Não foi possível carregar os livros. Tente novamente mais tarde."
   },
   en: {
-    title: "Read the Bible",
-    description: "Choose a book to start your reading.",
+    title: "Holy Bible Online",
+    description: "Read and study the Holy Bible. Choose a book from the Old or New Testament to start your reading and deepen your knowledge.",
     error: "Could not load the books. Please try again later."
   },
   es: {
-    title: "Leer la Biblia",
-    description: "Elige un libro para comenzar tu lectura.",
+    title: "Santa Biblia en Línea",
+    description: "Lee y estudia la Santa Biblia. Elige un libro del Antiguo o Nuevo Testamento para comenzar tu lectura y profundizar tu conocimiento.",
     error: "No se pudieron cargar los libros. Por favor, inténtalo de nuevo más tarde."
   }
 }
 
 interface BiblePageProps {
-  params: Promise<{ lang: Locale }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined } | undefined>;
+  params: { lang: Locale };
+}
+
+export async function generateMetadata({ params }: BiblePageProps): Promise<Metadata> {
+  const { lang } = params;
+  const t = pageTexts[lang] || pageTexts.pt;
+  return {
+    title: t.title,
+    description: t.description,
+  };
 }
 
 export default async function BiblePage({ params }: BiblePageProps) {
-  const { lang } = await params;
+  const { lang } = params;
   const supabase = await createSupabaseServerClient();
   const texts = pageTexts[lang] || pageTexts.pt;
 

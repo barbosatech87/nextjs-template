@@ -6,39 +6,49 @@ import { CreatePlanForm } from "@/components/reading-plans/create-plan-form";
 import { PredefinedPlansList } from "@/components/reading-plans/predefined-plans-list";
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { PlansLoginPrompt } from "@/components/reading-plans/plans-login-prompt";
+import { Metadata } from "next";
 
 interface PlansPageProps {
-  params: Promise<{ lang: Locale }>;
+  params: { lang: Locale };
 }
 
 export const dynamic = 'force-dynamic';
 
 const pageTexts = {
     pt: { 
-      title: "Planos de Leitura", 
-      description: "Gerencie seus planos, crie novos ou explore opções prontas.",
+      title: "Planos de Leitura da Bíblia", 
+      description: "Crie seu plano de leitura bíblica personalizado, acompanhe seu progresso ou explore planos prontos para começar sua jornada.",
       myPlans: "Meus Planos",
       createPlan: "Criar Plano",
       explorePlans: "Explorar Planos",
     },
     en: { 
-      title: "Reading Plans", 
-      description: "Manage your plans, create new ones, or explore ready-made options.",
+      title: "Bible Reading Plans", 
+      description: "Create your custom Bible reading plan, track your progress, or explore ready-made plans to start your journey.",
       myPlans: "My Plans",
       createPlan: "Create Plan",
       explorePlans: "Explore Plans",
     },
     es: { 
-      title: "Planes de Lectura", 
-      description: "Gestiona tus planes, crea nuevos o explora opciones listas.",
+      title: "Planes de Lectura de la Biblia", 
+      description: "Crea tu plan de lectura bíblica personalizado, sigue tu progreso o explora planes listos para comenzar tu viaje.",
       myPlans: "Mis Planes",
       createPlan: "Crear Plan",
       explorePlans: "Explorar Planes",
     },
 };
 
+export async function generateMetadata({ params }: PlansPageProps): Promise<Metadata> {
+  const { lang } = params;
+  const t = pageTexts[lang] || pageTexts.pt;
+  return {
+    title: t.title,
+    description: t.description,
+  };
+}
+
 export default async function PlansPage({ params }: PlansPageProps) {
-  const { lang } = await params;
+  const { lang } = params;
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   const t = pageTexts[lang] || pageTexts.pt;

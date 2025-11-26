@@ -12,40 +12,67 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import Link from "next/link";
+import { Metadata } from "next";
+import { createSupabaseServerClient } from "@/integrations/supabase/server";
 
-const texts = {
+const pageTexts = {
   pt: {
     title: "Posts na categoria:",
+    description: "Explore todos os nossos artigos e devocionais sobre o tema",
     noPosts: "Nenhuma postagem encontrada nesta categoria.",
     blog: "Blog",
     categories: "Categorias",
   },
   en: {
     title: "Posts in category:",
+    description: "Explore all our articles and devotionals on the topic of",
     noPosts: "No posts found in this category.",
     blog: "Blog",
     categories: "Categories",
   },
   es: {
     title: "Entradas en la categoría:",
+    description: "Explora todos nuestros artículos y devocionales sobre el tema de",
     noPosts: "No se encontraron entradas en esta categoría.",
     blog: "Blog",
     categories: "Categorías",
   },
 };
 
+interface BlogCategoryPageProps {
+  params: { lang: Locale; slug: string };
+  searchParams?: { page?: string };
+}
+
+export async function generateMetadata({ params }: BlogCategoryPageProps): Promise<Metadata> {
+  const { lang, slug } = params;
+  const t = pageTexts[lang] || pageTexts.pt;
+  const supabase = await createSupabaseServerClient();
+
+  const { data: category } = await supabase
+    .from('blog_categories')
+    .select('name')
+    .eq('slug', slug)
+    .single();
+
+  if (!category) {
+    return { title: "Categoria não encontrada" };
+  }
+
+  return {
+    title: `${t.title} ${category.name}`,
+    description: `${t.description} ${category.name}.`,
+  };
+}
+
 export default async function BlogCategoryPage({
   params,
   searchParams,
-}: {
-  params: Promise<{ lang: Locale; slug: string }>;
-  searchParams?: Promise<{ page?: string }>;
-}) {
-  const { lang, slug } = await params;
-  const sp = searchParams ? await searchParams : undefined;
-  const t = texts[lang] || texts.pt;
+}: BlogCategoryPageProps) {
+  const { lang, slug } = params;
+  const t = pageTexts[lang] || pageTexts.pt;
 
-  const pageParam = sp?.page;
+  const pageParam = searchParams?.page;
   const pageStr = Array.isArray(pageParam) ? pageParam[0] : pageParam;
   const currentPage = parseInt(pageStr || '1', 10);
 

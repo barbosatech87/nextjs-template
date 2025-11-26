@@ -12,31 +12,51 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import Link from 'next/link';
+import { Metadata } from 'next';
 
 const pageTexts = {
   pt: {
     bible: "Bíblia",
     title: "Escolha o Capítulo",
+    description: "Selecione um capítulo do livro de {bookName} para iniciar sua leitura da Bíblia Sagrada.",
     error: "Livro não encontrado."
   },
   en: {
     bible: "Bible",
     title: "Choose a Chapter",
+    description: "Select a chapter from the book of {bookName} to begin your reading of the Holy Bible.",
     error: "Book not found."
   },
   es: {
     bible: "Biblia",
     title: "Elige el Capítulo",
+    description: "Selecciona un capítulo del libro de {bookName} para comenzar tu lectura de la Santa Biblia.",
     error: "Libro no encontrado."
   }
 };
 
 interface BookPageProps {
-  params: Promise<{ lang: Locale; bookSlug: string }>;
+  params: { lang: Locale; bookSlug: string };
+}
+
+export async function generateMetadata({ params }: BookPageProps): Promise<Metadata> {
+  const { lang, bookSlug } = params;
+  const t = pageTexts[lang] || pageTexts.pt;
+  const bookName = getBookNameFromSlug(bookSlug);
+
+  if (!bookName) {
+    return { title: t.error };
+  }
+
+  const translatedBookName = getTranslatedBookName(bookName, lang);
+  return {
+    title: `${translatedBookName} - ${t.title}`,
+    description: t.description.replace('{bookName}', translatedBookName),
+  };
 }
 
 export default async function BookPage({ params }: BookPageProps) {
-  const { lang, bookSlug } = await params;
+  const { lang, bookSlug } = params;
   const texts = pageTexts[lang] || pageTexts.pt;
 
   const bookName = getBookNameFromSlug(bookSlug);

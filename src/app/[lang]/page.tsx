@@ -4,13 +4,16 @@ import { DailyVerse } from '@/components/home/daily-verse';
 import { PostSection } from '@/components/home/post-section';
 import { getDailyVerse, getRecentPosts } from '@/app/actions/blog';
 import { ReadBibleCta } from '@/components/home/read-bible-cta';
+import { Metadata } from 'next';
 
 interface HomePageProps {
-  params: Promise<{ lang: Locale }>;
+  params: { lang: Locale };
 }
 
-const homeTexts = {
+const pageTexts = {
   pt: {
+    title: 'PaxWord - Explore a Palavra de Deus com Estudos e Devocionais',
+    description: 'Explore a Bíblia Sagrada, encontre planos de leitura, devocionais diários e aprofunde sua fé com ferramentas de estudo e IA.',
     hero: { heading: 'Explore a palavra', placeholder: 'Buscar na Bíblia...', button: 'Buscar' },
     dailyVerse: { title: 'Versículo do Dia', readChapter: 'Ler o capítulo', verseUnavailable: 'Versículo do dia indisponível no momento.' },
     readBible: {
@@ -24,6 +27,8 @@ const homeTexts = {
     }
   },
   en: {
+    title: 'PaxWord - Explore God\'s Word with Studies and Devotionals',
+    description: 'Explore the Holy Bible, find reading plans, daily devotionals, and deepen your faith with study and AI tools.',
     hero: { heading: 'Explore the Word', placeholder: 'Search the Bible...', button: 'Search' },
     dailyVerse: { title: 'Verse of the Day', readChapter: 'Read chapter', verseUnavailable: 'Verse of the day is currently unavailable.' },
     readBible: {
@@ -37,6 +42,8 @@ const homeTexts = {
     }
   },
   es: {
+    title: 'PaxWord - Explora la Palabra de Dios con Estudios y Devocionales',
+    description: 'Explora la Santa Biblia, encuentra planes de lectura, devocionales diarios y profundiza tu fe con herramientas de estudio e IA.',
     hero: { heading: 'Explora la Palabra', placeholder: 'Buscar en la Biblia...', button: 'Buscar' },
     dailyVerse: { title: 'Versículo del Día', readChapter: 'Leer el capítulo', verseUnavailable: 'El versículo del día no está disponible actualmente.' },
     readBible: {
@@ -46,14 +53,24 @@ const homeTexts = {
     },
     postSection: { 
       latest: { title: 'Últimas Publicaciones', viewAll: 'Ver todos' },
-      devotional: { title: 'Devotional', viewAll: 'Ver todos los devocionales' }
+      devotional: { title: 'Devocional', viewAll: 'Ver todos los devocionales' }
     }
   }
 };
 
+export async function generateMetadata({ params }: HomePageProps): Promise<Metadata> {
+  const { lang } = params;
+  const t = pageTexts[lang] || pageTexts.pt;
+
+  return {
+    title: t.title,
+    description: t.description,
+  };
+}
+
 export default async function HomePage({ params }: HomePageProps) {
-  const { lang } = await params;
-  const t = homeTexts[lang] || homeTexts.pt;
+  const { lang } = params;
+  const t = pageTexts[lang] || pageTexts.pt;
 
   // Buscando dados em paralelo para reduzir o TTFB
   const [dailyVerse, devotionalPosts, recentPosts] = await Promise.all([

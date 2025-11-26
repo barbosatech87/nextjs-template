@@ -29,12 +29,12 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.paxword.com'),
   title: {
-    default: 'PaxWord - Explore a Palavra',
+    default: 'PaxWord - Explore a Palavra de Deus com Estudos e Devocionais',
     template: '%s | PaxWord',
   },
-  description: 'Um lugar para explorar a Bíblia, encontrar planos de leitura, devocionais e aprofundar sua fé.',
+  description: 'Um lugar para explorar a Bíblia, encontrar planos de leitura, devocionais e aprofundar sua fé com ferramentas de estudo e IA.',
   openGraph: {
-    title: 'PaxWord - Explore a Palavra',
+    title: 'PaxWord - Explore a Palavra de Deus',
     description: 'Um lugar para explorar a Bíblia, encontrar planos de leitura, devocionais e aprofundar sua fé.',
     siteName: 'PaxWord',
     locale: 'pt_BR',
@@ -44,13 +44,13 @@ export const metadata: Metadata = {
         url: '/social-share.png',
         width: 1200,
         height: 630,
-        alt: 'PaxWord - Explore a Palavra',
+        alt: 'PaxWord - Explore a Palavra de Deus',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'PaxWord - Explore a Palavra',
+    title: 'PaxWord - Explore a Palavra de Deus',
     description: 'Um lugar para explorar a Bíblia, encontrar planos de leitura, devocionais e aprofundar sua fé.',
     images: ['/social-share.png'],
   },
