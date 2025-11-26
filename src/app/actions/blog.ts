@@ -540,7 +540,7 @@ export const getDailyVerse = unstable_cache(
     return dailyVerse as DailyVerseData;
   },
   ['daily-verse'],
-  { revalidate: 3600, tags: ['daily-verse'] } // Revalida a cada hora
+  { revalidate: 14400, tags: ['daily-verse'] } // Revalida a cada 4 horas (14400s)
 );
 
 // OTIMIZAÇÃO: Cacheando posts recentes
@@ -643,7 +643,7 @@ export const getRecentPosts = unstable_cache(
     return finalPosts;
   },
   ['recent-posts'],
-  { revalidate: 1800, tags: ['blog'] } // 30 minutos
+  { revalidate: 3600, tags: ['blog'] } // 1 hora
 );
 
 export async function getRelatedPosts({
