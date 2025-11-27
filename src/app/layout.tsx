@@ -2,12 +2,14 @@ import { ReactNode } from 'react';
 import { SessionContextProvider } from '@/components/auth/session-context-provider';
 import { Toaster } from '@/components/ui/sonner';
 import GoogleAnalytics from '@/components/analytics/google-analytics';
-import './globals.css';
 import { Metadata, Viewport } from 'next';
 import AdsenseScript from '@/components/ads/adsense-script';
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Inter } from 'next/font/google';
 import { headers } from 'next/headers';
+
+// NOTE: globals.css removed from here to prevent loading on AMP pages.
+// It is now imported in src/app/[lang]/layout.tsx
 
 const inter = Inter({ 
   subsets: ['latin'], 
@@ -23,8 +25,6 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
-// Metadados foram movidos para [lang]/layout.tsx para suportar múltiplos idiomas
-// Apenas configurações não traduzíveis permanecem aqui.
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.paxword.com'),
   manifest: '/manifest.json',
@@ -54,33 +54,51 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const headersList = await headers();
   const isAmp = headersList.get('x-is-amp') === 'true';
 
+  // AMP SHELL: Renderização estrita para Google AMP
+  if (isAmp) {
+    return (
+      <html amp="" lang="pt">
+        <head>
+          <meta charSet="utf-8" />
+          <script async src="https://cdn.ampproject.org/v0.js"></script>
+          <script async custom-element="amp-story" src="https://cdn.ampproject.org/v0/amp-story-1.0.js"></script>
+          <script async custom-element="amp-video" src="https://cdn.ampproject.org/v0/amp-video-0.1.js"></script>
+          {/* AMP Boilerplate - Obrigatório */}
+          <style amp-boilerplate="" dangerouslySetInnerHTML={{
+            __html: `body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}`
+          }} />
+          <noscript>
+            <style amp-boilerplate="" dangerouslySetInnerHTML={{
+              __html: `body{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}`
+            }} />
+          </noscript>
+        </head>
+        <body>
+          {children}
+        </body>
+      </html>
+    );
+  }
+
+  // STANDARD SHELL: Renderização normal do Next.js
   return (
     <html 
       suppressHydrationWarning 
       className={inter.variable}
-      {...(isAmp ? { amp: "" } : {})}
     >
-      <body className={`font-sans ${!isAmp ? 'antialiased' : ''}`}>
-        {!isAmp && (
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-          />
-        )}
+      <body className="font-sans antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
         
-        {isAmp ? (
-          // Em páginas AMP, renderizamos apenas o conteúdo (que inclui o amp-story)
-          // sem os wrappers de contexto e scripts de terceiros proibidos no AMP.
-          children
-        ) : (
-          <SessionContextProvider>
-            <AdsenseScript adsenseClientId={adsenseClientId} />
-            <GoogleAnalytics />
-            {children}
-            <SpeedInsights />
-            <Toaster />
-          </SessionContextProvider>
-        )}
+        <SessionContextProvider>
+          <AdsenseScript adsenseClientId={adsenseClientId} />
+          <GoogleAnalytics />
+          {children}
+          <SpeedInsights />
+          <Toaster />
+        </SessionContextProvider>
       </body>
     </html>
   );

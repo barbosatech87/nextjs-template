@@ -1,6 +1,5 @@
 import { Metadata, ResolvingMetadata } from 'next';
 import { notFound } from 'next/navigation';
-import Script from 'next/script';
 import { getStoryBySlug } from '@/app/actions/stories';
 import { Locale } from '@/lib/i18n/config';
 
@@ -78,18 +77,7 @@ export default async function WebStoryPage({ params }: WebStoryPageProps) {
 
   return (
     <>
-      {/* Scripts Obrigatórios do AMP */}
-      <Script src="https://cdn.ampproject.org/v0.js" strategy="afterInteractive" />
-      <Script 
-        src="https://cdn.ampproject.org/v0/amp-story-1.0.js" 
-        strategy="afterInteractive" 
-        custom-element="amp-story" 
-      />
-      <Script 
-        src="https://cdn.ampproject.org/v0/amp-video-0.1.js" 
-        strategy="afterInteractive" 
-        custom-element="amp-video" 
-      />
+      {/* Scripts são injetados pelo RootLayout quando isAmp=true */}
       
       {/* Dados Estruturados para SEO */}
       <script

@@ -4,6 +4,7 @@ import { LangSetter } from '@/components/i18n/lang-setter';
 import { MainLayout } from '@/components/layout/main-layout';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
+import '@/app/globals.css'; // Moved from RootLayout to here
 
 interface LangLayoutProps {
   children: ReactNode;
