@@ -351,3 +351,38 @@ export async function deleteStoryAutomation(id: string, lang: string) {
     return { success: false, message: e instanceof Error ? e.message : "Ocorreu um erro." };
   }
 }
+
+export async function triggerStoryAutomationManually(automationId: string, lang: string) {
+  try {
+    await checkAdmin();
+
+    const functionUrl = `https://xrwnftnfzwbrzijnbhfu.supabase.co/functions/v1/generate-automatic-story`;
+    const internalSecret = process.env.INTERNAL_SECRET_KEY;
+
+    if (!internalSecret) {
+      throw new Error("Chave secreta interna não configurada no servidor.");
+    }
+
+    // Aciona a Edge Function (sem await para não travar a UI, ou com await se quisermos feedback imediato)
+    // Aqui usamos await para retornar erro caso a função falhe imediatamente
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Secret': internalSecret,
+      },
+      body: JSON.stringify({ automationId }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `A função retornou um erro ${response.status}.`);
+    }
+
+    revalidatePath(`/${lang}/admin/stories`);
+    
+    return { success: true, message: "Execução manual iniciada. Verifique o histórico em instantes." };
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : "Ocorreu um erro inesperado." };
+  }
+}
