@@ -25,9 +25,10 @@ const pageTexts = {
   },
 };
 
-export async function generateMetadata({ params }: { params: { lang: Locale } }): Promise<Metadata> {
-  const lang = params.lang || i18n.defaultLocale;
-  const t = pageTexts[lang] || pageTexts.pt;
+export async function generateMetadata({ params }: { params: Promise<{ lang: Locale }> }): Promise<Metadata> {
+  const { lang } = await params;
+  const currentLang = lang || i18n.defaultLocale;
+  const t = pageTexts[currentLang] || pageTexts.pt;
 
   return {
     title: {
@@ -42,7 +43,7 @@ export async function generateMetadata({ params }: { params: { lang: Locale } })
       },
       description: t.description,
       siteName: 'PaxWord',
-      locale: lang,
+      locale: currentLang,
       type: 'website',
       images: [
         {
