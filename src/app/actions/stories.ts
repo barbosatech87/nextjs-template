@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { revalidatePath } from "next/cache";
 import { WebStory } from "@/types/supabase";
 import { createClient } from "@supabase/supabase-js";
+import { storyAutomationSchema, StoryAutomationFormData } from "@/lib/schemas/stories";
 
 // Cliente público para cache/ISR se necessário
 const getPublicClient = () => {
@@ -21,7 +22,15 @@ export type CreateStoryData = {
   status: 'draft' | 'published' | 'archived';
 };
 
-// Novo tipo para os logs de automação
+export type StoryAutomation = {
+  id: string;
+  name: string;
+  platform: 'pinterest';
+  is_active: boolean;
+  frequency_cron_expression: string;
+  pinterest_board_id: string | null;
+};
+
 export type StoryAutomationLog = {
   id: string;
   story_id: string;
@@ -40,7 +49,6 @@ export type StoryAutomationLog = {
 export async function getStoryBySlug(slug: string, lang: string): Promise<WebStory | null> {
   const supabase = getPublicClient();
 
-  // 1. Busca a story original
   const { data: story, error } = await supabase
     .from('web_stories')
     .select('*')
@@ -53,7 +61,6 @@ export async function getStoryBySlug(slug: string, lang: string): Promise<WebSto
     return null;
   }
 
-  // 2. Se o idioma solicitado não for o original (pt), busca a tradução
   if (lang !== story.language_code) {
     const { data: translation } = await supabase
       .from('web_story_translations')
@@ -63,12 +70,11 @@ export async function getStoryBySlug(slug: string, lang: string): Promise<WebSto
       .single();
 
     if (translation) {
-      // Retorna a story com os dados traduzidos sobrepostos
       return {
         ...story,
         title: translation.title,
         story_data: translation.story_data,
-        language_code: lang, // Importante para SEO
+        language_code: lang,
       };
     }
   }
@@ -88,7 +94,6 @@ export async function getPublishedStories(lang: string, limit = 10) {
 
   if (error) return [];
 
-  // Mapeia traduções para a listagem
   if (lang !== 'pt') {
     const storyIds = stories.map(s => s.id);
     const { data: translations } = await supabase
@@ -163,7 +168,6 @@ export async function updateStory(id: string, data: Partial<CreateStoryData>, la
     } as any;
 
     if (data.status === 'published') {
-      // Se não tinha data de publicação, adiciona agora
       const { data: current } = await supabase.from('web_stories').select('published_at').eq('id', id).single();
       if (!current?.published_at) {
         updateData.published_at = new Date().toISOString();
@@ -180,7 +184,6 @@ export async function updateStory(id: string, data: Partial<CreateStoryData>, la
     revalidatePath('/admin/stories');
     if (data.slug) revalidatePath(`/${lang}/web-stories/${data.slug}`);
     
-    // Retorna os dados necessários para o trigger de tradução
     return { success: true, message: "Story atualizada com sucesso.", storyId: id, title: data.title, storyData: data.story_data };
   } catch (e) {
     return { success: false, message: e instanceof Error ? e.message : "Erro desconhecido." };
@@ -202,11 +205,9 @@ export async function deleteStory(id: string) {
   }
 }
 
-// Admin: Listar todas as stories (rascunhos e publicadas)
 export async function getAdminStories() {
   const supabase = await createSupabaseServerClient();
   
-  // 1. Fetch all stories
   const { data: stories, error: storiesError } = await supabase
     .from('web_stories')
     .select('*')
@@ -217,15 +218,12 @@ export async function getAdminStories() {
     return [];
   }
 
-  // 2. Get all author IDs
   const authorIds = [...new Set(stories.map(s => s.author_id).filter(Boolean))];
 
   if (authorIds.length === 0) {
-    // No authors, just return stories with null profiles
     return stories.map(story => ({ ...story, profiles: null }));
   }
 
-  // 3. Fetch profiles for those authors
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
     .select('id, first_name, last_name')
@@ -233,11 +231,9 @@ export async function getAdminStories() {
 
   if (profilesError) {
     console.error("Error fetching profiles for stories:", profilesError);
-    // Return stories without profile data
     return stories.map(story => ({ ...story, profiles: null }));
   }
 
-  // 4. Combine data
   const profilesMap = new Map(profiles.map(p => [p.id, p]));
 
   const combinedStories = stories.map(story => ({
@@ -278,5 +274,77 @@ export async function getStoryAutomationLogs(): Promise<StoryAutomationLog[]> {
   } catch (e) {
     console.error("Unexpected error in getStoryAutomationLogs:", e);
     return [];
+  }
+}
+
+// --- Funções de Automação de Story ---
+
+function constructCronExpression(data: StoryAutomationFormData): string {
+  if (data.frequencyType === 'custom') {
+    return data.frequency_cron_expression!;
+  }
+  const [hour, minute] = data.time!.split(':');
+  switch (data.frequencyType) {
+    case 'daily': return `${minute} ${hour} * * *`;
+    case 'weekly': return `${minute} ${hour} * * ${data.dayOfWeek}`;
+    case 'monthly': return `${minute} ${hour} ${data.dayOfMonth} * *`;
+    default: throw new Error('Tipo de frequência inválido');
+  }
+}
+
+export async function getStoryAutomations(): Promise<StoryAutomation[]> {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('story_automations')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error("Error fetching story automations:", error);
+    return [];
+  }
+  return data;
+}
+
+export async function saveStoryAutomation(formData: StoryAutomationFormData, lang: string) {
+  try {
+    await checkAdmin();
+    const validation = storyAutomationSchema.safeParse(formData);
+    if (!validation.success) {
+      return { success: false, message: validation.error.errors[0]?.message || "Dados inválidos." };
+    }
+
+    const supabase = await createSupabaseServerClient();
+    const { id, frequencyType, time, dayOfWeek, dayOfMonth, ...automationData } = validation.data;
+    const cronExpression = constructCronExpression(validation.data);
+
+    const dbData = { ...automationData, frequency_cron_expression: cronExpression };
+
+    if (id) {
+      const { error } = await supabase.from('story_automations').update(dbData).eq('id', id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from('story_automations').insert(dbData);
+      if (error) throw error;
+    }
+
+    revalidatePath(`/${lang}/admin/stories`);
+    return { success: true, message: `Automação ${id ? 'atualizada' : 'criada'} com sucesso.` };
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : "Ocorreu um erro." };
+  }
+}
+
+export async function deleteStoryAutomation(id: string, lang: string) {
+  try {
+    await checkAdmin();
+    const supabase = await createSupabaseServerClient();
+    const { error } = await supabase.from('story_automations').delete().eq('id', id);
+    if (error) throw error;
+
+    revalidatePath(`/${lang}/admin/stories`);
+    return { success: true, message: "Automação deletada com sucesso." };
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : "Ocorreu um erro." };
   }
 }
