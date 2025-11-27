@@ -1,13 +1,6 @@
 import { ReactNode } from 'react';
-import { Inter } from 'next/font/google';
 import { Viewport } from 'next';
 import '@/app/globals.css';
-
-const inter = Inter({ 
-  subsets: ['latin'], 
-  variable: '--font-inter',
-  display: 'swap', 
-});
 
 interface AmpRootLayoutProps {
   children: ReactNode;
@@ -20,16 +13,11 @@ export const viewport: Viewport = {
 };
 
 export default function AmpRootLayout({ children }: AmpRootLayoutProps) {
-  // This is a root layout, so it needs to render the html and body tags.
-  // It will replace the main src/app/layout.tsx for routes inside (amp).
-  // Note: We don't have access to the `lang` param here, so it's omitted for now,
-  // but the page will still be a valid AMP page.
+  // O layout raiz (src/app/layout.tsx) agora lida com as tags html e body condicionalmente.
+  // Aqui apenas passamos o conteúdo para evitar aninhamento inválido.
   return (
-    <html amp="" className={inter.variable}>
-      <head />
-      <body className="font-sans">
-        {children}
-      </body>
-    </html>
+    <>
+      {children}
+    </>
   );
 }

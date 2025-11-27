@@ -7,6 +7,7 @@ import { Metadata, Viewport } from 'next';
 import AdsenseScript from '@/components/ads/adsense-script';
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Inter } from 'next/font/google';
+import { headers } from 'next/headers';
 
 const inter = Inter({ 
   subsets: ['latin'], 
@@ -73,21 +74,37 @@ const jsonLd = {
   },
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const headersList = await headers();
+  const isAmp = headersList.get('x-is-amp') === 'true';
+
   return (
-    <html suppressHydrationWarning className={inter.variable}>
-      <body className="font-sans antialiased">
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-        />
-        <SessionContextProvider>
-          <AdsenseScript adsenseClientId={adsenseClientId} />
-          <GoogleAnalytics />
-          {children}
-          <SpeedInsights />
-          <Toaster />
-        </SessionContextProvider>
+    <html 
+      suppressHydrationWarning 
+      className={inter.variable}
+      {...(isAmp ? { amp: "" } : {})}
+    >
+      <body className={`font-sans ${!isAmp ? 'antialiased' : ''}`}>
+        {!isAmp && (
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          />
+        )}
+        
+        {isAmp ? (
+          // Em páginas AMP, renderizamos apenas o conteúdo (que inclui o amp-story)
+          // sem os wrappers de contexto e scripts de terceiros proibidos no AMP.
+          children
+        ) : (
+          <SessionContextProvider>
+            <AdsenseScript adsenseClientId={adsenseClientId} />
+            <GoogleAnalytics />
+            {children}
+            <SpeedInsights />
+            <Toaster />
+          </SessionContextProvider>
+        )}
       </body>
     </html>
   );

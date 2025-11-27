@@ -15,9 +15,16 @@ function getLocale(request: NextRequest): string {
 }
 
 export async function middleware(request: NextRequest) {
+  const requestHeaders = new Headers(request.headers);
+  
+  // Detecta se é uma rota de Web Story para ajustar o layout
+  if (request.nextUrl.pathname.includes('/web-stories/')) {
+    requestHeaders.set('x-is-amp', 'true');
+  }
+
   let response = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: requestHeaders,
     },
   });
 
@@ -34,7 +41,7 @@ export async function middleware(request: NextRequest) {
           request.cookies.set({ name, value, ...options });
           response = NextResponse.next({
             request: {
-              headers: request.headers,
+              headers: requestHeaders,
             },
           });
           response.cookies.set({ name, value, ...options });
@@ -43,7 +50,7 @@ export async function middleware(request: NextRequest) {
           request.cookies.set({ name, value: '', ...options });
           response = NextResponse.next({
             request: {
-              headers: request.headers,
+              headers: requestHeaders,
             },
           });
           response.cookies.set({ name, value: '', ...options });
