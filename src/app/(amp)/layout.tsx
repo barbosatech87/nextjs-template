@@ -25,7 +25,7 @@ export default function AmpRootLayout({ children }: AmpRootLayoutProps) {
   // Note: We don't have access to the `lang` param here, so it's omitted for now,
   // but the page will still be a valid AMP page.
   return (
-    <html amp className={inter.variable}>
+    <html amp="" className={inter.variable}>
       <head />
       <body className="font-sans">
         {children}
