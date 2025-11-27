@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from 'react';
+import React, { useState, useTransition, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { v4 as uuidv4 } from 'uuid';
@@ -87,6 +87,29 @@ export function StoryEditor({ lang, initialData }: StoryEditorProps) {
       status: initialData?.status || 'draft',
     },
   });
+
+  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(!!initialData?.slug);
+  const titleValue = form.watch('title');
+
+  const generateSlug = (text: string) => {
+    if (!text) return '';
+    return text
+      .toString()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w-]+/g, '')
+      .replace(/--+/g, '-');
+  };
+
+  useEffect(() => {
+    if (!isSlugManuallyEdited && titleValue) {
+      const slug = generateSlug(titleValue);
+      form.setValue('slug', slug, { shouldValidate: true });
+    }
+  }, [titleValue, isSlugManuallyEdited, form]);
 
   // --- Ações de Manipulação de Página ---
 
@@ -208,6 +231,8 @@ export function StoryEditor({ lang, initialData }: StoryEditorProps) {
     </div>
   );
 
+  const { onChange: onSlugChange, ...slugProps } = form.register('slug');
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-100px)]">
       
@@ -223,7 +248,14 @@ export function StoryEditor({ lang, initialData }: StoryEditorProps) {
             </div>
             <div className="space-y-2">
               <Label>Slug</Label>
-              <Input {...form.register('slug')} placeholder="slug-da-story" />
+              <Input 
+                {...slugProps}
+                placeholder="slug-da-story"
+                onChange={(e) => {
+                  setIsSlugManuallyEdited(true);
+                  onSlugChange(e);
+                }}
+              />
             </div>
             <div className="space-y-2">
               <Label>Imagem de Capa (Poster)</Label>
