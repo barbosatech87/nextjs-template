@@ -99,7 +99,7 @@ async function generateAndUploadImageWithReplicate(prompt, supabase) {
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
-            model: "black-forest-labs/flux-schnell",
+            version: "eb55443a235535347d41b8523b49916b5a85f9886e5fe4a35a7b7048183165e1",
             input: {
                 prompt: prompt,
                 width: 1024,
@@ -112,11 +112,10 @@ async function generateAndUploadImageWithReplicate(prompt, supabase) {
     if (!initResponse.ok) {
         const errorBody = await initResponse.json();
         if (initResponse.status === 429) {
-            // Se for erro de rate limit, espera o tempo sugerido e tenta de novo
-            const retryAfter = errorBody.retry_after || 5; // Padrão de 5 segundos
+            const retryAfter = errorBody.retry_after || 5;
             console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
             await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-            return generateAndUploadImageWithReplicate(prompt, supabase); // Tenta novamente
+            return generateAndUploadImageWithReplicate(prompt, supabase);
         }
         throw new Error(`Replicate Image Init Error: ${errorBody.detail || 'Unknown error'}`);
     }
@@ -188,7 +187,6 @@ serve(async (req) => {
     for (const [index, pageContent] of storyPagesContent.entries()) {
       await updateLog(supabase, logId, 'processing', `Gerando imagem para a página ${index + 1} (Replicate)...`);
       
-      // Pausa de 1 segundo entre as requisições de imagem para respeitar o rate limit
       if (index > 0) {
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
