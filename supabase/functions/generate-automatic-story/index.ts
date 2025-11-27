@@ -80,7 +80,6 @@ async function generateStoryPagesWithReplicate(postTitle, postSummary, pageCount
     }
 
     const rawOutput = finalPrediction.output.join('');
-    // Extrai o JSON de dentro de um possível bloco de código Markdown
     const jsonMatch = rawOutput.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
         throw new Error("AI did not return a valid JSON object in its response.");
@@ -110,7 +109,17 @@ async function generateAndUploadImageWithReplicate(prompt, supabase) {
         }),
     });
 
-    if (!initResponse.ok) throw new Error(`Replicate Image Init Error: ${await initResponse.text()}`);
+    if (!initResponse.ok) {
+        const errorBody = await initResponse.json();
+        if (initResponse.status === 429) {
+            // Se for erro de rate limit, espera o tempo sugerido e tenta de novo
+            const retryAfter = errorBody.retry_after || 5; // Padrão de 5 segundos
+            console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
+            await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+            return generateAndUploadImageWithReplicate(prompt, supabase); // Tenta novamente
+        }
+        throw new Error(`Replicate Image Init Error: ${errorBody.detail || 'Unknown error'}`);
+    }
     const prediction = await initResponse.json();
     const pollingUrl = prediction.urls.get;
 
@@ -178,6 +187,12 @@ serve(async (req) => {
     const finalPages = [];
     for (const [index, pageContent] of storyPagesContent.entries()) {
       await updateLog(supabase, logId, 'processing', `Gerando imagem para a página ${index + 1} (Replicate)...`);
+      
+      // Pausa de 1 segundo entre as requisições de imagem para respeitar o rate limit
+      if (index > 0) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+      
       const imageUrl = await generateAndUploadImageWithReplicate(pageContent.image_prompt, supabase);
       
       const page = {
