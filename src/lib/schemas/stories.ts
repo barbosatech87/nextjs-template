@@ -7,6 +7,13 @@ export const storyAutomationSchema = z.object({
   is_active: z.boolean(),
   pinterest_board_id: z.string().min(5, "O ID do Board do Pinterest é obrigatório."),
   
+  // Novos campos para a automação de criação
+  source_category_id: z.string().uuid().nullable().optional(),
+  number_of_pages: z.coerce.number().min(3, "Mínimo de 3 páginas.").max(15, "Máximo de 15 páginas."),
+  add_post_link_on_last_page: z.boolean(),
+  publish_automatically: z.boolean(),
+
+  // Campos de frequência
   frequencyType: z.enum(['daily', 'weekly', 'monthly', 'custom']),
   time: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Formato de hora inválido (HH:mm).").optional(),
   dayOfWeek: z.string().optional(),

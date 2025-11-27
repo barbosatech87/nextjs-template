@@ -29,6 +29,10 @@ export type StoryAutomation = {
   is_active: boolean;
   frequency_cron_expression: string;
   pinterest_board_id: string | null;
+  source_category_id?: string | null;
+  number_of_pages?: number;
+  add_post_link_on_last_page?: boolean;
+  publish_automatically?: boolean;
 };
 
 export type StoryAutomationLog = {
