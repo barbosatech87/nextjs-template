@@ -20,8 +20,9 @@ const texts = {
   }
 };
 
-export default function OfflinePage({ params }: { params: { lang: Locale } }) {
-  const t = texts[params.lang] || texts.pt;
+export default async function OfflinePage({ params }: { params: Promise<{ lang: Locale }> }) {
+  const { lang } = await params;
+  const t = texts[lang] || texts.pt;
 
   return (
     <div className="container mx-auto flex items-center justify-center min-h-[calc(100vh-8rem)]">

@@ -17,8 +17,8 @@ const schema = z.object({
   body: z.string().min(1, { message: "A mensagem é obrigatória." }),
 });
 
-export default function AdminNotificationsPage({ params: paramsProp }: { params: { lang: Locale } }) {
-  const { lang } = use(paramsProp as any) as { lang: Locale };
+export default function AdminNotificationsPage({ params }: { params: Promise<{ lang: Locale }> }) {
+  const { lang } = use(params);
 
   const [isPending, startTransition] = useTransition();
 
