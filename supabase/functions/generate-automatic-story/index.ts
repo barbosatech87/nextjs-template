@@ -13,49 +13,58 @@ const corsHeaders = {
 
 // --- FUNÇÕES DE LOG ---
 async function logEvent(supabase, automationId, status, message, details = {}, storyId = null) {
-  console.log(`[LOG - ${status}] ${message}`);
-  try {
-    await supabase.from('story_automation_logs').insert({
-      automation_id: automationId,
-      story_id: storyId,
-      status,
-      message,
-      details,
-    });
-  } catch (logError) {
-    console.error(`[FATAL] Exception during DB logging:`, logError.message);
+  console.log(`[LOG - ${status}] ${message}`); // Log no console da Edge Function
+  
+  // Tenta gravar no banco. Se falhar, não crasha a função, mas loga o erro no console.
+  const { error } = await supabase.from('story_automation_logs').insert({
+    automation_id: automationId,
+    story_id: storyId,
+    status,
+    message,
+    details,
+  });
+
+  if (error) {
+    console.error(`[DB LOG ERROR] Failed to write log to database:`, error.message);
   }
 }
 
 // --- UTILITÁRIO REPLICATE ---
-// Agora aceita 'owner/model' e usa a rota que pega a versão mais recente automaticamente
 async function runReplicateModel(model, input) {
   const replicateKey = Deno.env.get("REPLICATE_API_KEY");
   if (!replicateKey) throw new Error("REPLICATE_API_KEY não configurada.");
 
-  console.log(`[Replicate] Iniciando modelo: ${model}`);
+  console.log(`[Replicate] Chamando modelo: ${model}`);
 
-  // 1. Inicia a Predição usando o endpoint de modelo (sempre pega a última versão)
-  const startResponse = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
+  // Endpoint para rodar a última versão do modelo
+  const apiUrl = `https://api.replicate.com/v1/models/${model}/predictions`;
+
+  const startResponse = await fetch(apiUrl, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${replicateKey}`,
       "Content-Type": "application/json",
-      "Prefer": "wait" // Tenta esperar o resultado imediato (até 60s)
+      "Prefer": "wait" // Tenta esperar o resultado
     },
-    body: JSON.stringify({ input: input })
+    body: JSON.stringify({ input })
   });
 
   if (!startResponse.ok) {
     const errText = await startResponse.text();
-    throw new Error(`Erro Replicate (Start ${model}): ${startResponse.status} - ${errText}`);
+    // Tenta fazer parse do erro JSON para ser mais legível
+    try {
+      const errJson = JSON.parse(errText);
+      throw new Error(`Erro Replicate (${model}): ${errJson.detail || errJson.error || errText}`);
+    } catch (e) {
+      throw new Error(`Erro Replicate (${model}): ${startResponse.status} - ${errText}`);
+    }
   }
 
   let prediction = await startResponse.json();
 
-  // 2. Polling (se não retornou pronto com Prefer: wait)
+  // Polling se necessário
   while (prediction.status !== "succeeded" && prediction.status !== "failed" && prediction.status !== "canceled") {
-    await new Promise(r => setTimeout(r, 2000)); // Espera 2s
+    await new Promise(r => setTimeout(r, 2000));
     const pollResponse = await fetch(prediction.urls.get, {
       headers: { "Authorization": `Bearer ${replicateKey}` }
     });
@@ -64,66 +73,61 @@ async function runReplicateModel(model, input) {
   }
 
   if (prediction.status !== "succeeded") {
-    console.error("Replicate failed output:", prediction);
-    throw new Error(`Replicate falhou (${model}): ${prediction.error || prediction.status}`);
+    console.error("Replicate prediction failed:", prediction);
+    throw new Error(`Replicate falhou (${model}): ${prediction.error || "Erro desconhecido"}`);
   }
 
   return prediction.output;
 }
 
-// --- GERAÇÃO DE TEXTO (REPLICATE - openai/gpt-4o-mini) ---
+// --- GERAÇÃO DE TEXTO (openai/gpt-4o-mini no Replicate) ---
 async function generateStoryScript(postContent, pageCount) {
   const systemPrompt = `Você é uma IA editora especializada em Web Stories.
   Sua tarefa é resumir o artigo fornecido em um roteiro de EXATAMENTE ${pageCount} páginas.
   
-  Sua saída DEVE ser APENAS um JSON válido (sem markdown, sem explicações antes ou depois) com esta estrutura:
+  Sua saída DEVE ser APENAS um JSON válido (sem markdown) com esta estrutura:
   {
     "title": "Título curto (máx 40 chars)",
     "slug": "titulo-slugificado",
     "pages": [
       { 
         "page_number": 1, 
-        "text_content": "Texto curto e impactante para a página (máx 150 chars).",
-        "image_prompt": "Descrição visual da cena para gerar a imagem de fundo em estilo aquarela minimalista. Em INGLÊS. Sem texto na imagem." 
+        "text_content": "Texto curto (máx 150 chars).",
+        "image_prompt": "Descrição visual da cena em estilo aquarela minimalista. Em INGLÊS. Sem texto." 
       }
     ]
   }`;
 
-  const userPrompt = `Gere o roteiro JSON para o seguinte conteúdo:\n\n${postContent.substring(0, 6000)}`;
+  const userPrompt = `Conteúdo:\n\n${postContent.substring(0, 6000)}`;
 
-  // Modelo solicitado pelo usuário
-  const model = "openai/gpt-4o-mini"; 
-  
-  // A API do gpt-4o-mini no Replicate aceita 'prompt' e 'system_prompt'
-  const output = await runReplicateModel(model, {
+  // Modelo: openai/gpt-4o-mini
+  // Nota: Modelos OpenAI no Replicate geralmente exigem a chave da OpenAI no input
+  const output = await runReplicateModel("openai/gpt-4o-mini", {
     prompt: userPrompt,
     system_prompt: systemPrompt,
     max_tokens: 2048,
     temperature: 0.5,
+    openai_api_key: Deno.env.get("OPENAI_API_KEY") // Passando a chave caso o wrapper exija
   });
 
-  // O output do gpt-4o-mini no Replicate geralmente é um array de strings (stream) ou uma string única
+  // Output geralmente é uma stream de strings ou string única
   const fullText = Array.isArray(output) ? output.join("") : output;
-  
-  // Limpeza do JSON (caso venha com markdown ```json ... ```)
   const cleanJson = fullText.replace(/```json/g, "").replace(/```/g, "").trim();
   
   try {
     return JSON.parse(cleanJson);
   } catch (e) {
-    console.error("Erro ao fazer parse do JSON:", cleanJson);
+    console.error("JSON Parse Error. Raw output:", fullText);
     throw new Error("A IA gerou um JSON inválido.");
   }
 }
 
-// --- GERAÇÃO DE IMAGEM (REPLICATE - black-forest-labs/flux-schnell) ---
+// --- GERAÇÃO DE IMAGEM (black-forest-labs/flux-schnell no Replicate) ---
 async function generateImageWithReplicate(prompt, userId, supabase) {
-  // Modelo solicitado pelo usuário
-  const model = "black-forest-labs/flux-schnell";
-  
   const finalPrompt = `Vertical image (9:16), minimalist watercolor style, soft pastel colors, christian spiritual theme. NO TEXT. ${prompt}`;
 
-  const output = await runReplicateModel(model, {
+  // Modelo: black-forest-labs/flux-schnell
+  const output = await runReplicateModel("black-forest-labs/flux-schnell", {
     prompt: finalPrompt,
     aspect_ratio: "9:16",
     output_format: "png",
@@ -131,11 +135,11 @@ async function generateImageWithReplicate(prompt, userId, supabase) {
     disable_safety_checker: true 
   });
 
-  // O Flux Schnell retorna uma lista de URLs de saída
+  // Flux retorna lista de URLs
   const imageUrl = Array.isArray(output) ? output[0] : output;
   if (!imageUrl) throw new Error("Replicate não retornou URL de imagem.");
 
-  // Upload para Supabase Storage
+  // Upload para Supabase
   const imageRes = await fetch(imageUrl);
   const arrayBuffer = await imageRes.arrayBuffer();
   const fileName = `stories/${userId}/${crypto.randomUUID()}.png`;
@@ -152,14 +156,14 @@ async function generateImageWithReplicate(prompt, userId, supabase) {
   return publicUrlData.publicUrl;
 }
 
-// --- FUNÇÃO PRINCIPAL ---
+// --- MAIN ---
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
   const internalSecret = req.headers.get('X-Internal-Secret');
   const expectedSecret = Deno.env.get('INTERNAL_SECRET_KEY');
   if (!internalSecret || internalSecret !== expectedSecret) {
-    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
   }
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
@@ -174,34 +178,33 @@ serve(async (req: Request) => {
 
     if (!automationId) throw new Error("Automation ID is missing");
 
-    await logEvent(supabase, automationId, 'processing', 'Iniciando automação via Replicate (gpt-4o-mini + flux-schnell)...');
+    await logEvent(supabase, automationId, 'processing', 'Iniciando (Replicate: gpt-4o-mini + flux-schnell)...');
 
-    // 1. Busca Automação e Post
-    const { data: automation, error: autoError } = await supabase.from('story_automations').select('*').eq('id', automationId).single();
-    if (autoError || !automation) throw new Error("Automação não encontrada.");
+    const { data: automation } = await supabase.from('story_automations').select('*').eq('id', automationId).single();
+    if (!automation) throw new Error("Automação não encontrada.");
     
     if (!automation.is_active) {
-      await logEvent(supabase, automationId, 'error', 'A automação está desativada.');
-      return new Response(JSON.stringify({ message: "Automation inactive" }), { headers: corsHeaders });
+      await logEvent(supabase, automationId, 'error', 'Automação inativa.');
+      return new Response(JSON.stringify({ message: "Inactive" }), { headers: corsHeaders });
     }
 
-    const { data: post, error: postError } = await supabase.rpc('get_unused_post_for_story_automation', { p_automation_id: automation.id }).single();
-    if (postError || !post) {
-      await logEvent(supabase, automationId, 'processing', 'Nenhum post novo disponível.');
-      return new Response(JSON.stringify({ message: "No posts found" }), { headers: corsHeaders });
+    const { data: post } = await supabase.rpc('get_unused_post_for_story_automation', { p_automation_id: automation.id }).single();
+    if (!post) {
+      await logEvent(supabase, automationId, 'success', 'Nenhum post novo para processar.');
+      return new Response(JSON.stringify({ message: "No posts" }), { headers: corsHeaders });
     }
 
-    await logEvent(supabase, automationId, 'processing', `Post selecionado: "${post.title}". Gerando roteiro com gpt-4o-mini (Replicate)...`);
+    await logEvent(supabase, automationId, 'processing', `Post: "${post.title}". Gerando roteiro...`);
 
-    // 2. Gera Roteiro (Texto)
     const script = await generateStoryScript(post.content, automation.number_of_pages);
-    await logEvent(supabase, automationId, 'processing', `Roteiro gerado. Criando ${script.pages.length} imagens com Flux Schnell (Replicate)...`);
+    
+    await logEvent(supabase, automationId, 'processing', `Roteiro OK. Gerando ${script.pages.length} imagens...`);
 
-    // 3. Gera Imagens (Imagem)
     const storyPages = [];
     for (let i = 0; i < script.pages.length; i++) {
       const pageData = script.pages[i];
-      await logEvent(supabase, automationId, 'processing', `Gerando imagem ${i + 1}/${script.pages.length}...`);
+      // Log de progresso a cada imagem pode ser excessivo e causar lentidão, descomente se necessário
+      // await logEvent(supabase, automationId, 'processing', `Gerando imagem ${i+1}/${script.pages.length}...`);
       
       const imageUrl = await generateImageWithReplicate(pageData.image_prompt, post.author_id, supabase);
       
@@ -222,16 +225,13 @@ serve(async (req: Request) => {
       });
     }
 
-    // Link Final
     if (automation.add_post_link_on_last_page) {
-      const lastPage = storyPages[storyPages.length - 1];
-      lastPage.outlink = {
+      storyPages[storyPages.length - 1].outlink = {
         href: `https://www.paxword.com/pt/blog/${post.slug}`,
         ctaText: 'Leia o Artigo'
       };
     }
 
-    // 4. Salva Story
     const status = automation.publish_automatically ? 'published' : 'draft';
     const { data: newStory, error: saveError } = await supabase.from('web_stories').insert({
       author_id: post.author_id,
@@ -244,32 +244,24 @@ serve(async (req: Request) => {
       language_code: 'pt'
     }).select('id').single();
 
-    if (saveError) throw new Error(`Erro ao salvar story: ${saveError.message}`);
+    if (saveError) throw saveError;
 
-    // Marca post como usado
     await supabase.from('used_posts_for_stories').insert({
       automation_id: automation.id,
       post_id: post.id,
       story_id: newStory.id,
     });
 
-    // Tradução (opcional)
-    if (status === 'published') {
-      fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/translate-web-story`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': Deno.env.get('INTERNAL_SECRET_KEY') },
-        body: JSON.stringify({ storyId: newStory.id, title: script.title, storyData: { pages: storyPages } }),
-      }).catch(console.error);
-    }
-
     await logEvent(supabase, automationId, 'success', 'Story criada com sucesso!', { storyId: newStory.id }, newStory.id);
+    
     return new Response(JSON.stringify({ success: true, storyId: newStory.id }), { headers: corsHeaders });
 
   } catch (error) {
-    console.error("Error:", error);
+    console.error("FATAL ERROR:", error);
     if (automationId) {
-      await logEvent(supabase, automationId, 'error', `Falha: ${error.message}`);
+      await logEvent(supabase, automationId, 'error', `Erro: ${error.message}`);
     }
+    // Retorna 500 para o cliente saber que falhou
     return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
   }
 });
