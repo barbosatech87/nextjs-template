@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSession } from '@/components/auth/session-context-provider';
 import { Locale } from '@/lib/i18n/config';
 import { Button } from '@/components/ui/button';
-import { User, BookOpen, Brain, Calendar, Rss, Shield, LogOut, Bell, Menu, Download } from 'lucide-react';
+import { User, BookOpen, Brain, Calendar, Rss, Shield, LogOut, Bell, Menu, Download, GalleryThumbnails } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LanguageSwitcher } from '@/components/i18n/language-switcher';
 import { useProfile } from '@/hooks/use-profile';
@@ -27,6 +27,7 @@ const navTexts = {
     iaExplica: "IA Explica",
     plans: "Planos de Leitura",
     blog: "Blog",
+    webStories: "Stories",
     login: "Login / Cadastro",
     appName: "PaxWord",
     admin: "Painel Admin",
@@ -41,6 +42,7 @@ const navTexts = {
     iaExplica: "AI Explains",
     plans: "Reading Plans",
     blog: "Blog",
+    webStories: "Stories",
     login: "Login / Register",
     appName: "PaxWord",
     admin: "Admin Panel",
@@ -55,6 +57,7 @@ const navTexts = {
     iaExplica: "IA Explica",
     plans: "Planes de Lectura",
     blog: "Blog",
+    webStories: "Stories",
     login: "Iniciar Sesión / Registro",
     appName: "PaxWord",
     admin: "Panel de Admin",
@@ -91,6 +94,7 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
     { href: `/${lang}/ia-explica`, label: texts.iaExplica, icon: Brain },
     { href: `/${lang}/plans`, label: texts.plans, icon: Calendar },
     { href: `/${lang}/blog`, label: texts.blog, icon: Rss },
+    { href: `/${lang}/web-stories`, label: texts.webStories, icon: GalleryThumbnails },
   ];
 
   return (

@@ -120,6 +120,46 @@ export async function getPublishedStories(lang: string, limit = 10) {
   return stories;
 }
 
+export async function getPaginatedPublishedStories(lang: string, page: number, limit: number = 9) {
+  const supabase = getPublicClient();
+  const offset = (page - 1) * limit;
+
+  const { data: stories, count, error } = await supabase
+    .from('web_stories')
+    .select('id, title, slug, poster_image_src, published_at, language_code', { count: 'exact' })
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) {
+    console.error("Error fetching paginated stories:", error);
+    return { stories: [], totalPages: 0 };
+  }
+
+  let finalStories = stories || [];
+
+  if (lang !== 'pt' && finalStories.length > 0) {
+    const storyIds = finalStories.map(s => s.id);
+    const { data: translations } = await supabase
+      .from('web_story_translations')
+      .select('story_id, title')
+      .in('story_id', storyIds)
+      .eq('language_code', lang);
+
+    if (translations) {
+      const translationMap = new Map(translations.map(t => [t.story_id, t]));
+      finalStories = finalStories.map(s => {
+        const t = translationMap.get(s.id);
+        return t ? { ...s, title: t.title } : s;
+      });
+    }
+  }
+
+  const totalPages = count ? Math.ceil(count / limit) : 0;
+  return { stories: finalStories, totalPages };
+}
+
+
 // --- Funções Administrativas ---
 
 async function checkAdmin() {
