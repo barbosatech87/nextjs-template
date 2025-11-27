@@ -19,7 +19,7 @@ export async function GET() {
   const urls = [];
 
   // 1. Páginas estáticas
-  const staticRoutes = ['', '/bible', '/ia-explica', '/plans', '/blog', '/profile', '/auth'];
+  const staticRoutes = ['', '/bible', '/ia-explica', '/plans', '/blog', '/profile', '/auth', '/web-stories'];
   
   for (const locale of i18n.locales) {
     for (const route of staticRoutes) {
@@ -65,8 +65,25 @@ export async function GET() {
       });
     }
   }
+
+  // 4. Web Stories (apenas publicadas)
+  const { data: stories } = await supabase
+    .from('web_stories')
+    .select('slug, updated_at, language_code')
+    .eq('status', 'published');
+
+  if (stories) {
+    for (const story of stories) {
+      urls.push({
+        loc: `${baseUrl}/${story.language_code}/web-stories/${story.slug}`,
+        lastmod: story.updated_at ? new Date(story.updated_at).toISOString() : new Date().toISOString(),
+        changefreq: 'weekly',
+        priority: '0.7'
+      });
+    }
+  }
   
-  // 4. Livros e capítulos da Bíblia
+  // 5. Livros e capítulos da Bíblia
   // Como são muitos dados, fazemos isso para cada idioma
   for (const locale of i18n.locales) {
     const { data: bibleMetadata } = await supabase.rpc('get_bible_metadata', { lang_code: locale });

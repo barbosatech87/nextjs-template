@@ -19,18 +19,25 @@ export async function generateMetadata(
     return { title: 'Story não encontrada' };
   }
 
+  const description = `Web Story sobre ${story.title}. Explore conteúdos visuais no PaxWord.`;
+  const imageUrl = story.poster_image_src || 'https://www.paxword.com/social-share.png';
+
   return {
     title: story.title,
-    description: `Web Story sobre ${story.title}`,
+    description: description,
     openGraph: {
       title: story.title,
-      type: 'article', // Web Stories são tecnicamente artigos
-      images: story.poster_image_src ? [story.poster_image_src] : [],
+      description: description,
+      type: 'article',
+      url: `https://www.paxword.com/${lang}/web-stories/${slug}`,
+      images: [{ url: imageUrl }],
     },
-    other: {
-        // Indica que esta página é uma AMP Story
-        'amp-story': '', 
-    }
+    twitter: {
+      card: 'summary_large_image',
+      title: story.title,
+      description: description,
+      images: [imageUrl],
+    },
   };
 }
 
@@ -43,6 +50,31 @@ export default async function WebStoryPage({ params }: WebStoryPageProps) {
   }
 
   const pages = story.story_data?.pages || [];
+
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    'mainEntityOfPage': {
+      '@type': 'WebPage',
+      '@id': `https://www.paxword.com/${lang}/web-stories/${slug}`,
+    },
+    'headline': story.title,
+    'image': story.poster_image_src ? [story.poster_image_src] : [],
+    'datePublished': story.published_at,
+    'dateModified': story.updated_at,
+    'author': {
+      '@type': 'Organization',
+      'name': 'PaxWord',
+    },
+    'publisher': {
+      '@type': 'Organization',
+      'name': 'PaxWord',
+      'logo': {
+        '@type': 'ImageObject',
+        'url': 'https://www.paxword.com/icon-512x512.svg',
+      },
+    },
+  };
 
   return (
     <>
@@ -58,8 +90,14 @@ export default async function WebStoryPage({ params }: WebStoryPageProps) {
         strategy="afterInteractive" 
         custom-element="amp-video" 
       />
+      
+      {/* Dados Estruturados para SEO */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
 
-      {/* Estilos inline específicos para AMP (Boilerplate é injetado pelo Script AMP, mas podemos adicionar custom) */}
+      {/* Estilos inline específicos para AMP */}
       <style dangerouslySetInnerHTML={{
         __html: `
           amp-story { font-family: 'Inter', sans-serif; }
@@ -71,13 +109,12 @@ export default async function WebStoryPage({ params }: WebStoryPageProps) {
         standalone=""
         title={story.title}
         publisher="PaxWord"
-        publisher-logo-src="https://www.paxword.com/icon-192x192.svg" // URL absoluta necessária
+        publisher-logo-src="https://www.paxword.com/icon-192x192.svg"
         poster-portrait-src={story.poster_image_src}
       >
         {pages.map((page: any) => (
           <amp-story-page key={page.id} id={page.id}>
             
-            {/* Camada de Fundo (Background) */}
             <amp-story-grid-layer template="fill">
               {page.backgroundSrc && (
                 <amp-img
@@ -91,7 +128,6 @@ export default async function WebStoryPage({ params }: WebStoryPageProps) {
               )}
             </amp-story-grid-layer>
 
-            {/* Camada de Conteúdo (Livre) */}
             <amp-story-grid-layer>
               {page.elements.map((element: any) => {
                 if (element.type === 'text') {
@@ -110,17 +146,15 @@ export default async function WebStoryPage({ params }: WebStoryPageProps) {
               })}
             </amp-story-grid-layer>
 
-            {/* Link Externo (Arrastar para Cima) */}
-            {page.outlink && page.outlink.href && (
+            {page.outlink?.href && (
               <amp-story-page-outlink layout="nodisplay" cta-text={page.outlink.ctaText || 'Saiba Mais'}>
-                <a href={page.outlink.href} target="_blank"></a>
+                <a href={page.outlink.href} target="_blank" rel="noopener noreferrer"></a>
               </amp-story-page-outlink>
             )}
 
           </amp-story-page>
         ))}
 
-        {/* Tela Final (Bookend) - Opcional, mas recomendada */}
         <amp-story-bookend src={`/api/stories/bookend?lang=${lang}`} layout="nodisplay" />
         
       </amp-story>

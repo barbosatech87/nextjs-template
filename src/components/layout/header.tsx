@@ -153,7 +153,7 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
                     {texts.profile}
                   </Link>
                 </DropdownMenuItem>
-                {profile?.role === 'admin' && (
+                {(profile?.role === 'admin' || profile?.role === 'writer') && (
                   <DropdownMenuItem asChild>
                     <Link href={`/${lang}/admin`}>
                       <Shield className="mr-2 h-4 w-4" />
