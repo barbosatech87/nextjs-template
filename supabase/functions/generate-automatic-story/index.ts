@@ -92,14 +92,13 @@ async function generateStoryPagesWithReplicate(postTitle, postSummary, pageCount
 }
 
 async function generateAndUploadImageWithReplicate(prompt, supabase) {
-    const initResponse = await fetch("https://api.replicate.com/v1/predictions", {
+    const initResponse = await fetch("https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions", {
         method: "POST",
         headers: {
             "Authorization": `Token ${Deno.env.get("REPLICATE_API_KEY")}`,
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
-            version: "eb55443a235535347d41b8523b49916b5a85f9886e5fe4a35a7b7048183165e1",
             input: {
                 prompt: prompt,
                 width: 1024,
