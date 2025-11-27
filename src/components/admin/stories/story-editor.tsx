@@ -10,7 +10,7 @@ import * as z from 'zod';
 import { toast } from 'sonner';
 import { 
   Plus, Trash2, Save, ArrowLeft, ArrowRight, 
-  Type, Image as ImageIcon, Layers, Settings, Eye 
+  Type, Image as ImageIcon, Layers, Settings, Eye, Link as LinkIcon, ArrowUp 
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,10 @@ type StoryPage = {
   backgroundSrc: string;
   backgroundType: 'image' | 'video';
   elements: StoryElement[];
+  outlink?: {
+    href: string;
+    ctaText: string;
+  };
 };
 
 // Schema de validação para metadados
@@ -228,6 +232,16 @@ export function StoryEditor({ lang, initialData }: StoryEditorProps) {
           {el.content}
         </div>
       ))}
+
+      {/* Simulação do Link Externo */}
+      {page.outlink?.href && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 animate-bounce z-20">
+          <ArrowUp className="w-5 h-5" />
+          <span className="text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
+            {page.outlink.ctaText || 'Saiba Mais'}
+          </span>
+        </div>
+      )}
     </div>
   );
 
@@ -329,6 +343,27 @@ export function StoryEditor({ lang, initialData }: StoryEditorProps) {
                 onChange={(e) => updatePage(activePageIndex, { backgroundSrc: e.target.value })}
               />
               <p className="text-xs text-muted-foreground">Use imagens verticais (9:16) para melhor resultado.</p>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-3">
+              <Label className="flex items-center gap-2"><LinkIcon className="w-4 h-4" /> Link Externo (Arrastar p/ Cima)</Label>
+              <Input 
+                placeholder="URL do Link (https://...)" 
+                value={activePage.outlink?.href || ''}
+                onChange={(e) => updatePage(activePageIndex, { outlink: { ...activePage.outlink, href: e.target.value, ctaText: activePage.outlink?.ctaText || 'Saiba Mais' } })}
+              />
+              <Input 
+                placeholder="Texto da Chamada (Ex: Leia Mais)" 
+                value={activePage.outlink?.ctaText || ''}
+                onChange={(e) => updatePage(activePageIndex, { outlink: { ...activePage.outlink, ctaText: e.target.value, href: activePage.outlink?.href || '' } })}
+              />
+              {activePage.outlink && (
+                <Button variant="link" size="sm" className="text-destructive p-0 h-auto" onClick={() => updatePage(activePageIndex, { outlink: undefined })}>
+                  Remover Link
+                </Button>
+              )}
             </div>
 
             <Separator />

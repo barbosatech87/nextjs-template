@@ -24,6 +24,10 @@ declare module 'react' {
       'amp-video': React.DetailedHTMLProps<React.VideoHTMLAttributes<HTMLVideoElement>, HTMLVideoElement> & {
         layout?: string;
       };
+      'amp-story-page-outlink': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+        layout?: string;
+        'cta-text'?: string;
+      };
     }
   }
 }

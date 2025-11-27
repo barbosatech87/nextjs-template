@@ -110,6 +110,13 @@ export default async function WebStoryPage({ params }: WebStoryPageProps) {
               })}
             </amp-story-grid-layer>
 
+            {/* Link Externo (Arrastar para Cima) */}
+            {page.outlink && page.outlink.href && (
+              <amp-story-page-outlink layout="nodisplay" cta-text={page.outlink.ctaText || 'Saiba Mais'}>
+                <a href={page.outlink.href} target="_blank"></a>
+              </amp-story-page-outlink>
+            )}
+
           </amp-story-page>
         ))}
 
