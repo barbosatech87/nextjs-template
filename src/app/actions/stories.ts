@@ -193,10 +193,13 @@ export async function getAdminStories() {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase
     .from('web_stories')
-    .select('*, profiles(first_name, last_name)')
+    .select('*, profiles!left(first_name, last_name)')
     .order('created_at', { ascending: false });
 
-  if (error) return [];
+  if (error) {
+    console.error("Error fetching admin stories:", error);
+    return [];
+  }
   return data;
 }
 
