@@ -40,8 +40,7 @@ export function AutomationFormDialog({ lang, initialData, children }: Automation
   const form = useForm<StoryAutomationFormData>({
     resolver: zodResolver(storyAutomationSchema),
     defaultValues: {
-      name: '', platform: 'pinterest', is_active: true,
-      pinterest_board_id: '',
+      name: '', is_active: true,
       source_category_id: null,
       number_of_pages: 5,
       add_post_link_on_last_page: true,
@@ -56,8 +55,7 @@ export function AutomationFormDialog({ lang, initialData, children }: Automation
   useEffect(() => {
     if (isOpen) {
       let defaultVals: Partial<StoryAutomationFormData> = {
-        name: '', platform: 'pinterest', is_active: true,
-        pinterest_board_id: '',
+        name: '', is_active: true,
         source_category_id: null,
         number_of_pages: 5,
         add_post_link_on_last_page: true,
@@ -68,7 +66,7 @@ export function AutomationFormDialog({ lang, initialData, children }: Automation
       if (initialData) {
         const parsedCron = parseCronExpression(initialData.frequency_cron_expression);
         // @ts-ignore
-        defaultVals = { ...initialData, pinterest_board_id: initialData.pinterest_board_id || '', ...parsedCron };
+        defaultVals = { ...initialData, ...parsedCron };
       }
       form.reset(defaultVals as StoryAutomationFormData);
     }
@@ -92,7 +90,7 @@ export function AutomationFormDialog({ lang, initialData, children }: Automation
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar Automação' : 'Nova Automação de Story'}</DialogTitle>
-          <DialogDescription>Configure a postagem automática de novas Web Stories.</DialogDescription>
+          <DialogDescription>Configure a geração automática de Web Stories a partir de posts do blog.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 max-h-[70vh] overflow-y-auto p-1 pr-4">
