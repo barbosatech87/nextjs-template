@@ -1,5 +1,4 @@
 import React from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
 import { PlayCircle } from 'lucide-react';
 import { Locale } from '@/lib/i18n/config';
@@ -16,7 +15,10 @@ interface StoryCardProps {
 
 export function StoryCard({ story, lang }: StoryCardProps) {
   return (
-    <Link href={`/${lang}/web-stories/${story.slug}`} className="block group">
+    // Usamos a tag <a> nativa em vez de <Link> do Next.js.
+    // Isso força um "hard reload" ao navegar para uma Web Story (AMP).
+    // Evita conflitos de hidratação do React e problemas de escala de viewport ao clicar em "Voltar".
+    <a href={`/${lang}/web-stories/${story.slug}`} className="block group">
       <div className="relative aspect-[9/16] w-full bg-muted rounded-lg overflow-hidden shadow-lg transition-transform duration-300 group-hover:scale-105">
         {story.poster_image_src ? (
           <Image
@@ -39,6 +41,6 @@ export function StoryCard({ story, lang }: StoryCardProps) {
           <PlayCircle className="w-16 h-16 text-white" />
         </div>
       </div>
-    </Link>
+    </a>
   );
 }
