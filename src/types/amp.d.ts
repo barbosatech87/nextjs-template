@@ -1,11 +1,14 @@
-// Definição global para permitir tags AMP no JSX
-declare namespace JSX {
-  interface IntrinsicElements {
-    'amp-story': any;
-    'amp-story-page': any;
-    'amp-story-grid-layer': any;
-    'amp-img': any;
-    'amp-story-bookend': any;
-    'amp-video': any;
+import 'react';
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'amp-story': any;
+      'amp-story-page': any;
+      'amp-story-grid-layer': any;
+      'amp-img': any;
+      'amp-story-bookend': any;
+      'amp-video': any;
+    }
   }
 }
