@@ -6,15 +6,15 @@ import { notFound } from 'next/navigation';
 
 interface LangLayoutProps {
   children: ReactNode;
-  params: Promise<{ lang: Locale }>;
+  params: { lang: Locale };
 }
 
 export async function generateStaticParams() {
   return i18n.locales.map((lang) => ({ lang }));
 }
 
-export default async function LangLayout({ children, params }: LangLayoutProps) {
-  const { lang } = await params;
+export default function LangLayout({ children, params }: LangLayoutProps) {
+  const { lang } = params;
 
   if (!i18n.locales.includes(lang)) {
     notFound();
