@@ -33,51 +33,84 @@ async function updateLog(supabase, logId, status, message, detailsUpdate = {}, s
   await supabase.from('story_automation_logs').update(updatePayload).eq('id', logId);
 }
 
-// --- FUNÇÕES DE IA ---
-async function generateStoryPages(postTitle, postSummary, pageCount) {
+// --- FUNÇÕES DE IA (REPLICATE) ---
+
+async function generateStoryPagesWithReplicate(postTitle, postSummary, pageCount) {
     const systemPrompt = `You are an AI expert creating Web Stories for a Christian blog. Transform a blog post into a concise, ${pageCount}-page story.
     
     RULES:
     1.  Each page needs a background image prompt and short text (max 25 words). Use HTML tags like <strong>.
-    2.  Image prompts must be descriptive, artistic, symbolic, and suitable for DALL-E 3. No text in image prompts.
+    2.  Image prompts must be descriptive, artistic, symbolic, and suitable for the 'flux-schnell' model. No text in image prompts.
     3.  The story must flow logically, summarizing the article's key points.
     4.  Your output MUST be a valid JSON object: { "pages": [ { "text": "...", "image_prompt": "..." }, ... ] }`;
 
     const userPrompt = `Article Title: ${postTitle}\nArticle Summary: ${postSummary}\n\nCreate a ${pageCount}-page Web Story.`;
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    const response = await fetch("https://api.replicate.com/v1/models/openai/gpt-4o-mini/predictions", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
+        headers: {
+            "Authorization": `Token ${Deno.env.get("REPLICATE_API_KEY")}`,
+            "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-            model: "gpt-4o",
-            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-            response_format: { type: "json_object" },
+            input: {
+                prompt: `${systemPrompt}\n\n${userPrompt}`,
+                prompt_template: "<s>[INST] {prompt} [/INST] ", // Template genérico
+            },
         }),
     });
 
-    if (!response.ok) throw new Error(`OpenAI Story Gen Error: ${await response.text()}`);
-    const data = await response.json();
-    const content = JSON.parse(data.choices[0].message.content);
+    if (!response.ok) throw new Error(`Replicate Text Gen Error: ${await response.text()}`);
+    const result = await response.json();
+    
+    // O modelo é síncrono, o resultado vem direto em 'output'
+    const jsonString = result.output.join('');
+    const content = JSON.parse(jsonString);
     if (!content.pages || !Array.isArray(content.pages)) throw new Error("AI did not return a valid 'pages' array.");
     return content.pages;
 }
 
-async function generateAndUploadImage(prompt, supabase) {
-    const fullPrompt = `High-quality, artistic, conceptual image for a Christian blog post. No text, letters, or numbers. Style: minimalist watercolor, soft tones. Prompt: ${prompt}`;
-    
-    const openaiResponse = await fetch("https://api.openai.com/v1/images/generations", {
+async function generateAndUploadImageWithReplicate(prompt, supabase) {
+    // 1. Iniciar a predição na Replicate
+    const initResponse = await fetch("https://api.replicate.com/v1/predictions", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
-        body: JSON.stringify({ model: "dall-e-3", prompt: fullPrompt, n: 1, size: "1024x1792", response_format: "url" }),
+        headers: {
+            "Authorization": `Token ${Deno.env.get("REPLICATE_API_KEY")}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            model: "black-forest-labs/flux-schnell",
+            input: {
+                prompt: prompt,
+                width: 1024,
+                height: 1792,
+                num_inference_steps: 10, // Mais rápido
+            },
+        }),
     });
 
-    if (!openaiResponse.ok) throw new Error(`OpenAI Image Gen Error: ${await openaiResponse.text()}`);
-    const data = await openaiResponse.json();
-    const tempUrl = data.data?.[0]?.url;
-    if (!tempUrl) throw new Error("Image URL not returned by OpenAI.");
+    if (!initResponse.ok) throw new Error(`Replicate Image Init Error: ${await initResponse.text()}`);
+    const prediction = await initResponse.json();
+    const pollingUrl = prediction.urls.get;
 
+    // 2. Fazer polling até a imagem estar pronta
+    let finalPrediction;
+    for (let i = 0; i < 20; i++) { // Timeout de ~40 segundos
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const pollResponse = await fetch(pollingUrl, {
+            headers: { "Authorization": `Token ${Deno.env.get("REPLICATE_API_KEY")}` }
+        });
+        finalPrediction = await pollResponse.json();
+        if (finalPrediction.status === 'succeeded') break;
+        if (finalPrediction.status === 'failed') throw new Error(`Replicate Image Gen Failed: ${finalPrediction.error}`);
+    }
+
+    const tempUrl = finalPrediction?.output?.[0];
+    if (!tempUrl) throw new Error("Image URL not returned by Replicate.");
+
+    // 3. Baixar a imagem e fazer upload para o Supabase Storage
     const imageRes = await fetch(tempUrl);
-    if (!imageRes.ok) throw new Error("Failed to download generated image.");
+    if (!imageRes.ok) throw new Error("Failed to download generated image from Replicate.");
     
     const arrayBuffer = await imageRes.arrayBuffer();
     const filePath = `web-stories/${crypto.randomUUID()}.png`;
@@ -120,13 +153,13 @@ serve(async (req) => {
     if (postError || !post) throw new Error(`Nenhum post novo encontrado. ${postError?.message || ''}`);
     await updateLog(supabase, logId, 'processing', `Post encontrado: "${post.title}"`);
 
-    const storyPagesContent = await generateStoryPages(post.title, post.summary, automation.number_of_pages);
-    await updateLog(supabase, logId, 'processing', 'Conteúdo das páginas gerado pela IA.');
+    const storyPagesContent = await generateStoryPagesWithReplicate(post.title, post.summary, automation.number_of_pages);
+    await updateLog(supabase, logId, 'processing', 'Conteúdo das páginas gerado pela IA (Replicate).');
 
     const finalPages = [];
     for (const [index, pageContent] of storyPagesContent.entries()) {
-      await updateLog(supabase, logId, 'processing', `Gerando imagem para a página ${index + 1}...`);
-      const imageUrl = await generateAndUploadImage(pageContent.image_prompt, supabase);
+      await updateLog(supabase, logId, 'processing', `Gerando imagem para a página ${index + 1} (Replicate)...`);
+      const imageUrl = await generateAndUploadImageWithReplicate(pageContent.image_prompt, supabase);
       
       const page = {
         id: crypto.randomUUID(),
@@ -147,7 +180,7 @@ serve(async (req) => {
     }
     await updateLog(supabase, logId, 'processing', 'Imagens geradas e enviadas.');
 
-    const posterImageUrl = finalPages[0].backgroundSrc; // Reutiliza a primeira imagem como poster
+    const posterImageUrl = finalPages[0].backgroundSrc;
     const slug = post.slug + '-story';
     const status = automation.publish_automatically ? 'published' : 'draft';
     const published_at = automation.publish_automatically ? new Date().toISOString() : null;
