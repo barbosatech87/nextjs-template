@@ -7,86 +7,182 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-secret',
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+// --- FUNÇÕES DE LOG ---
+async function createLog(supabase, automationId, status, message, details = {}, storyId = null) {
+  const { data, error } = await supabase.from('story_automation_logs').insert({
+    automation_id: automationId,
+    story_id: storyId,
+    status,
+    message,
+    details,
+  }).select('id').single();
+  if (error) console.error(`[FATAL] Failed to create log:`, error.message);
+  return data?.id;
+}
+
+async function updateLog(supabase, logId, status, message, detailsUpdate = {}, storyId = null) {
+  if (!logId) return;
+  const { data: currentLog } = await supabase.from('story_automation_logs').select('details').eq('id', logId).single();
+  const newDetails = { ...(currentLog?.details || {}), ...detailsUpdate };
+  
+  const updatePayload = { status, message, details: newDetails };
+  if (storyId) {
+    updatePayload.story_id = storyId;
   }
 
-  try {
-    console.log("=== FUNCTION STARTED ===");
+  await supabase.from('story_automation_logs').update(updatePayload).eq('id', logId);
+}
+
+// --- FUNÇÕES DE IA ---
+async function generateStoryPages(postTitle, postSummary, pageCount) {
+    const systemPrompt = `You are an AI expert creating Web Stories for a Christian blog. Transform a blog post into a concise, ${pageCount}-page story.
     
-    // Validação básica
-    const internalSecret = req.headers.get('X-Internal-Secret');
-    if (internalSecret !== Deno.env.get('INTERNAL_SECRET_KEY')) {
-      console.log("Auth failed");
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }), 
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    RULES:
+    1.  Each page needs a background image prompt and short text (max 25 words). Use HTML tags like <strong>.
+    2.  Image prompts must be descriptive, artistic, symbolic, and suitable for DALL-E 3. No text in image prompts.
+    3.  The story must flow logically, summarizing the article's key points.
+    4.  Your output MUST be a valid JSON object: { "pages": [ { "text": "...", "image_prompt": "..." }, ... ] }`;
 
-    console.log("Auth OK");
+    const userPrompt = `Article Title: ${postTitle}\nArticle Summary: ${postSummary}\n\nCreate a ${pageCount}-page Web Story.`;
 
-    const body = await req.json();
-    const automationId = body.automationId;
-    
-    console.log(`Automation ID: ${automationId}`);
-
-    if (!automationId) {
-      return new Response(
-        JSON.stringify({ error: 'Missing automationId' }), 
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Criar cliente Supabase
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL"),
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),
-      { auth: { persistSession: false } }
-    );
-
-    console.log("Supabase client created");
-
-    // Tentar gravar log
-    const { error: logError } = await supabase.from('story_automation_logs').insert({
-      automation_id: automationId,
-      story_id: null,
-      status: 'processing',
-      message: 'Teste: Função executou com sucesso!',
-      details: { test: true, timestamp: new Date().toISOString() }
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
+        body: JSON.stringify({
+            model: "gpt-4o",
+            messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
+            response_format: { type: "json_object" },
+        }),
     });
 
-    if (logError) {
-      console.error("Log error:", logError);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to write log', 
-          details: logError.message 
-        }), 
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!response.ok) throw new Error(`OpenAI Story Gen Error: ${await response.text()}`);
+    const data = await response.json();
+    const content = JSON.parse(data.choices[0].message.content);
+    if (!content.pages || !Array.isArray(content.pages)) throw new Error("AI did not return a valid 'pages' array.");
+    return content.pages;
+}
+
+async function generateAndUploadImage(prompt, supabase) {
+    const fullPrompt = `High-quality, artistic, conceptual image for a Christian blog post. No text, letters, or numbers. Style: minimalist watercolor, soft tones. Prompt: ${prompt}`;
+    
+    const openaiResponse = await fetch("https://api.openai.com/v1/images/generations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
+        body: JSON.stringify({ model: "dall-e-3", prompt: fullPrompt, n: 1, size: "1024x1792", response_format: "url" }),
+    });
+
+    if (!openaiResponse.ok) throw new Error(`OpenAI Image Gen Error: ${await openaiResponse.text()}`);
+    const data = await openaiResponse.json();
+    const tempUrl = data.data?.[0]?.url;
+    if (!tempUrl) throw new Error("Image URL not returned by OpenAI.");
+
+    const imageRes = await fetch(tempUrl);
+    if (!imageRes.ok) throw new Error("Failed to download generated image.");
+    
+    const arrayBuffer = await imageRes.arrayBuffer();
+    const filePath = `web-stories/${crypto.randomUUID()}.png`;
+
+    const { error: uploadError } = await supabase.storage.from("blog_images").upload(filePath, arrayBuffer, { contentType: 'image/png', cacheControl: '31536000, immutable' });
+    if (uploadError) throw new Error(`Storage upload failed: ${uploadError.message}`);
+
+    const { data: publicUrlData } = supabase.storage.from("blog_images").getPublicUrl(filePath);
+    return publicUrlData.publicUrl;
+}
+
+// --- FUNÇÃO PRINCIPAL ---
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+
+  const internalSecret = req.headers.get('X-Internal-Secret');
+  if (internalSecret !== Deno.env.get('INTERNAL_SECRET_KEY')) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
+  }
+
+  let logId = null;
+  let automationId = null;
+  const supabase = createClient(Deno.env.get("SUPABASE_URL"), Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false } });
+
+  try {
+    const body = await req.json();
+    automationId = body.automationId;
+    if (!automationId) throw new Error('Missing automationId');
+
+    logId = await createLog(supabase, automationId, 'processing', 'Iniciando automação de story...');
+
+    const { data: automation, error: autoError } = await supabase.from('story_automations').select('*').eq('id', automationId).single();
+    if (autoError || !automation) throw new Error(`Automação não encontrada: ${autoError?.message || 'Not found.'}`);
+    if (!automation.is_active) {
+      await updateLog(supabase, logId, 'success', 'Automação inativa, execução pulada.');
+      return new Response(JSON.stringify({ message: "Automation is not active." }), { headers: corsHeaders });
     }
 
-    console.log("Log written successfully");
+    const { data: post, error: postError } = await supabase.rpc('get_unused_post_for_story_automation', { p_automation_id: automationId }).single();
+    if (postError || !post) throw new Error(`Nenhum post novo encontrado. ${postError?.message || ''}`);
+    await updateLog(supabase, logId, 'processing', `Post encontrado: "${post.title}"`);
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Function executed and logged successfully',
-        automationId: automationId
-      }), 
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    const storyPagesContent = await generateStoryPages(post.title, post.summary, automation.number_of_pages);
+    await updateLog(supabase, logId, 'processing', 'Conteúdo das páginas gerado pela IA.');
+
+    const finalPages = [];
+    for (const [index, pageContent] of storyPagesContent.entries()) {
+      await updateLog(supabase, logId, 'processing', `Gerando imagem para a página ${index + 1}...`);
+      const imageUrl = await generateAndUploadImage(pageContent.image_prompt, supabase);
+      
+      const page = {
+        id: crypto.randomUUID(),
+        backgroundSrc: imageUrl,
+        backgroundType: 'image',
+        elements: [{
+          id: crypto.randomUUID(),
+          type: 'text',
+          content: pageContent.text,
+          style: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '28px', color: '#ffffff', backgroundColor: 'rgba(0,0,0,0.5)', padding: '12px', borderRadius: '8px', textAlign: 'center', width: '85%' }
+        }]
+      };
+      
+      if (automation.add_post_link_on_last_page && index === storyPagesContent.length - 1) {
+        page.outlink = { href: `https://www.paxword.com/pt/blog/${post.slug}`, ctaText: 'Leia o Artigo' };
+      }
+      finalPages.push(page);
+    }
+    await updateLog(supabase, logId, 'processing', 'Imagens geradas e enviadas.');
+
+    const posterImageUrl = finalPages[0].backgroundSrc; // Reutiliza a primeira imagem como poster
+    const slug = post.slug + '-story';
+    const status = automation.publish_automatically ? 'published' : 'draft';
+    const published_at = automation.publish_automatically ? new Date().toISOString() : null;
+
+    const { data: newStory, error: storyInsertError } = await supabase.from('web_stories').insert({
+      author_id: post.author_id, title: post.title, slug,
+      story_data: { pages: finalPages }, poster_image_src: posterImageUrl,
+      status, published_at, language_code: 'pt',
+    }).select('id').single();
+
+    if (storyInsertError) throw new Error(`Falha ao salvar a story: ${storyInsertError.message}`);
+    await updateLog(supabase, logId, 'processing', `Story salva com ID: ${newStory.id}.`, {}, newStory.id);
+
+    const { error: usedPostError } = await supabase.from('used_posts_for_stories').insert({ automation_id: automationId, post_id: post.id });
+    if (usedPostError) throw new Error(`Falha ao marcar post como usado: ${usedPostError.message}`);
+
+    if (status === 'published') {
+      fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/translate-web-story`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': Deno.env.get('INTERNAL_SECRET_KEY') },
+        body: JSON.stringify({ storyId: newStory.id, title: post.title, storyData: { pages: finalPages } }),
+      }).catch(err => console.error(`[ERROR] Falha ao disparar tradução:`, err));
+    }
+
+    await updateLog(supabase, logId, 'success', `Story "${post.title}" gerada com sucesso.`);
+    
+    return new Response(JSON.stringify({ success: true, storyId: newStory.id }), { headers: corsHeaders });
 
   } catch (error) {
     console.error("FATAL ERROR:", error);
-    return new Response(
-      JSON.stringify({ 
-        error: error.message,
-        stack: error.stack 
-      }), 
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    if (logId) {
+      await updateLog(supabase, logId, 'error', error.message, { stack: error.stack });
+    } else {
+      await createLog(supabase, automationId, 'error', error.message, { stack: error.stack });
+    }
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
   }
 });
