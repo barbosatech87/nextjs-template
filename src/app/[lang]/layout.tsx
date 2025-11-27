@@ -26,7 +26,7 @@ const pageTexts = {
 };
 
 export async function generateMetadata({ params }: { params: { lang: Locale } }): Promise<Metadata> {
-  const lang = (await params).lang || i18n.defaultLocale;
+  const lang = params.lang || i18n.defaultLocale;
   const t = pageTexts[lang] || pageTexts.pt;
 
   return {
