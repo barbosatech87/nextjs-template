@@ -9,6 +9,13 @@ import { Metadata, ResolvingMetadata } from "next";
 import { ShareButtons } from "@/components/social/share-buttons";
 import Link from "next/link";
 import Image from "next/image";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 
 const texts = {
   pt: {
@@ -17,6 +24,8 @@ const texts = {
     language: "Idioma",
     notFound: "Postagem não encontrada.",
     relatedPosts: "Artigos Relacionados",
+    home: "Início",
+    blog: "Blog",
   },
   en: {
     author: "By",
@@ -24,6 +33,8 @@ const texts = {
     language: "Language",
     notFound: "Post not found.",
     relatedPosts: "Related Articles",
+    home: "Home",
+    blog: "Blog",
   },
   es: {
     author: "Por",
@@ -31,6 +42,8 @@ const texts = {
     language: "Idioma",
     notFound: "Entrada no encontrada.",
     relatedPosts: "Artículos Relacionados",
+    home: "Inicio",
+    blog: "Blog",
   },
 };
 
@@ -155,6 +168,8 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     'articleSection': post.categories.map(c => c.name).join(', '),
   };
 
+  const primaryCategory = post.categories.length > 0 ? post.categories[0] : null;
+
   return (
     <>
       <script
@@ -163,6 +178,34 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       />
       <div className="container px-4 md:px-8 py-12">
         <article className="max-w-3xl mx-auto">
+          <Breadcrumb className="mb-8">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link href={`/${lang}`}>{t.home}</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link href={`/${lang}/blog`}>{t.blog}</Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              {primaryCategory && (
+                <>
+                  <BreadcrumbSeparator />
+                  <BreadcrumbItem>
+                    <BreadcrumbLink asChild>
+                      <Link href={`/${lang}/blog/category/${primaryCategory.slug}`}>
+                        {primaryCategory.name}
+                      </Link>
+                    </BreadcrumbLink>
+                  </BreadcrumbItem>
+                </>
+              )}
+            </BreadcrumbList>
+          </Breadcrumb>
+
           {post.image_url && (
             <div className="mb-8 relative w-full h-64 md:h-96 rounded-lg overflow-hidden shadow-xl">
               <Image 
@@ -195,18 +238,6 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               <span className="uppercase">{post.language_code}</span>
             </Badge>
           </div>
-
-          {post.categories.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 mb-6">
-              {post.categories.map(category => (
-                <Link key={category.slug} href={`/${lang}/blog/category/${category.slug}`}>
-                  <Badge variant="outline" className="hover:bg-accent transition-colors">
-                    {category.name}
-                  </Badge>
-                </Link>
-              ))}
-            </div>
-          )}
 
           <ShareButtons 
             title={post.title}
