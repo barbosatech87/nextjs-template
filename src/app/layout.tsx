@@ -61,7 +61,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   if (isAmp) {
     return (
       <html amp="" lang={lang} suppressHydrationWarning>
-        <head>
+        <head suppressHydrationWarning>
           <meta charSet="utf-8" />
           <script async src="https://cdn.ampproject.org/v0.js"></script>
           <script async custom-element="amp-story" src="https://cdn.ampproject.org/v0/amp-story-1.0.js"></script>
