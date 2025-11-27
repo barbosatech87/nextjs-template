@@ -101,9 +101,9 @@ async function generateAndUploadImageWithReplicate(prompt, supabase) {
         body: JSON.stringify({
             input: {
                 prompt: prompt,
-                width: 1024,
-                height: 1792,
-                num_inference_steps: 10,
+                aspect_ratio: "9:16",
+                num_inference_steps: 4,
+                output_format: "png",
             },
         }),
     });
