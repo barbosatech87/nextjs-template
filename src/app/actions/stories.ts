@@ -191,16 +191,47 @@ export async function deleteStory(id: string) {
 // Admin: Listar todas as stories (rascunhos e publicadas)
 export async function getAdminStories() {
   const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase
+  
+  // 1. Fetch all stories
+  const { data: stories, error: storiesError } = await supabase
     .from('web_stories')
-    .select('*, profiles!left(first_name, last_name)')
+    .select('*')
     .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error("Error fetching admin stories:", error);
+  if (storiesError) {
+    console.error("Error fetching admin stories:", storiesError);
     return [];
   }
-  return data;
+
+  // 2. Get all author IDs
+  const authorIds = [...new Set(stories.map(s => s.author_id).filter(Boolean))];
+
+  if (authorIds.length === 0) {
+    // No authors, just return stories with null profiles
+    return stories.map(story => ({ ...story, profiles: null }));
+  }
+
+  // 3. Fetch profiles for those authors
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, first_name, last_name')
+    .in('id', authorIds as string[]);
+
+  if (profilesError) {
+    console.error("Error fetching profiles for stories:", profilesError);
+    // Return stories without profile data
+    return stories.map(story => ({ ...story, profiles: null }));
+  }
+
+  // 4. Combine data
+  const profilesMap = new Map(profiles.map(p => [p.id, p]));
+
+  const combinedStories = stories.map(story => ({
+    ...story,
+    profiles: story.author_id ? profilesMap.get(story.author_id) || null : null,
+  }));
+
+  return combinedStories;
 }
 
 export async function getStoryById(id: string) {
