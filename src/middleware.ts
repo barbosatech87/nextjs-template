@@ -15,40 +15,13 @@ function getLocale(request: NextRequest): string {
 }
 
 export async function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
-
-  // 1. Lógica de internacionalização (i18n) - EXECUTA PRIMEIRO
-  const pathnameIsMissingLocale = i18n.locales.every(
-    (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
-  );
-
-  if (pathnameIsMissingLocale) {
-    const locale = getLocale(request);
-    const newPath = pathname === '/' ? `/${locale}` : `/${locale}${pathname}`;
-    return NextResponse.redirect(new URL(newPath, request.url));
-  }
-
-  // 2. Definição de rotas protegidas
-  // Apenas estas rotas acionarão a verificação do Supabase no servidor (bloqueante)
-  const isProtectedRoute = 
-    pathname.includes('/admin') || 
-    pathname.includes('/profile') ||
-    pathname.includes('/schedules') ||
-    pathname.includes('/notifications');
-
-  // Se NÃO for rota protegida, retorna imediatamente a resposta do i18n
-  // Isso derruba o TTFB de ~1.8s para ~0.1s nas páginas públicas
-  if (!isProtectedRoute) {
-    return NextResponse.next();
-  }
-
-  // 3. Lógica do Supabase (Apenas para rotas protegidas)
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
 
+  // 1. Lógica do Supabase - Executa em todas as rotas para manter a sessão atualizada
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -79,11 +52,27 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  // A chamada a getUser() atualiza o token de sessão se necessário
   const { data: { user } } = await supabase.auth.getUser();
 
-  // Proteção extra: Se tentar acessar admin/perfil sem logar, redireciona
+  // 2. Lógica de internacionalização (i18n)
+  const pathname = request.nextUrl.pathname;
+  const pathnameIsMissingLocale = i18n.locales.every(
+    (locale) => !pathname.startsWith(`/${locale}/`) && pathname !== `/${locale}`
+  );
+
+  if (pathnameIsMissingLocale) {
+    const locale = getLocale(request);
+    const newPath = pathname === '/' ? `/${locale}` : `/${locale}${pathname}`;
+    return NextResponse.redirect(new URL(newPath, request.url));
+  }
+
+  // 3. Lógica de rotas protegidas
+  const isProtectedRoute = 
+    pathname.includes('/admin') || 
+    pathname.includes('/profile');
+
   if (!user && isProtectedRoute) {
-    // Pega o locale da URL atual para redirecionar corretamente
     const locale = pathname.split('/')[1] || i18n.defaultLocale;
     return NextResponse.redirect(new URL(`/${locale}/auth`, request.url));
   }
