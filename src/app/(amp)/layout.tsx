@@ -1,5 +1,4 @@
 import { ReactNode } from 'react';
-import { Locale } from '@/lib/i18n/config';
 import { Inter } from 'next/font/google';
 import { Viewport } from 'next';
 import '@/app/globals.css';
@@ -10,9 +9,8 @@ const inter = Inter({
   display: 'swap', 
 });
 
-interface AmpLayoutProps {
+interface AmpRootLayoutProps {
   children: ReactNode;
-  params: { lang: Locale };
 }
 
 export const viewport: Viewport = {
@@ -21,9 +19,13 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function AmpLangLayout({ children, params }: AmpLayoutProps) {
+export default function AmpRootLayout({ children }: AmpRootLayoutProps) {
+  // This is a root layout, so it needs to render the html and body tags.
+  // It will replace the main src/app/layout.tsx for routes inside (amp).
+  // Note: We don't have access to the `lang` param here, so it's omitted for now,
+  // but the page will still be a valid AMP page.
   return (
-    <html lang={params.lang} amp className={inter.variable}>
+    <html amp className={inter.variable}>
       <head />
       <body className="font-sans">
         {children}
