@@ -7,7 +7,7 @@ import { ReadBibleCta } from '@/components/home/read-bible-cta';
 import { Metadata } from 'next';
 
 interface HomePageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 const pageTexts = {
@@ -59,7 +59,7 @@ const pageTexts = {
 };
 
 export async function generateMetadata({ params }: HomePageProps): Promise<Metadata> {
-  const { lang } = params;
+  const { lang } = await params;
   const t = pageTexts[lang] || pageTexts.pt;
 
   return {
@@ -69,7 +69,7 @@ export async function generateMetadata({ params }: HomePageProps): Promise<Metad
 }
 
 export default async function HomePage({ params }: HomePageProps) {
-  const { lang } = params;
+  const { lang } = await params;
   const t = pageTexts[lang] || pageTexts.pt;
 
   const [dailyVerseResult, devotionalPostsResult, recentPostsResult] = await Promise.allSettled([

@@ -3,7 +3,7 @@ import IaExplicaClient from './ia-explica-client';
 import { Metadata } from 'next';
 
 interface IaExplicaPageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 const pageTexts = {
@@ -22,7 +22,7 @@ const pageTexts = {
 };
 
 export async function generateMetadata({ params }: IaExplicaPageProps): Promise<Metadata> {
-  const { lang } = params;
+  const { lang } = await params;
   const t = pageTexts[lang] || pageTexts.pt;
   return {
     title: t.title,
@@ -30,6 +30,7 @@ export async function generateMetadata({ params }: IaExplicaPageProps): Promise<
   };
 }
 
-export default function IaExplicaPage({ params }: IaExplicaPageProps) {
-  return <IaExplicaClient params={params} />;
+export default async function IaExplicaPage({ params }: IaExplicaPageProps) {
+  const resolvedParams = await params;
+  return <IaExplicaClient params={resolvedParams} />;
 }

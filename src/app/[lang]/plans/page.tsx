@@ -9,7 +9,7 @@ import { PlansLoginPrompt } from "@/components/reading-plans/plans-login-prompt"
 import { Metadata } from "next";
 
 interface PlansPageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 export const dynamic = 'force-dynamic';
@@ -39,7 +39,7 @@ const pageTexts = {
 };
 
 export async function generateMetadata({ params }: PlansPageProps): Promise<Metadata> {
-  const { lang } = params;
+  const { lang } = await params;
   const t = pageTexts[lang] || pageTexts.pt;
   return {
     title: t.title,
@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: PlansPageProps): Promise<Meta
 }
 
 export default async function PlansPage({ params }: PlansPageProps) {
-  const { lang } = params;
+  const { lang } = await params;
   const supabase = await createSupabaseServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   const t = pageTexts[lang] || pageTexts.pt;

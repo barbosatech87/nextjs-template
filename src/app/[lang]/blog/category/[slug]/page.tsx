@@ -40,12 +40,12 @@ const pageTexts = {
 };
 
 interface BlogCategoryPageProps {
-  params: { lang: Locale; slug: string };
-  searchParams?: { page?: string };
+  params: Promise<{ lang: Locale; slug: string }>;
+  searchParams?: Promise<{ page?: string }>;
 }
 
 export async function generateMetadata({ params }: BlogCategoryPageProps): Promise<Metadata> {
-  const { lang, slug } = params;
+  const { lang, slug } = await params;
   const t = pageTexts[lang] || pageTexts.pt;
   const supabase = await createSupabaseServerClient();
 
@@ -69,10 +69,11 @@ export default async function BlogCategoryPage({
   params,
   searchParams,
 }: BlogCategoryPageProps) {
-  const { lang, slug } = params;
+  const { lang, slug } = await params;
+  const sp = await searchParams;
   const t = pageTexts[lang] || pageTexts.pt;
 
-  const pageParam = searchParams?.page;
+  const pageParam = sp?.page;
   const pageStr = Array.isArray(pageParam) ? pageParam[0] : pageParam;
   const currentPage = parseInt(pageStr || '1', 10);
 

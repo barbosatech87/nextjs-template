@@ -23,12 +23,12 @@ const pageTexts = {
 };
 
 interface BlogListPageProps {
-  params: { lang: Locale };
-  searchParams?: { page?: string };
+  params: Promise<{ lang: Locale }>;
+  searchParams?: Promise<{ page?: string }>;
 }
 
 export async function generateMetadata({ params }: BlogListPageProps): Promise<Metadata> {
-  const { lang } = params;
+  const { lang } = await params;
   const t = pageTexts[lang] || pageTexts.pt;
   return {
     title: t.title,
@@ -40,10 +40,11 @@ export default async function BlogListPage({
   params,
   searchParams,
 }: BlogListPageProps) {
-  const { lang } = params;
+  const { lang } = await params;
+  const sp = await searchParams;
   const t = pageTexts[lang] || pageTexts.pt;
 
-  const pageParam = searchParams?.page;
+  const pageParam = sp?.page;
   const pageStr = Array.isArray(pageParam) ? pageParam[0] : pageParam;
   const currentPage = parseInt(pageStr || '1', 10);
 

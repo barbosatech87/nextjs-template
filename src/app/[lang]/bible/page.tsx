@@ -22,11 +22,11 @@ const pageTexts = {
 }
 
 interface BiblePageProps {
-  params: { lang: Locale };
+  params: Promise<{ lang: Locale }>;
 }
 
 export async function generateMetadata({ params }: BiblePageProps): Promise<Metadata> {
-  const { lang } = params;
+  const { lang } = await params;
   const t = pageTexts[lang] || pageTexts.pt;
   return {
     title: t.title,
@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: BiblePageProps): Promise<Meta
 }
 
 export default async function BiblePage({ params }: BiblePageProps) {
-  const { lang } = params;
+  const { lang } = await params;
   const supabase = await createSupabaseServerClient();
   const texts = pageTexts[lang] || pageTexts.pt;
 

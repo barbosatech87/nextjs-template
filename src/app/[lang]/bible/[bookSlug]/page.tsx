@@ -36,11 +36,11 @@ const pageTexts = {
 };
 
 interface BookPageProps {
-  params: { lang: Locale; bookSlug: string };
+  params: Promise<{ lang: Locale; bookSlug: string }>;
 }
 
 export async function generateMetadata({ params }: BookPageProps): Promise<Metadata> {
-  const { lang, bookSlug } = params;
+  const { lang, bookSlug } = await params;
   const t = pageTexts[lang] || pageTexts.pt;
   const bookName = getBookNameFromSlug(bookSlug);
 
@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: BookPageProps): Promise<Metad
 }
 
 export default async function BookPage({ params }: BookPageProps) {
-  const { lang, bookSlug } = params;
+  const { lang, bookSlug } = await params;
   const texts = pageTexts[lang] || pageTexts.pt;
 
   const bookName = getBookNameFromSlug(bookSlug);
