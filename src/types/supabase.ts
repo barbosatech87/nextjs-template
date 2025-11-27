@@ -97,6 +97,30 @@ export type UserReadingPlan = {
   created_at: string | null;
 };
 
+export type WebStory = {
+  id: string;
+  author_id: string | null;
+  title: string;
+  slug: string;
+  story_data: any; // JSON complexo do editor
+  poster_image_src: string | null;
+  status: 'draft' | 'published' | 'archived';
+  language_code: string;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type WebStoryTranslation = {
+  id: string;
+  story_id: string;
+  language_code: string;
+  title: string;
+  story_data: any;
+  created_at: string;
+  updated_at: string;
+};
+
 // Tipos combinados para uso no frontend
 export interface UserWithProfile extends User {
   profile: Profile | null;

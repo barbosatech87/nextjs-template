@@ -1,0 +1,213 @@
+"use server";
+
+import { createSupabaseServerClient } from "@/integrations/supabase/server";
+import { revalidatePath } from "next/cache";
+import { WebStory } from "@/types/supabase";
+import { createClient } from "@supabase/supabase-js";
+
+// Cliente público para cache/ISR se necessário
+const getPublicClient = () => {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+};
+
+export type CreateStoryData = {
+  title: string;
+  slug: string;
+  story_data: any;
+  poster_image_src: string;
+  status: 'draft' | 'published' | 'archived';
+};
+
+// --- Funções de Leitura (Públicas) ---
+
+export async function getStoryBySlug(slug: string, lang: string): Promise<WebStory | null> {
+  const supabase = getPublicClient();
+
+  // 1. Busca a story original
+  const { data: story, error } = await supabase
+    .from('web_stories')
+    .select('*')
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .single();
+
+  if (error || !story) {
+    console.error(`Error fetching story ${slug}:`, error);
+    return null;
+  }
+
+  // 2. Se o idioma solicitado não for o original (pt), busca a tradução
+  if (lang !== story.language_code) {
+    const { data: translation } = await supabase
+      .from('web_story_translations')
+      .select('title, story_data')
+      .eq('story_id', story.id)
+      .eq('language_code', lang)
+      .single();
+
+    if (translation) {
+      // Retorna a story com os dados traduzidos sobrepostos
+      return {
+        ...story,
+        title: translation.title,
+        story_data: translation.story_data,
+        language_code: lang, // Importante para SEO
+      };
+    }
+  }
+
+  return story as WebStory;
+}
+
+export async function getPublishedStories(lang: string, limit = 10) {
+  const supabase = getPublicClient();
+
+  const { data: stories, error } = await supabase
+    .from('web_stories')
+    .select('id, title, slug, poster_image_src, published_at, language_code')
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .limit(limit);
+
+  if (error) return [];
+
+  // Mapeia traduções para a listagem
+  if (lang !== 'pt') {
+    const storyIds = stories.map(s => s.id);
+    const { data: translations } = await supabase
+      .from('web_story_translations')
+      .select('story_id, title')
+      .in('story_id', storyIds)
+      .eq('language_code', lang);
+
+    if (translations) {
+      const translationMap = new Map(translations.map(t => [t.story_id, t]));
+      return stories.map(s => {
+        const t = translationMap.get(s.id);
+        return t ? { ...s, title: t.title } : s;
+      });
+    }
+  }
+
+  return stories;
+}
+
+// --- Funções Administrativas ---
+
+async function checkAdmin() {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Usuário não autenticado.");
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin' && profile?.role !== 'writer') {
+    throw new Error("Acesso negado.");
+  }
+  return user.id;
+}
+
+export async function createStory(data: CreateStoryData) {
+  try {
+    const userId = await checkAdmin();
+    const supabase = await createSupabaseServerClient();
+
+    const { data: newStory, error } = await supabase
+      .from('web_stories')
+      .insert({
+        ...data,
+        author_id: userId,
+        published_at: data.status === 'published' ? new Date().toISOString() : null,
+      })
+      .select('id, title, story_data')
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    revalidatePath('/admin/stories');
+    return { success: true, message: "Story criada com sucesso.", storyId: newStory.id, title: newStory.title, storyData: newStory.story_data };
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : "Erro desconhecido." };
+  }
+}
+
+export async function updateStory(id: string, data: Partial<CreateStoryData>, lang: string) {
+  try {
+    await checkAdmin();
+    const supabase = await createSupabaseServerClient();
+
+    const updateData = {
+      ...data,
+      updated_at: new Date().toISOString(),
+    } as any;
+
+    if (data.status === 'published') {
+      // Se não tinha data de publicação, adiciona agora
+      const { data: current } = await supabase.from('web_stories').select('published_at').eq('id', id).single();
+      if (!current?.published_at) {
+        updateData.published_at = new Date().toISOString();
+      }
+    }
+
+    const { error } = await supabase
+      .from('web_stories')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) throw new Error(error.message);
+
+    revalidatePath('/admin/stories');
+    if (data.slug) revalidatePath(`/${lang}/web-stories/${data.slug}`);
+    
+    // Retorna os dados necessários para o trigger de tradução
+    return { success: true, message: "Story atualizada com sucesso.", storyId: id, title: data.title, storyData: data.story_data };
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : "Erro desconhecido." };
+  }
+}
+
+export async function deleteStory(id: string) {
+  try {
+    await checkAdmin();
+    const supabase = await createSupabaseServerClient();
+
+    const { error } = await supabase.from('web_stories').delete().eq('id', id);
+    if (error) throw new Error(error.message);
+
+    revalidatePath('/admin/stories');
+    return { success: true, message: "Story removida." };
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : "Erro desconhecido." };
+  }
+}
+
+// Admin: Listar todas as stories (rascunhos e publicadas)
+export async function getAdminStories() {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('web_stories')
+    .select('*, profiles(first_name, last_name)')
+    .order('created_at', { ascending: false });
+
+  if (error) return [];
+  return data;
+}
+
+export async function getStoryById(id: string) {
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('web_stories')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error) return null;
+  return data as WebStory;
+}
