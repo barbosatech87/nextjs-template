@@ -15,86 +15,22 @@ const corsHeaders = {
 async function logEvent(supabase, automationId, status, message, details = {}, storyId = null) {
   console.log(`[LOG - ${status}] ${message}`);
   try {
-    const { error } = await supabase.from('story_automation_logs').insert({
+    await supabase.from('story_automation_logs').insert({
       automation_id: automationId,
       story_id: storyId,
       status,
       message,
       details,
     });
-    if (error) console.error(`[FATAL] Failed to log event to DB:`, error.message);
   } catch (logError) {
     console.error(`[FATAL] Exception during DB logging:`, logError.message);
   }
 }
 
-// --- GERAÇÃO DE TEXTO (Mantendo OpenAI/Claude para o Roteiro) ---
-async function generateStoryScript(postContent, pageCount) {
-  const systemPrompt = `Você é uma IA editora especializada em Web Stories.
-  Sua tarefa é resumir o artigo fornecido em um roteiro de EXATAMENTE ${pageCount} páginas.
-  
-  Sua saída DEVE ser um JSON válido com esta estrutura:
-  {
-    "title": "Título curto (máx 40 chars)",
-    "slug": "titulo-slugificado",
-    "pages": [
-      { 
-        "page_number": 1, 
-        "text_content": "Texto curto e impactante (máx 150 chars).",
-        "image_prompt": "Descrição visual da cena em INGLÊS. Sem texto na imagem." 
-      }
-    ]
-  }`;
-
-  const userPrompt = `Gere o roteiro JSON para:\n\n${postContent.substring(0, 8000)}`;
-
-  // Tenta Claude Primeiro
-  if (Deno.env.get("CLAUDE_API_KEY")) {
-    try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("CLAUDE_API_KEY"), "anthropic-version": "2023-06-01" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-5-20250929",
-          max_tokens: 2000,
-          system: systemPrompt,
-          messages: [{ role: "user", content: userPrompt }],
-          temperature: 0.5,
-        }),
-      });
-      if (response.ok) {
-        const data = await response.json();
-        const jsonMatch = data.content[0].text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) return JSON.parse(jsonMatch[0]);
-      }
-    } catch (e) { console.error("Claude error:", e); }
-  }
-
-  // Fallback OpenAI
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}` },
-    body: JSON.stringify({
-      model: "gpt-4o",
-      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: userPrompt }],
-      response_format: { type: "json_object" },
-      temperature: 0.5,
-    }),
-  });
-
-  if (!response.ok) throw new Error(`Erro OpenAI texto: ${await response.text()}`);
-  const data = await response.json();
-  return JSON.parse(data.choices[0].message.content);
-}
-
-// --- GERAÇÃO DE IMAGEM COM REPLICATE ---
-async function generateImageWithReplicate(prompt, userId, supabase) {
+// --- UTILITÁRIO REPLICATE ---
+async function runReplicatePrediction(version, input) {
   const replicateKey = Deno.env.get("REPLICATE_API_KEY");
   if (!replicateKey) throw new Error("REPLICATE_API_KEY não configurada.");
-
-  // Usando Flux-Schnell (rápido e boa qualidade)
-  const model = "black-forest-labs/flux-schnell"; 
-  const finalPrompt = `Vertical image (9:16), minimalist watercolor style, soft pastel colors, christian spiritual theme. NO TEXT. ${prompt}`;
 
   // 1. Inicia a Predição
   const startResponse = await fetch("https://api.replicate.com/v1/predictions", {
@@ -102,16 +38,11 @@ async function generateImageWithReplicate(prompt, userId, supabase) {
     headers: {
       "Authorization": `Bearer ${replicateKey}`,
       "Content-Type": "application/json",
-      "Prefer": "wait" // Tenta esperar o resultado imediato
+      "Prefer": "wait" // Tenta esperar o resultado imediato (até 60s)
     },
     body: JSON.stringify({
-      version: "f4beb6696700cb744360434246473347b7d6c6e767426630c634032607963236", // Hash do Flux Schnell (opcional se usar url do model, mas bom garantir)
-      input: {
-        prompt: finalPrompt,
-        aspect_ratio: "9:16",
-        output_format: "png",
-        go_fast: true
-      }
+      version: version, // Hash da versão do modelo
+      input: input
     })
   });
 
@@ -123,7 +54,7 @@ async function generateImageWithReplicate(prompt, userId, supabase) {
   let prediction = await startResponse.json();
 
   // 2. Polling (se não retornou pronto com Prefer: wait)
-  while (prediction.status !== "succeeded" && prediction.status !== "failed") {
+  while (prediction.status !== "succeeded" && prediction.status !== "failed" && prediction.status !== "canceled") {
     await new Promise(r => setTimeout(r, 2000)); // Espera 2s
     const pollResponse = await fetch(prediction.urls.get, {
       headers: { "Authorization": `Bearer ${replicateKey}` }
@@ -132,14 +63,78 @@ async function generateImageWithReplicate(prompt, userId, supabase) {
     prediction = await pollResponse.json();
   }
 
-  if (prediction.status === "failed") {
-    throw new Error(`Replicate falhou: ${prediction.error}`);
+  if (prediction.status !== "succeeded") {
+    throw new Error(`Replicate falhou: ${prediction.error || prediction.status}`);
   }
 
-  const imageUrl = prediction.output[0];
+  return prediction.output;
+}
+
+// --- GERAÇÃO DE TEXTO (REPLICATE - Llama 3 70B) ---
+// Usamos Llama 3 70B pois gpt-4o-mini não existe no Replicate.
+async function generateStoryScript(postContent, pageCount) {
+  const systemPrompt = `Você é uma IA editora especializada em Web Stories.
+  Sua tarefa é resumir o artigo fornecido em um roteiro de EXATAMENTE ${pageCount} páginas.
+  
+  Sua saída DEVE ser APENAS um JSON válido (sem markdown, sem explicações antes ou depois) com esta estrutura:
+  {
+    "title": "Título curto (máx 40 chars)",
+    "slug": "titulo-slugificado",
+    "pages": [
+      { 
+        "page_number": 1, 
+        "text_content": "Texto curto e impactante para a página (máx 150 chars).",
+        "image_prompt": "Descrição visual da cena para gerar a imagem de fundo em estilo aquarela minimalista. Em INGLÊS. Sem texto na imagem." 
+      }
+    ]
+  }`;
+
+  const userPrompt = `Gere o roteiro JSON para o seguinte conteúdo:\n\n${postContent.substring(0, 6000)}`;
+
+  // Meta Llama 3 70B Instruct (Hash da versão mais recente no Replicate)
+  const modelVersion = "fbfb20b472b7f3bd1191eb997934474f838295138b84c9c3857e61303833075b"; 
+  
+  const output = await runReplicatePrediction(modelVersion, {
+    prompt: userPrompt,
+    system_prompt: systemPrompt,
+    max_tokens: 2000,
+    temperature: 0.5,
+    top_p: 0.9,
+  });
+
+  // O Replicate retorna o texto como um array de strings (tokens/chunks)
+  const fullText = output.join("").trim();
+  
+  // Tenta limpar blocos de markdown se houver
+  const cleanJson = fullText.replace(/```json/g, "").replace(/```/g, "").trim();
+  
+  try {
+    return JSON.parse(cleanJson);
+  } catch (e) {
+    console.error("Erro ao fazer parse do JSON do Llama:", cleanJson);
+    throw new Error("A IA gerou um JSON inválido.");
+  }
+}
+
+// --- GERAÇÃO DE IMAGEM (REPLICATE - Flux Schnell) ---
+async function generateImageWithReplicate(prompt, userId, supabase) {
+  // Hash do black-forest-labs/flux-schnell
+  const modelVersion = "f4beb6696700cb744360434246473347b7d6c6e767426630c634032607963236";
+  
+  const finalPrompt = `Vertical image (9:16), minimalist watercolor style, soft pastel colors, christian spiritual theme. NO TEXT. ${prompt}`;
+
+  const output = await runReplicatePrediction(modelVersion, {
+    prompt: finalPrompt,
+    aspect_ratio: "9:16",
+    output_format: "png",
+    go_fast: true, // Configuração específica do Schnell
+    disable_safety_checker: true 
+  });
+
+  const imageUrl = output[0]; // Flux retorna lista de URLs
   if (!imageUrl) throw new Error("Replicate não retornou URL de imagem.");
 
-  // 3. Upload para Supabase Storage
+  // Upload para Supabase Storage
   const imageRes = await fetch(imageUrl);
   const arrayBuffer = await imageRes.arrayBuffer();
   const fileName = `stories/${userId}/${crypto.randomUUID()}.png`;
@@ -178,34 +173,34 @@ serve(async (req: Request) => {
 
     if (!automationId) throw new Error("Automation ID is missing");
 
-    await logEvent(supabase, automationId, 'processing', 'Iniciando automação com Replicate...');
+    await logEvent(supabase, automationId, 'processing', 'Iniciando automação via Replicate...');
 
     // 1. Busca Automação e Post
     const { data: automation, error: autoError } = await supabase.from('story_automations').select('*').eq('id', automationId).single();
     if (autoError || !automation) throw new Error("Automação não encontrada.");
     
     if (!automation.is_active) {
-      await logEvent(supabase, automationId, 'error', 'Automação inativa.');
-      return new Response(JSON.stringify({ message: "Inactive" }), { headers: corsHeaders });
+      await logEvent(supabase, automationId, 'error', 'A automação está desativada.');
+      return new Response(JSON.stringify({ message: "Automation inactive" }), { headers: corsHeaders });
     }
 
     const { data: post, error: postError } = await supabase.rpc('get_unused_post_for_story_automation', { p_automation_id: automation.id }).single();
     if (postError || !post) {
-      await logEvent(supabase, automationId, 'processing', 'Nenhum post novo encontrado.');
-      return new Response(JSON.stringify({ message: "No posts" }), { headers: corsHeaders });
+      await logEvent(supabase, automationId, 'processing', 'Nenhum post novo disponível.');
+      return new Response(JSON.stringify({ message: "No posts found" }), { headers: corsHeaders });
     }
 
-    await logEvent(supabase, automationId, 'processing', `Post: "${post.title}". Gerando roteiro...`);
+    await logEvent(supabase, automationId, 'processing', `Post selecionado: "${post.title}". Gerando roteiro com Llama 3 (Replicate)...`);
 
-    // 2. Gera Roteiro
+    // 2. Gera Roteiro (Texto)
     const script = await generateStoryScript(post.content, automation.number_of_pages);
-    await logEvent(supabase, automationId, 'processing', `Roteiro criado. Gerando ${script.pages.length} imagens via Replicate...`);
+    await logEvent(supabase, automationId, 'processing', `Roteiro gerado. Criando ${script.pages.length} imagens com Flux Schnell (Replicate)...`);
 
-    // 3. Gera Imagens (Replicate)
+    // 3. Gera Imagens (Imagem)
     const storyPages = [];
     for (let i = 0; i < script.pages.length; i++) {
       const pageData = script.pages[i];
-      await logEvent(supabase, automationId, 'processing', `Replicate: Gerando imagem ${i + 1}/${script.pages.length}...`);
+      await logEvent(supabase, automationId, 'processing', `Gerando imagem ${i + 1}/${script.pages.length}...`);
       
       const imageUrl = await generateImageWithReplicate(pageData.image_prompt, post.author_id, supabase);
       
@@ -228,7 +223,8 @@ serve(async (req: Request) => {
 
     // Link Final
     if (automation.add_post_link_on_last_page) {
-      storyPages[storyPages.length - 1].outlink = {
+      const lastPage = storyPages[storyPages.length - 1];
+      lastPage.outlink = {
         href: `https://www.paxword.com/pt/blog/${post.slug}`,
         ctaText: 'Leia o Artigo'
       };
@@ -247,14 +243,16 @@ serve(async (req: Request) => {
       language_code: 'pt'
     }).select('id').single();
 
-    if (saveError) throw new Error(`Erro ao salvar: ${saveError.message}`);
+    if (saveError) throw new Error(`Erro ao salvar story: ${saveError.message}`);
 
+    // Marca post como usado
     await supabase.from('used_posts_for_stories').insert({
       automation_id: automation.id,
       post_id: post.id,
       story_id: newStory.id,
     });
 
+    // Tradução (opcional, pode ser disparada de forma assíncrona)
     if (status === 'published') {
       fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/translate-web-story`, {
         method: 'POST',
