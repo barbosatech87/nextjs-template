@@ -57,7 +57,7 @@ export function AutomationFormDialog({ lang, initialData, children }: Automation
       };
       if (initialData) {
         const parsedCron = parseCronExpression(initialData.frequency_cron_expression);
-        defaultVals = { ...initialData, ...parsedCron };
+        defaultVals = { ...initialData, pinterest_board_id: initialData.pinterest_board_id || '', ...parsedCron };
       }
       form.reset(defaultVals as StoryAutomationFormData);
     }
