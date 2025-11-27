@@ -21,6 +21,20 @@ export type CreateStoryData = {
   status: 'draft' | 'published' | 'archived';
 };
 
+// Novo tipo para os logs de automação
+export type StoryAutomationLog = {
+  id: string;
+  story_id: string;
+  status: 'success' | 'error' | 'processing';
+  message: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string;
+  web_stories: {
+    title: string;
+  } | null;
+};
+
+
 // --- Funções de Leitura (Públicas) ---
 
 export async function getStoryBySlug(slug: string, lang: string): Promise<WebStory | null> {
@@ -244,4 +258,25 @@ export async function getStoryById(id: string) {
 
   if (error) return null;
   return data as WebStory;
+}
+
+export async function getStoryAutomationLogs(): Promise<StoryAutomationLog[]> {
+  try {
+    await checkAdmin();
+    const supabase = await createSupabaseServerClient();
+    const { data, error } = await supabase
+      .from('story_automation_logs')
+      .select('*, web_stories(title)')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) {
+      console.error("Error fetching story automation logs:", error);
+      return [];
+    }
+    return data as StoryAutomationLog[];
+  } catch (e) {
+    console.error("Unexpected error in getStoryAutomationLogs:", e);
+    return [];
+  }
 }
