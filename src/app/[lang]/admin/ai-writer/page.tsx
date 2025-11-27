@@ -3,7 +3,7 @@ import { AiWriterForm } from "@/components/admin/ai-writer/ai-writer-form";
 
 interface AiWriterPageProps {
   params: Promise<{ lang: Locale }>;
-  searchParams?: { [key: string]: string | string[] | undefined } | undefined;
+  searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default async function AiWriterPage({ params }: AiWriterPageProps) {
