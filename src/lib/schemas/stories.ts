@@ -5,7 +5,7 @@ export const storyAutomationSchema = z.object({
   name: z.string().min(3, "O nome é obrigatório."),
   platform: z.enum(['pinterest']),
   is_active: z.boolean(),
-  pinterest_board_id: z.string().min(5, "O ID do Board do Pinterest é obrigatório."),
+  pinterest_board_id: z.string().nullable().optional(), // Corrigido para ser opcional
   
   // Novos campos para a automação de criação
   source_category_id: z.string().uuid().nullable().optional(),
@@ -22,6 +22,16 @@ export const storyAutomationSchema = z.object({
 }).refine(data => {
     if (data.frequencyType !== 'custom') return !!data.time;
     return true;
-}, { message: "A hora é obrigatória.", path: ['time'] });
+}, { message: "A hora é obrigatória.", path: ['time'] })
+.refine(data => {
+    // Adicionada validação condicional para o ID do board
+    if (data.platform === 'pinterest') {
+        return !!data.pinterest_board_id && data.pinterest_board_id.length > 5;
+    }
+    return true;
+}, {
+    message: "O ID do Board do Pinterest é obrigatório e deve ter mais de 5 caracteres.",
+    path: ['pinterest_board_id'],
+});
 
 export type StoryAutomationFormData = z.infer<typeof storyAutomationSchema>;
