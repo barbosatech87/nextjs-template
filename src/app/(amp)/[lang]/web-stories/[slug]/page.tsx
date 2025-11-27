@@ -92,27 +92,22 @@ export default async function WebStoryPage({ params }: WebStoryPageProps) {
             </amp-story-grid-layer>
 
             {/* Camada de Conteúdo (Livre) */}
-            <amp-story-grid-layer template="vertical" className="relative">
-              <div className="w-full h-full relative">
-                {page.elements.map((element: any) => (
-                  <div
-                    key={element.id}
-                    className="story-text absolute"
-                    style={{
-                      // Convertemos os estilos do React para CSS inline
-                      ...element.style,
-                      // Garantimos que a posição seja absoluta em relação à camada
-                      position: 'absolute',
-                    }}
-                  >
-                    {element.type === 'text' && (
-                        // Renderizamos o texto. 
-                        // Nota: O editor salva quebras de linha? Se sim, pre-wrap ajuda.
-                        <span style={{ whiteSpace: 'pre-wrap' }}>{element.content}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
+            <amp-story-grid-layer>
+              {page.elements.map((element: any) => {
+                if (element.type === 'text') {
+                  return (
+                    <div
+                      key={element.id}
+                      style={{
+                        ...element.style,
+                        position: 'absolute',
+                      }}
+                      dangerouslySetInnerHTML={{ __html: element.content || '' }}
+                    />
+                  );
+                }
+                return null;
+              })}
             </amp-story-grid-layer>
 
           </amp-story-page>
