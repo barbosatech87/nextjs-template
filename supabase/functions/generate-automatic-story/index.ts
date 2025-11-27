@@ -146,7 +146,7 @@ async function generateAndUploadImage(prompt, supabase) {
                 prompt: prompt,
                 negative_prompt: "text, words, letters, numbers, signature, watermark",
                 aspect_ratio: "9:16",
-                num_inference_steps: 6, // Aumentado um pouco para mais detalhes
+                num_inference_steps: 4, // Corrigido para o valor máximo permitido
                 output_format: "png",
             },
         }),
