@@ -33,7 +33,7 @@ async function updateLog(supabase, logId, status, message, detailsUpdate = {}, s
   await supabase.from('story_automation_logs').update(updatePayload).eq('id', logId);
 }
 
-// --- FUNÇÕES DE IA (REPLICATE) ---
+// --- FUNÇÕES DE IA (REPLICATE & OPENAI) ---
 
 async function runReplicatePrediction(model, input) {
     const initResponse = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
@@ -62,56 +62,79 @@ async function runReplicatePrediction(model, input) {
     throw new Error(`Replicate generation timed out for model ${model}.`);
 }
 
+async function generateStoryScriptAndStyle(postContent, pageCount) {
+    const systemPrompt = `You are an expert editor and creative director for Christian social media. Your task is to read a blog post and create a cohesive plan for a Web Story.
 
-async function generateStoryPagesWithReplicate(postTitle, postContent, pageCount) {
-    // ETAPA 1: Extrair os pontos-chave do conteúdo completo
-    const keyPointsSystemPrompt = `You are an expert editor specializing in distilling complex articles into their core narrative points for a Christian audience. Your task is to read the following blog post and extract its essential narrative arc.
-    
     RULES:
-    1. Identify a compelling hook (an intriguing question or statement).
-    2. Extract ${pageCount - 2} distinct key points that form the body of the argument.
-    3. Identify a concise, thought-provoking conclusion.
-    4. Your output MUST be a valid JSON object with this exact structure: { "hook": "...", "key_points": ["...", "..."], "conclusion": "..." }`;
+    1.  Distill the article into a narrative arc: a hook, ${pageCount - 2} key points, and a conclusion.
+    2.  For each point, write a short, engaging text for a story page (50-200 characters, use simple HTML like <strong>).
+    3.  Define a single, consistent "visual_style_guide" for the entire story. This guide should describe a minimalist watercolor style, a specific color palette, and recurring symbolic elements.
+    4.  Your output MUST be a valid JSON object with this exact structure: 
+        { 
+          "visual_style_guide": "A paragraph describing the consistent visual style.",
+          "pages": [ 
+            { "text": "Engaging text for page 1..." },
+            { "text": "Engaging text for page 2..." }
+          ] 
+        }`;
 
-    const keyPointsUserPrompt = `Article Content:\n\n${postContent}`;
+    const userPrompt = `Article Content:\n\n${postContent}\n\nCreate a ${pageCount}-page Web Story plan based on this article.`;
 
-    const keyPointsOutput = await runReplicatePrediction("openai/gpt-4o-mini", {
-        prompt: `${keyPointsSystemPrompt}\n\n${keyPointsUserPrompt}`,
+    const output = await runReplicatePrediction("openai/gpt-4o-mini", {
+        prompt: `${systemPrompt}\n\n${userPrompt}`,
         prompt_template: "<s>[INST] {prompt} [/INST] ",
     });
 
-    const rawKeyPoints = keyPointsOutput.join('');
-    const keyPointsMatch = rawKeyPoints.match(/\{[\s\S]*\}/);
-    if (!keyPointsMatch) throw new Error("AI did not return valid JSON for key points.");
-    const keyPoints = JSON.parse(keyPointsMatch[0]);
+    const rawJson = output.join('');
+    const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("AI did not return valid JSON for the story plan.");
+    const plan = JSON.parse(jsonMatch[0]);
 
-    // ETAPA 2: Gerar as páginas da story a partir dos pontos-chave
-    const storyGenSystemPrompt = `You are a creative scriptwriter for social media, specializing in Christian Web Stories. Your tone is conversational, inspiring, and direct. Transform the following narrative points into engaging, short text for a Web Story. Also, create a descriptive, artistic image prompt for each page.
-
-    RULES:
-    1.  Each page's text must be original, based on the point, and between 50 and 200 characters. Use simple HTML like <strong> for emphasis.
-    2.  Image prompts must be symbolic, artistic, and suitable for the 'flux-schnell' model. No text in image prompts.
-    3.  The story must flow logically, creating a narrative journey.
-    4.  Your output MUST be a valid JSON object with this exact structure: { "pages": [ { "text": "...", "image_prompt": "..." }, ... ] }`;
-
-    const storyGenUserPrompt = `Narrative Points:\n\n${JSON.stringify(keyPoints, null, 2)}\n\nCreate a ${pageCount}-page Web Story based on these points.`;
-
-    const storyPagesOutput = await runReplicatePrediction("openai/gpt-4o-mini", {
-        prompt: `${storyGenSystemPrompt}\n\n${storyGenUserPrompt}`,
-        prompt_template: "<s>[INST] {prompt} [/INST] ",
-    });
-
-    const rawStoryPages = storyPagesOutput.join('');
-    const storyPagesMatch = rawStoryPages.match(/\{[\s\S]*\}/);
-    if (!storyPagesMatch) throw new Error("AI did not return valid JSON for story pages.");
-    const content = JSON.parse(storyPagesMatch[0]);
-
-    if (!content.pages || !Array.isArray(content.pages)) throw new Error("AI did not return a valid 'pages' array.");
-    return content.pages;
+    if (!plan.visual_style_guide || !plan.pages || !Array.isArray(plan.pages)) {
+        throw new Error("AI did not return the correct structure for the story plan.");
+    }
+    return plan;
 }
 
+async function generateImagePrompt(visualStyleGuide, pageText) {
+    const systemPrompt = `You are a creative assistant that writes image prompts for an AI art generator. Your goal is to combine a consistent style guide with a specific page's text to create a single, effective prompt.
 
-async function generateAndUploadImageWithReplicate(prompt, supabase) {
+    RULES:
+    1.  Adhere strictly to the provided visual style guide.
+    2.  Create a symbolic, artistic visual representation of the page text.
+    3.  The final prompt must be in English.
+    4.  Return ONLY the final image prompt as a single string.`;
+
+    const userPrompt = `Visual Style Guide: "${visualStyleGuide}"\n\nPage Text: "${pageText}"`;
+
+    try {
+        // Prioridade: GPT-4o-mini via Replicate
+        const output = await runReplicatePrediction("openai/gpt-4o-mini", {
+            prompt: `${systemPrompt}\n\n${userPrompt}`,
+            prompt_template: "<s>[INST] {prompt} [/INST] ",
+        });
+        return output.join('').trim();
+    } catch (replicateError) {
+        console.warn(`Replicate/GPT-4o-mini failed for image prompt: ${replicateError.message}. Falling back to Claude.`);
+        
+        // Fallback: Claude
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("CLAUDE_API_KEY"), "anthropic-version": "2023-06-01" },
+            body: JSON.stringify({
+                model: "claude-3-haiku-20240307", // Usando um modelo mais rápido para fallback
+                max_tokens: 500,
+                system: systemPrompt,
+                messages: [{ role: "user", content: userPrompt }],
+            }),
+        });
+        if (!response.ok) throw new Error(`Claude fallback failed: ${await response.text()}`);
+        const data = await response.json();
+        return data.content[0].text.trim();
+    }
+}
+
+async function generateAndUploadImage(prompt, supabase) {
     const initResponse = await fetch("https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions", {
         method: "POST",
         headers: {
@@ -121,8 +144,9 @@ async function generateAndUploadImageWithReplicate(prompt, supabase) {
         body: JSON.stringify({
             input: {
                 prompt: prompt,
+                negative_prompt: "text, words, letters, numbers, signature, watermark",
                 aspect_ratio: "9:16",
-                num_inference_steps: 4,
+                num_inference_steps: 6, // Aumentado um pouco para mais detalhes
                 output_format: "png",
             },
         }),
@@ -134,7 +158,7 @@ async function generateAndUploadImageWithReplicate(prompt, supabase) {
             const retryAfter = errorBody.retry_after || 5;
             console.warn(`Rate limited. Retrying after ${retryAfter} seconds...`);
             await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-            return generateAndUploadImageWithReplicate(prompt, supabase);
+            return generateAndUploadImage(prompt, supabase);
         }
         throw new Error(`Replicate Image Init Error: ${errorBody.detail || 'Unknown error'}`);
     }
@@ -199,19 +223,17 @@ serve(async (req) => {
     if (postError || !post) throw new Error(`Nenhum post novo encontrado. ${postError?.message || ''}`);
     await updateLog(supabase, logId, 'processing', `Post encontrado: "${post.title}"`);
 
-    // AQUI ESTÁ A MUDANÇA PRINCIPAL: Passando o conteúdo completo do post
-    const storyPagesContent = await generateStoryPagesWithReplicate(post.title, post.content, automation.number_of_pages);
-    await updateLog(supabase, logId, 'processing', 'Conteúdo das páginas gerado pela IA (Replicate).');
+    const { visual_style_guide, pages: storyScript } = await generateStoryScriptAndStyle(post.content, automation.number_of_pages);
+    await updateLog(supabase, logId, 'processing', 'Roteiro e guia de estilo gerados.', { visual_style_guide });
 
     const finalPages = [];
-    for (const [index, pageContent] of storyPagesContent.entries()) {
-      await updateLog(supabase, logId, 'processing', `Gerando imagem para a página ${index + 1} (Replicate)...`);
+    for (const [index, pageContent] of storyScript.entries()) {
+      await updateLog(supabase, logId, 'processing', `Gerando imagem para a página ${index + 1}...`);
       
-      if (index > 0) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+      if (index > 0) await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const imageUrl = await generateAndUploadImageWithReplicate(pageContent.image_prompt, supabase);
+      const imagePrompt = await generateImagePrompt(visual_style_guide, pageContent.text);
+      const imageUrl = await generateAndUploadImage(imagePrompt, supabase);
       
       const page = {
         id: crypto.randomUUID(),
@@ -225,12 +247,12 @@ serve(async (req) => {
         }]
       };
       
-      if (automation.add_post_link_on_last_page && index === storyPagesContent.length - 1) {
+      if (automation.add_post_link_on_last_page && index === storyScript.length - 1) {
         page.outlink = { href: `https://www.paxword.com/pt/blog/${post.slug}`, ctaText: 'Leia o Artigo' };
       }
       finalPages.push(page);
     }
-    await updateLog(supabase, logId, 'processing', 'Imagens geradas e enviadas.');
+    await updateLog(supabase, logId, 'processing', 'Todas as imagens foram geradas.');
 
     const posterImageUrl = finalPages[0].backgroundSrc;
     const slug = post.slug + '-story';
