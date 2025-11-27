@@ -28,27 +28,27 @@ async function logEvent(supabase, automationId, status, message, details = {}, s
 }
 
 // --- UTILITÁRIO REPLICATE ---
-async function runReplicatePrediction(version, input) {
+// Agora aceita 'owner/model' e usa a rota que pega a versão mais recente automaticamente
+async function runReplicateModel(model, input) {
   const replicateKey = Deno.env.get("REPLICATE_API_KEY");
   if (!replicateKey) throw new Error("REPLICATE_API_KEY não configurada.");
 
-  // 1. Inicia a Predição
-  const startResponse = await fetch("https://api.replicate.com/v1/predictions", {
+  console.log(`[Replicate] Iniciando modelo: ${model}`);
+
+  // 1. Inicia a Predição usando o endpoint de modelo (sempre pega a última versão)
+  const startResponse = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${replicateKey}`,
       "Content-Type": "application/json",
       "Prefer": "wait" // Tenta esperar o resultado imediato (até 60s)
     },
-    body: JSON.stringify({
-      version: version, // Hash da versão do modelo
-      input: input
-    })
+    body: JSON.stringify({ input: input })
   });
 
   if (!startResponse.ok) {
     const errText = await startResponse.text();
-    throw new Error(`Erro Replicate (Start): ${startResponse.status} - ${errText}`);
+    throw new Error(`Erro Replicate (Start ${model}): ${startResponse.status} - ${errText}`);
   }
 
   let prediction = await startResponse.json();
@@ -64,14 +64,14 @@ async function runReplicatePrediction(version, input) {
   }
 
   if (prediction.status !== "succeeded") {
-    throw new Error(`Replicate falhou: ${prediction.error || prediction.status}`);
+    console.error("Replicate failed output:", prediction);
+    throw new Error(`Replicate falhou (${model}): ${prediction.error || prediction.status}`);
   }
 
   return prediction.output;
 }
 
-// --- GERAÇÃO DE TEXTO (REPLICATE - Llama 3 70B) ---
-// Usamos Llama 3 70B pois gpt-4o-mini não existe no Replicate.
+// --- GERAÇÃO DE TEXTO (REPLICATE - openai/gpt-4o-mini) ---
 async function generateStoryScript(postContent, pageCount) {
   const systemPrompt = `Você é uma IA editora especializada em Web Stories.
   Sua tarefa é resumir o artigo fornecido em um roteiro de EXATAMENTE ${pageCount} páginas.
@@ -91,47 +91,48 @@ async function generateStoryScript(postContent, pageCount) {
 
   const userPrompt = `Gere o roteiro JSON para o seguinte conteúdo:\n\n${postContent.substring(0, 6000)}`;
 
-  // Meta Llama 3 70B Instruct (Hash da versão mais recente no Replicate)
-  const modelVersion = "fbfb20b472b7f3bd1191eb997934474f838295138b84c9c3857e61303833075b"; 
+  // Modelo solicitado pelo usuário
+  const model = "openai/gpt-4o-mini"; 
   
-  const output = await runReplicatePrediction(modelVersion, {
+  // A API do gpt-4o-mini no Replicate aceita 'prompt' e 'system_prompt'
+  const output = await runReplicateModel(model, {
     prompt: userPrompt,
     system_prompt: systemPrompt,
-    max_tokens: 2000,
+    max_tokens: 2048,
     temperature: 0.5,
-    top_p: 0.9,
   });
 
-  // O Replicate retorna o texto como um array de strings (tokens/chunks)
-  const fullText = output.join("").trim();
+  // O output do gpt-4o-mini no Replicate geralmente é um array de strings (stream) ou uma string única
+  const fullText = Array.isArray(output) ? output.join("") : output;
   
-  // Tenta limpar blocos de markdown se houver
+  // Limpeza do JSON (caso venha com markdown ```json ... ```)
   const cleanJson = fullText.replace(/```json/g, "").replace(/```/g, "").trim();
   
   try {
     return JSON.parse(cleanJson);
   } catch (e) {
-    console.error("Erro ao fazer parse do JSON do Llama:", cleanJson);
+    console.error("Erro ao fazer parse do JSON:", cleanJson);
     throw new Error("A IA gerou um JSON inválido.");
   }
 }
 
-// --- GERAÇÃO DE IMAGEM (REPLICATE - Flux Schnell) ---
+// --- GERAÇÃO DE IMAGEM (REPLICATE - black-forest-labs/flux-schnell) ---
 async function generateImageWithReplicate(prompt, userId, supabase) {
-  // Hash do black-forest-labs/flux-schnell
-  const modelVersion = "f4beb6696700cb744360434246473347b7d6c6e767426630c634032607963236";
+  // Modelo solicitado pelo usuário
+  const model = "black-forest-labs/flux-schnell";
   
   const finalPrompt = `Vertical image (9:16), minimalist watercolor style, soft pastel colors, christian spiritual theme. NO TEXT. ${prompt}`;
 
-  const output = await runReplicatePrediction(modelVersion, {
+  const output = await runReplicateModel(model, {
     prompt: finalPrompt,
     aspect_ratio: "9:16",
     output_format: "png",
-    go_fast: true, // Configuração específica do Schnell
+    go_fast: true,
     disable_safety_checker: true 
   });
 
-  const imageUrl = output[0]; // Flux retorna lista de URLs
+  // O Flux Schnell retorna uma lista de URLs de saída
+  const imageUrl = Array.isArray(output) ? output[0] : output;
   if (!imageUrl) throw new Error("Replicate não retornou URL de imagem.");
 
   // Upload para Supabase Storage
@@ -173,7 +174,7 @@ serve(async (req: Request) => {
 
     if (!automationId) throw new Error("Automation ID is missing");
 
-    await logEvent(supabase, automationId, 'processing', 'Iniciando automação via Replicate...');
+    await logEvent(supabase, automationId, 'processing', 'Iniciando automação via Replicate (gpt-4o-mini + flux-schnell)...');
 
     // 1. Busca Automação e Post
     const { data: automation, error: autoError } = await supabase.from('story_automations').select('*').eq('id', automationId).single();
@@ -190,7 +191,7 @@ serve(async (req: Request) => {
       return new Response(JSON.stringify({ message: "No posts found" }), { headers: corsHeaders });
     }
 
-    await logEvent(supabase, automationId, 'processing', `Post selecionado: "${post.title}". Gerando roteiro com Llama 3 (Replicate)...`);
+    await logEvent(supabase, automationId, 'processing', `Post selecionado: "${post.title}". Gerando roteiro com gpt-4o-mini (Replicate)...`);
 
     // 2. Gera Roteiro (Texto)
     const script = await generateStoryScript(post.content, automation.number_of_pages);
@@ -252,7 +253,7 @@ serve(async (req: Request) => {
       story_id: newStory.id,
     });
 
-    // Tradução (opcional, pode ser disparada de forma assíncrona)
+    // Tradução (opcional)
     if (status === 'published') {
       fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/translate-web-story`, {
         method: 'POST',
