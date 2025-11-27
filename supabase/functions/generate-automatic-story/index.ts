@@ -79,9 +79,16 @@ async function generateStoryPagesWithReplicate(postTitle, postSummary, pageCount
         throw new Error("Replicate text generation timed out or failed to produce output.");
     }
 
-    const jsonString = finalPrediction.output.join('');
+    const rawOutput = finalPrediction.output.join('');
+    // Extrai o JSON de dentro de um possível bloco de código Markdown
+    const jsonMatch = rawOutput.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+        throw new Error("AI did not return a valid JSON object in its response.");
+    }
+    const jsonString = jsonMatch[0];
     const content = JSON.parse(jsonString);
-    if (!content.pages || !Array.isArray(content.pages)) throw new Error("AI did not return a valid 'pages' array.");
+
+    if (!content.pages || !Array.isArray(content.pages)) throw new Error("AI did not return a valid 'pages' array in the JSON object.");
     return content.pages;
 }
 
