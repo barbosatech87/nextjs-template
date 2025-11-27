@@ -27,7 +27,6 @@ export type StoryAutomation = {
   name: string;
   is_active: boolean;
   frequency_cron_expression: string;
-  // Campos atualizados para refletir o schema correto
   source_category_id?: string | null;
   number_of_pages?: number;
   add_post_link_on_last_page?: boolean;
@@ -37,12 +36,16 @@ export type StoryAutomation = {
 export type StoryAutomationLog = {
   id: string;
   story_id: string;
+  automation_id: string | null;
   status: 'success' | 'error' | 'processing';
   message: string | null;
   details: Record<string, unknown> | null;
   created_at: string;
   web_stories: {
     title: string;
+  } | null;
+  story_automations: {
+    name: string;
   } | null;
 };
 
@@ -265,7 +268,7 @@ export async function getStoryAutomationLogs(): Promise<StoryAutomationLog[]> {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase
       .from('story_automation_logs')
-      .select('*, web_stories(title)')
+      .select('*, web_stories(title), story_automations(name)')
       .order('created_at', { ascending: false })
       .limit(100);
 

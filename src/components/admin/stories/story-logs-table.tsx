@@ -27,7 +27,7 @@ export function StoryLogsTable({ logs }: StoryLogsTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Story</TableHead>
+            <TableHead>Automação / Story</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Mensagem</TableHead>
             <TableHead>Data</TableHead>
@@ -44,7 +44,14 @@ export function StoryLogsTable({ logs }: StoryLogsTableProps) {
           ) : (
             logs.map((log) => (
               <TableRow key={log.id}>
-                <TableCell className="font-medium">{log.web_stories?.title || 'N/A'}</TableCell>
+                <TableCell className="font-medium">
+                  <div className="flex flex-col">
+                    <span>{log.story_automations?.name || 'Automação Desconhecida'}</span>
+                    {log.web_stories?.title && (
+                      <span className="text-xs text-muted-foreground">Story: {log.web_stories.title}</span>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell>
                   <Badge variant={getStatusVariant(log.status)}>
                     {log.status === 'processing' && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
