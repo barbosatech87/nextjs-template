@@ -1,15 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import React from 'react';
 
-// IntrinsicElements are looked up on the global JSX namespace.
-// We avoid top-level imports here to ensure this file is treated as a script/global declaration.
+// Garante que este arquivo seja tratado como um módulo para permitir declare global
+export {};
 
-declare namespace JSX {
-  interface IntrinsicElements {
-    'amp-story': any;
-    'amp-story-page': any;
-    'amp-story-grid-layer': any;
-    'amp-img': any;
-    'amp-story-bookend': any;
-    'amp-video': any;
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'amp-story': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & { [key: string]: any };
+      'amp-story-page': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & { [key: string]: any };
+      'amp-story-grid-layer': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & { [key: string]: any };
+      'amp-img': React.DetailedHTMLProps<React.ImgHTMLAttributes<HTMLImageElement>, HTMLImageElement> & { [key: string]: any };
+      'amp-story-bookend': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & { [key: string]: any };
+      'amp-video': React.DetailedHTMLProps<React.VideoHTMLAttributes<HTMLVideoElement>, HTMLVideoElement> & { [key: string]: any };
+    }
   }
 }
