@@ -68,17 +68,19 @@ async function generateStoryScriptAndStyle(postContent, pageCount) {
     RULES:
     1.  Distill the article into a narrative arc: a hook, ${pageCount - 2} key points, and a conclusion.
     2.  For each point, write a short, engaging text for a story page (50-200 characters, use simple HTML like <strong>).
-    3.  Define a single, consistent "visual_style_guide" for the entire story. This guide should describe a minimalist watercolor style, a specific color palette, and recurring symbolic elements.
-    4.  Your output MUST be a valid JSON object with this exact structure: 
+    3.  **IMPORTANT: The text content for the pages (inside the "text" field) MUST be written in Portuguese (Brazil), regardless of the input language.**
+    4.  Define a single, consistent "visual_style_guide" for the entire story. This guide should describe a minimalist watercolor style, a specific color palette, and recurring symbolic elements.
+    5.  **IMPORTANT: The "visual_style_guide" MUST be written in English to be used by image generation models.**
+    6.  Your output MUST be a valid JSON object with this exact structure: 
         { 
-          "visual_style_guide": "A paragraph describing the consistent visual style.",
+          "visual_style_guide": "A paragraph describing the consistent visual style (IN ENGLISH).",
           "pages": [ 
-            { "text": "Engaging text for page 1..." },
-            { "text": "Engaging text for page 2..." }
+            { "text": "Engaging text for page 1 (IN PORTUGUESE)..." },
+            { "text": "Engaging text for page 2 (IN PORTUGUESE)..." }
           ] 
         }`;
 
-    const userPrompt = `Article Content:\n\n${postContent}\n\nCreate a ${pageCount}-page Web Story plan based on this article.`;
+    const userPrompt = `Article Content:\n\n${postContent}\n\nCreate a ${pageCount}-page Web Story plan based on this article. Remember: Page text in Portuguese, Visual Guide in English.`;
 
     const output = await runReplicatePrediction("openai/gpt-4o-mini", {
         prompt: `${systemPrompt}\n\n${userPrompt}`,
