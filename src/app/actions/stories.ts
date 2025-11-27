@@ -25,10 +25,9 @@ export type CreateStoryData = {
 export type StoryAutomation = {
   id: string;
   name: string;
-  platform: 'pinterest';
   is_active: boolean;
   frequency_cron_expression: string;
-  pinterest_board_id: string | null;
+  // Campos atualizados para refletir o schema correto
   source_category_id?: string | null;
   number_of_pages?: number;
   add_post_link_on_last_page?: boolean;
@@ -344,7 +343,7 @@ export async function deleteStoryAutomation(id: string, lang: string) {
     await checkAdmin();
     const supabase = await createSupabaseServerClient();
     const { error } = await supabase.from('story_automations').delete().eq('id', id);
-    if (error) throw error;
+    if (error) throw new Error(error.message);
 
     revalidatePath(`/${lang}/admin/stories`);
     return { success: true, message: "Automação deletada com sucesso." };
