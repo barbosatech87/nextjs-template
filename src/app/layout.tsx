@@ -7,6 +7,7 @@ import AdsenseScript from '@/components/ads/adsense-script';
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Inter } from 'next/font/google';
 import { headers } from 'next/headers';
+import { i18n } from '@/lib/i18n/config';
 
 // NOTE: globals.css removed from here to prevent loading on AMP pages.
 // It is now imported in src/app/[lang]/layout.tsx
@@ -51,13 +52,15 @@ const jsonLd = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const headersList = await headers();
+  const headersList = headers();
+  const pathname = headersList.get('next-url') || '/';
+  const lang = i18n.locales.find(l => pathname.startsWith(`/${l}`)) || i18n.defaultLocale;
   const isAmp = headersList.get('x-is-amp') === 'true';
 
   // AMP SHELL: Renderização estrita para Google AMP
   if (isAmp) {
     return (
-      <html amp="" lang="pt" suppressHydrationWarning>
+      <html amp="" lang={lang} suppressHydrationWarning>
         <head>
           <meta charSet="utf-8" />
           <script async src="https://cdn.ampproject.org/v0.js"></script>
@@ -85,6 +88,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
     <html 
       suppressHydrationWarning 
       className={inter.variable}
+      lang={lang}
     >
       <body className="font-sans antialiased">
         <script

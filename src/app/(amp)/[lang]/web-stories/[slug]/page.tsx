@@ -99,6 +99,7 @@ export default async function WebStoryPage({ params }: WebStoryPageProps) {
         publisher="PaxWord"
         publisher-logo-src="https://www.paxword.com/icon-192x192.svg"
         poster-portrait-src={story.poster_image_src}
+        suppressHydrationWarning
       >
         {pages.map((page: any) => (
           <amp-story-page key={page.id} id={page.id}>
