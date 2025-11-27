@@ -46,7 +46,7 @@ async function generateStoryPagesWithReplicate(postTitle, postSummary, pageCount
 
     const userPrompt = `Article Title: ${postTitle}\nArticle Summary: ${postSummary}\n\nCreate a ${pageCount}-page Web Story.`;
 
-    const response = await fetch("https://api.replicate.com/v1/models/openai/gpt-4o-mini/predictions", {
+    const initResponse = await fetch("https://api.replicate.com/v1/models/openai/gpt-4o-mini/predictions", {
         method: "POST",
         headers: {
             "Authorization": `Token ${Deno.env.get("REPLICATE_API_KEY")}`,
@@ -55,23 +55,37 @@ async function generateStoryPagesWithReplicate(postTitle, postSummary, pageCount
         body: JSON.stringify({
             input: {
                 prompt: `${systemPrompt}\n\n${userPrompt}`,
-                prompt_template: "<s>[INST] {prompt} [/INST] ", // Template genérico
+                prompt_template: "<s>[INST] {prompt} [/INST] ",
             },
         }),
     });
 
-    if (!response.ok) throw new Error(`Replicate Text Gen Error: ${await response.text()}`);
-    const result = await response.json();
-    
-    // O modelo é síncrono, o resultado vem direto em 'output'
-    const jsonString = result.output.join('');
+    if (!initResponse.ok) throw new Error(`Replicate Text Init Error: ${await initResponse.text()}`);
+    const prediction = await initResponse.json();
+    const pollingUrl = prediction.urls.get;
+
+    let finalPrediction;
+    for (let i = 0; i < 20; i++) { // Timeout ~40 segundos
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const pollResponse = await fetch(pollingUrl, {
+            headers: { "Authorization": `Token ${Deno.env.get("REPLICATE_API_KEY")}` }
+        });
+        finalPrediction = await pollResponse.json();
+        if (finalPrediction.status === 'succeeded') break;
+        if (finalPrediction.status === 'failed') throw new Error(`Replicate Text Gen Failed: ${finalPrediction.error}`);
+    }
+
+    if (finalPrediction?.status !== 'succeeded' || !finalPrediction.output) {
+        throw new Error("Replicate text generation timed out or failed to produce output.");
+    }
+
+    const jsonString = finalPrediction.output.join('');
     const content = JSON.parse(jsonString);
     if (!content.pages || !Array.isArray(content.pages)) throw new Error("AI did not return a valid 'pages' array.");
     return content.pages;
 }
 
 async function generateAndUploadImageWithReplicate(prompt, supabase) {
-    // 1. Iniciar a predição na Replicate
     const initResponse = await fetch("https://api.replicate.com/v1/predictions", {
         method: "POST",
         headers: {
@@ -84,7 +98,7 @@ async function generateAndUploadImageWithReplicate(prompt, supabase) {
                 prompt: prompt,
                 width: 1024,
                 height: 1792,
-                num_inference_steps: 10, // Mais rápido
+                num_inference_steps: 10,
             },
         }),
     });
@@ -93,9 +107,8 @@ async function generateAndUploadImageWithReplicate(prompt, supabase) {
     const prediction = await initResponse.json();
     const pollingUrl = prediction.urls.get;
 
-    // 2. Fazer polling até a imagem estar pronta
     let finalPrediction;
-    for (let i = 0; i < 20; i++) { // Timeout de ~40 segundos
+    for (let i = 0; i < 20; i++) {
         await new Promise(resolve => setTimeout(resolve, 2000));
         const pollResponse = await fetch(pollingUrl, {
             headers: { "Authorization": `Token ${Deno.env.get("REPLICATE_API_KEY")}` }
@@ -108,7 +121,6 @@ async function generateAndUploadImageWithReplicate(prompt, supabase) {
     const tempUrl = finalPrediction?.output?.[0];
     if (!tempUrl) throw new Error("Image URL not returned by Replicate.");
 
-    // 3. Baixar a imagem e fazer upload para o Supabase Storage
     const imageRes = await fetch(tempUrl);
     if (!imageRes.ok) throw new Error("Failed to download generated image from Replicate.");
     
