@@ -35,61 +35,81 @@ async function updateLog(supabase, logId, status, message, detailsUpdate = {}, s
 
 // --- FUNÇÕES DE IA (REPLICATE) ---
 
-async function generateStoryPagesWithReplicate(postTitle, postSummary, pageCount) {
-    const systemPrompt = `You are an AI expert creating Web Stories for a Christian blog. Transform a blog post into a concise, ${pageCount}-page story.
-    
-    RULES:
-    1.  Each page needs a background image prompt and short text (max 25 words). Use HTML tags like <strong>.
-    2.  Image prompts must be descriptive, artistic, symbolic, and suitable for the 'flux-schnell' model. No text in image prompts.
-    3.  The story must flow logically, summarizing the article's key points.
-    4.  Your output MUST be a valid JSON object: { "pages": [ { "text": "...", "image_prompt": "..." }, ... ] }`;
-
-    const userPrompt = `Article Title: ${postTitle}\nArticle Summary: ${postSummary}\n\nCreate a ${pageCount}-page Web Story.`;
-
-    const initResponse = await fetch("https://api.replicate.com/v1/models/openai/gpt-4o-mini/predictions", {
+async function runReplicatePrediction(model, input) {
+    const initResponse = await fetch(`https://api.replicate.com/v1/models/${model}/predictions`, {
         method: "POST",
         headers: {
             "Authorization": `Token ${Deno.env.get("REPLICATE_API_KEY")}`,
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-            input: {
-                prompt: `${systemPrompt}\n\n${userPrompt}`,
-                prompt_template: "<s>[INST] {prompt} [/INST] ",
-            },
-        }),
+        body: JSON.stringify({ input }),
     });
 
-    if (!initResponse.ok) throw new Error(`Replicate Text Init Error: ${await initResponse.text()}`);
+    if (!initResponse.ok) throw new Error(`Replicate Init Error for ${model}: ${await initResponse.text()}`);
     const prediction = await initResponse.json();
     const pollingUrl = prediction.urls.get;
 
-    let finalPrediction;
-    for (let i = 0; i < 20; i++) { // Timeout ~40 segundos
+    for (let i = 0; i < 30; i++) { // Timeout ~60 segundos
         await new Promise(resolve => setTimeout(resolve, 2000));
         const pollResponse = await fetch(pollingUrl, {
             headers: { "Authorization": `Token ${Deno.env.get("REPLICATE_API_KEY")}` }
         });
-        finalPrediction = await pollResponse.json();
-        if (finalPrediction.status === 'succeeded') break;
-        if (finalPrediction.status === 'failed') throw new Error(`Replicate Text Gen Failed: ${finalPrediction.error}`);
+        const finalPrediction = await pollResponse.json();
+        if (finalPrediction.status === 'succeeded') return finalPrediction.output;
+        if (finalPrediction.status === 'failed') throw new Error(`Replicate Gen Failed for ${model}: ${finalPrediction.error}`);
     }
 
-    if (finalPrediction?.status !== 'succeeded' || !finalPrediction.output) {
-        throw new Error("Replicate text generation timed out or failed to produce output.");
-    }
+    throw new Error(`Replicate generation timed out for model ${model}.`);
+}
 
-    const rawOutput = finalPrediction.output.join('');
-    const jsonMatch = rawOutput.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-        throw new Error("AI did not return a valid JSON object in its response.");
-    }
-    const jsonString = jsonMatch[0];
-    const content = JSON.parse(jsonString);
 
-    if (!content.pages || !Array.isArray(content.pages)) throw new Error("AI did not return a valid 'pages' array in the JSON object.");
+async function generateStoryPagesWithReplicate(postTitle, postContent, pageCount) {
+    // ETAPA 1: Extrair os pontos-chave do conteúdo completo
+    const keyPointsSystemPrompt = `You are an expert editor specializing in distilling complex articles into their core narrative points for a Christian audience. Your task is to read the following blog post and extract its essential narrative arc.
+    
+    RULES:
+    1. Identify a compelling hook (an intriguing question or statement).
+    2. Extract ${pageCount - 2} distinct key points that form the body of the argument.
+    3. Identify a concise, thought-provoking conclusion.
+    4. Your output MUST be a valid JSON object with this exact structure: { "hook": "...", "key_points": ["...", "..."], "conclusion": "..." }`;
+
+    const keyPointsUserPrompt = `Article Content:\n\n${postContent}`;
+
+    const keyPointsOutput = await runReplicatePrediction("openai/gpt-4o-mini", {
+        prompt: `${keyPointsSystemPrompt}\n\n${keyPointsUserPrompt}`,
+        prompt_template: "<s>[INST] {prompt} [/INST] ",
+    });
+
+    const rawKeyPoints = keyPointsOutput.join('');
+    const keyPointsMatch = rawKeyPoints.match(/\{[\s\S]*\}/);
+    if (!keyPointsMatch) throw new Error("AI did not return valid JSON for key points.");
+    const keyPoints = JSON.parse(keyPointsMatch[0]);
+
+    // ETAPA 2: Gerar as páginas da story a partir dos pontos-chave
+    const storyGenSystemPrompt = `You are a creative scriptwriter for social media, specializing in Christian Web Stories. Your tone is conversational, inspiring, and direct. Transform the following narrative points into engaging, short text for a Web Story. Also, create a descriptive, artistic image prompt for each page.
+
+    RULES:
+    1.  Each page's text must be original, based on the point, and between 50 and 200 characters. Use simple HTML like <strong> for emphasis.
+    2.  Image prompts must be symbolic, artistic, and suitable for the 'flux-schnell' model. No text in image prompts.
+    3.  The story must flow logically, creating a narrative journey.
+    4.  Your output MUST be a valid JSON object with this exact structure: { "pages": [ { "text": "...", "image_prompt": "..." }, ... ] }`;
+
+    const storyGenUserPrompt = `Narrative Points:\n\n${JSON.stringify(keyPoints, null, 2)}\n\nCreate a ${pageCount}-page Web Story based on these points.`;
+
+    const storyPagesOutput = await runReplicatePrediction("openai/gpt-4o-mini", {
+        prompt: `${storyGenSystemPrompt}\n\n${storyGenUserPrompt}`,
+        prompt_template: "<s>[INST] {prompt} [/INST] ",
+    });
+
+    const rawStoryPages = storyPagesOutput.join('');
+    const storyPagesMatch = rawStoryPages.match(/\{[\s\S]*\}/);
+    if (!storyPagesMatch) throw new Error("AI did not return valid JSON for story pages.");
+    const content = JSON.parse(storyPagesMatch[0]);
+
+    if (!content.pages || !Array.isArray(content.pages)) throw new Error("AI did not return a valid 'pages' array.");
     return content.pages;
 }
+
 
 async function generateAndUploadImageWithReplicate(prompt, supabase) {
     const initResponse = await fetch("https://api.replicate.com/v1/models/black-forest-labs/flux-schnell/predictions", {
@@ -179,7 +199,8 @@ serve(async (req) => {
     if (postError || !post) throw new Error(`Nenhum post novo encontrado. ${postError?.message || ''}`);
     await updateLog(supabase, logId, 'processing', `Post encontrado: "${post.title}"`);
 
-    const storyPagesContent = await generateStoryPagesWithReplicate(post.title, post.summary, automation.number_of_pages);
+    // AQUI ESTÁ A MUDANÇA PRINCIPAL: Passando o conteúdo completo do post
+    const storyPagesContent = await generateStoryPagesWithReplicate(post.title, post.content, automation.number_of_pages);
     await updateLog(supabase, logId, 'processing', 'Conteúdo das páginas gerado pela IA (Replicate).');
 
     const finalPages = [];
