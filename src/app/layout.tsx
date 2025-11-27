@@ -57,7 +57,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   // AMP SHELL: Renderização estrita para Google AMP
   if (isAmp) {
     return (
-      <html amp="" lang="pt">
+      <html amp="" lang="pt" suppressHydrationWarning>
         <head>
           <meta charSet="utf-8" />
           <script async src="https://cdn.ampproject.org/v0.js"></script>
