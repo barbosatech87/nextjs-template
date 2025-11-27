@@ -52,7 +52,7 @@ const jsonLd = {
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const headersList = headers();
+  const headersList = await headers();
   const pathname = headersList.get('next-url') || '/';
   const lang = i18n.locales.find(l => pathname.startsWith(`/${l}`)) || i18n.defaultLocale;
   const isAmp = headersList.get('x-is-amp') === 'true';
