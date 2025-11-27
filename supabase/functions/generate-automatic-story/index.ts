@@ -16,112 +16,25 @@ const corsHeaders = {
 async function logEvent(supabase, automationId, status, message, details = {}, storyId = null) {
   console.log(`[LOG - ${status}] ${message}`);
   
-  try {
-    // Garante que o objeto details seja serializável
-    const safeDetails = JSON.parse(JSON.stringify(details));
-    
-    await supabase.from('story_automation_logs').insert({
-      automation_id: automationId,
-      story_id: storyId,
-      status,
-      message,
-      details: safeDetails,
-    });
-  } catch (logError) {
-    console.error(`[DB LOG ERROR] Failed to write log:`, logError);
-  }
-}
-
-// --- GERAÇÃO DE TEXTO (openai/gpt-4o-mini via SDK) ---
-async function generateStoryScript(replicate, postContent, pageCount) {
-  console.log("Iniciando geração de roteiro com gpt-4o-mini...");
-
-  const systemPrompt = `Você é uma IA editora especializada em Web Stories.
-  Sua tarefa é resumir o artigo fornecido em um roteiro de EXATAMENTE ${pageCount} páginas.
-  
-  Sua saída DEVE ser APENAS um JSON válido (sem markdown, sem blocos de código) com esta estrutura exata:
-  {
-    "title": "Título curto (máx 40 chars)",
-    "slug": "titulo-slugificado",
-    "pages": [
-      { 
-        "page_number": 1, 
-        "text_content": "Texto curto e impactante (máx 150 chars).",
-        "image_prompt": "Descrição visual da cena para gerar a imagem de fundo em estilo aquarela minimalista. Em INGLÊS. Sem texto." 
-      }
-    ]
-  }`;
-
-  const userPrompt = `Conteúdo:\n\n${postContent.substring(0, 6000)}`;
-
-  const input = {
-    prompt: userPrompt,
-    system_prompt: systemPrompt,
-    max_tokens: 2048,
-    temperature: 0.5
-  };
-
-  // Usando a SDK oficial
-  const output = await replicate.run("openai/gpt-4o-mini", { input });
-
-  // O output do gpt-4o-mini no Replicate via SDK é geralmente um array de strings (stream) ou string única
-  const fullText = Array.isArray(output) ? output.join("") : String(output);
-  
-  // Limpeza robusta do JSON
-  const cleanJson = fullText
-    .replace(/```json/g, "")
-    .replace(/```/g, "")
-    .trim();
-  
-  try {
-    return JSON.parse(cleanJson);
-  } catch (e) {
-    console.error("Erro ao parsear JSON:", cleanJson);
-    throw new Error(`A IA gerou um formato inválido. Erro: ${e.message}`);
-  }
-}
-
-// --- GERAÇÃO DE IMAGEM (black-forest-labs/flux-schnell via SDK) ---
-async function generateImageWithReplicate(replicate, prompt, userId, supabase) {
-  const finalPrompt = `Vertical image (9:16), minimalist watercolor style, soft pastel colors, christian spiritual theme. NO TEXT. ${prompt}`;
-
-  const input = {
-    prompt: finalPrompt,
-    aspect_ratio: "9:16",
-    output_format: "png",
-    go_fast: true,
-    disable_safety_checker: true
-  };
-
-  // Usando a SDK oficial
-  const output = await replicate.run("black-forest-labs/flux-schnell", { input });
-
-  // Flux retorna um array de URLs (ReadableStream na web, mas a SDK deve tratar)
-  // Se for um array, pega o primeiro.
-  const imageUrl = Array.isArray(output) ? output[0] : String(output);
-  
-  if (!imageUrl || !imageUrl.startsWith('http')) {
-    throw new Error(`Replicate retornou output inválido para imagem: ${JSON.stringify(output)}`);
-  }
-
-  // Upload para Supabase Storage
-  const imageRes = await fetch(imageUrl);
-  if (!imageRes.ok) throw new Error("Falha ao baixar imagem do Replicate.");
-  
-  const arrayBuffer = await imageRes.arrayBuffer();
-  const fileName = `stories/${userId}/${crypto.randomUUID()}.png`;
-
-  const { error: uploadError } = await supabase.storage.from("blog_images").upload(fileName, arrayBuffer, {
-    contentType: 'image/png',
-    upsert: false,
-    cacheControl: '31536000, immutable'
+  // Tenta gravar no banco
+  const { error } = await supabase.from('story_automation_logs').insert({
+    automation_id: automationId,
+    story_id: storyId,
+    status,
+    message,
+    details: details ? JSON.parse(JSON.stringify(details)) : {},
   });
 
-  if (uploadError) throw new Error(`Erro upload storage: ${uploadError.message}`);
-
-  const { data: publicUrlData } = supabase.storage.from("blog_images").getPublicUrl(fileName);
-  return publicUrlData.publicUrl;
+  if (error) {
+    console.error(`[DB LOG ERROR] Failed to write log: ${error.message}`);
+    return error.message; // Retorna erro para debug
+  }
+  return null;
 }
+
+// --- UTILITÁRIOS REPLICATE ---
+// ... (Mantendo a função runReplicateModel simplificada que criamos antes se necessário, 
+// mas aqui vamos usar a SDK diretamente que é mais limpa, com try/catch melhorado)
 
 // --- MAIN ---
 serve(async (req: Request) => {
@@ -133,91 +46,140 @@ serve(async (req: Request) => {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: corsHeaders });
   }
 
-  // Inicializa a SDK do Replicate
+  // Inicializa SDK
   const replicateApiKey = Deno.env.get("REPLICATE_API_KEY");
   if (!replicateApiKey) {
-    return new Response(JSON.stringify({ error: 'REPLICATE_API_KEY not configured' }), { status: 500, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: 'Configuration Error: REPLICATE_API_KEY missing' }), { status: 500, headers: corsHeaders });
   }
-  
-  const replicate = new Replicate({
-    auth: replicateApiKey,
-  });
+  const replicate = new Replicate({ auth: replicateApiKey });
 
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
     auth: { persistSession: false }
   });
 
   let automationId = null;
+  const debugInfo = { logs: [], errors: [] }; // Coleta info para resposta HTTP
 
   try {
     const body = await req.json();
     automationId = body.automationId;
 
-    if (!automationId) throw new Error("Automation ID is missing");
+    if (!automationId) throw new Error("Automation ID is missing in request body");
 
-    await logEvent(supabase, automationId, 'processing', 'Iniciando automação via Replicate SDK...');
-
-    // 1. Busca Automação e Post
+    debugInfo.step = "Fetching automation";
     const { data: automation, error: autoError } = await supabase.from('story_automations').select('*').eq('id', automationId).single();
-    if (autoError || !automation) throw new Error("Automação não encontrada.");
+    
+    if (autoError) throw new Error(`Automation not found: ${autoError.message}`);
+    if (!automation) throw new Error("Automation not found (null data)");
     
     if (!automation.is_active) {
-      await logEvent(supabase, automationId, 'error', 'A automação está desativada.');
-      return new Response(JSON.stringify({ message: "Automation inactive" }), { headers: corsHeaders });
+      await logEvent(supabase, automationId, 'error', 'Automação inativa.');
+      return new Response(JSON.stringify({ message: "Automation is inactive", debug: debugInfo }), { headers: corsHeaders });
     }
 
+    debugInfo.step = "Fetching unused post";
+    // Chamada RPC
     const { data: post, error: postError } = await supabase.rpc('get_unused_post_for_story_automation', { p_automation_id: automation.id }).single();
-    if (postError || !post) {
-      await logEvent(supabase, automationId, 'processing', 'Nenhum post novo disponível para processar.');
-      return new Response(JSON.stringify({ message: "No posts found" }), { headers: corsHeaders });
+    
+    if (postError) {
+      // PGRST116 significa "nenhuma linha retornada" no .single(), o que é esperado se não houver posts
+      if (postError.code === 'PGRST116') {
+        const msg = 'Nenhum post novo disponível para processar (RPC returned no rows).';
+        await logEvent(supabase, automationId, 'processing', msg);
+        return new Response(JSON.stringify({ message: msg, debug: debugInfo }), { headers: corsHeaders });
+      }
+      throw new Error(`RPC Error getting post: ${postError.message}`);
     }
 
-    await logEvent(supabase, automationId, 'processing', `Post selecionado: "${post.title}". Gerando roteiro...`);
+    if (!post) {
+      const msg = 'Nenhum post retornado (null data).';
+      await logEvent(supabase, automationId, 'processing', msg);
+      return new Response(JSON.stringify({ message: msg, debug: debugInfo }), { headers: corsHeaders });
+    }
 
-    // 2. Gera Roteiro (Texto)
-    const script = await generateStoryScript(replicate, post.content, automation.number_of_pages);
-    await logEvent(supabase, automationId, 'processing', `Roteiro gerado: ${script.title}. Gerando ${script.pages.length} imagens...`);
+    debugInfo.postTitle = post.title;
+    const logErr = await logEvent(supabase, automationId, 'processing', `Post selecionado: "${post.title}". Iniciando geração...`);
+    if (logErr) debugInfo.errors.push(`Log failed: ${logErr}`);
 
-    // 3. Gera Imagens (Imagem)
+    // --- GERAÇÃO DE ROTEIRO ---
+    debugInfo.step = "Generating Script with OpenAI/Replicate";
+    const systemPrompt = `Você é uma IA editora especializada em Web Stories.
+    Resuma o artigo em um roteiro de EXATAMENTE ${automation.number_of_pages || 5} páginas.
+    Saída APENAS JSON válido com estrutura:
+    { "title": "...", "slug": "...", "pages": [ { "page_number": 1, "text_content": "...", "image_prompt": "..." } ] }`;
+
+    const inputScript = {
+      prompt: `Conteúdo:\n\n${post.content.substring(0, 6000)}`,
+      system_prompt: systemPrompt,
+      max_tokens: 2048,
+      temperature: 0.5
+    };
+
+    const outputScript = await replicate.run("openai/gpt-4o-mini", { input: inputScript });
+    const fullTextScript = Array.isArray(outputScript) ? outputScript.join("") : String(outputScript);
+    const scriptJson = JSON.parse(fullTextScript.replace(/```json/g, "").replace(/```/g, "").trim());
+
+    debugInfo.scriptTitle = scriptJson.title;
+    
+    // --- GERAÇÃO DE IMAGENS ---
+    debugInfo.step = "Generating Images";
     const storyPages = [];
-    for (let i = 0; i < script.pages.length; i++) {
-      const pageData = script.pages[i];
-      await logEvent(supabase, automationId, 'processing', `Gerando imagem ${i + 1}/${script.pages.length}...`);
+    
+    for (let i = 0; i < scriptJson.pages.length; i++) {
+      const pageData = scriptJson.pages[i];
       
-      const imageUrl = await generateImageWithReplicate(replicate, pageData.image_prompt, post.author_id, supabase);
+      const inputImage = {
+        prompt: `Vertical image (9:16), minimalist watercolor style, soft pastel colors, christian spiritual theme. NO TEXT. ${pageData.image_prompt}`,
+        aspect_ratio: "9:16",
+        output_format: "png",
+        go_fast: true,
+        disable_safety_checker: true
+      };
+
+      const outputImage = await replicate.run("black-forest-labs/flux-schnell", { input: inputImage });
+      const imageUrl = Array.isArray(outputImage) ? outputImage[0] : String(outputImage);
+
+      // Upload Storage
+      const imageRes = await fetch(imageUrl);
+      const arrayBuffer = await imageRes.arrayBuffer();
+      const fileName = `stories/${post.author_id}/${crypto.randomUUID()}.png`;
+      
+      const { error: uploadError } = await supabase.storage.from("blog_images").upload(fileName, arrayBuffer, {
+        contentType: 'image/png',
+        upsert: false
+      });
+      if (uploadError) throw new Error(`Storage upload error: ${uploadError.message}`);
+      
+      const { data: publicUrlData } = supabase.storage.from("blog_images").getPublicUrl(fileName);
       
       storyPages.push({
         id: crypto.randomUUID(),
-        backgroundSrc: imageUrl,
+        backgroundSrc: publicUrlData.publicUrl,
         backgroundType: 'image',
         elements: [{
           id: crypto.randomUUID(),
           type: 'text',
           content: `<p style="font-weight: 700; text-shadow: 2px 2px 4px rgba(0,0,0,0.8);">${pageData.text_content}</p>`,
-          style: {
-            top: '75%', left: '50%', transform: 'translate(-50%, -50%)',
-            fontSize: '24px', color: '#ffffff', backgroundColor: 'rgba(0,0,0,0.5)',
-            padding: '16px', borderRadius: '12px', textAlign: 'center', width: '85%',
-          }
+          style: { top: '75%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '24px', color: '#ffffff', backgroundColor: 'rgba(0,0,0,0.5)', padding: '16px', borderRadius: '12px', textAlign: 'center', width: '85%' }
         }]
       });
     }
 
     // Link Final
     if (automation.add_post_link_on_last_page) {
-      const lastPage = storyPages[storyPages.length - 1];
-      lastPage.outlink = {
+      storyPages[storyPages.length - 1].outlink = {
         href: `https://www.paxword.com/pt/blog/${post.slug}`,
         ctaText: 'Leia o Artigo'
       };
     }
 
-    // 4. Salva Story
+    // Salvar Story
+    debugInfo.step = "Saving Story";
     const status = automation.publish_automatically ? 'published' : 'draft';
     const { data: newStory, error: saveError } = await supabase.from('web_stories').insert({
       author_id: post.author_id,
-      title: script.title,
-      slug: script.slug || post.slug + '-story',
+      title: scriptJson.title,
+      slug: scriptJson.slug || post.slug + '-story',
       story_data: { pages: storyPages },
       poster_image_src: storyPages[0].backgroundSrc,
       status: status,
@@ -225,9 +187,9 @@ serve(async (req: Request) => {
       language_code: 'pt'
     }).select('id').single();
 
-    if (saveError) throw new Error(`Erro ao salvar story: ${saveError.message}`);
+    if (saveError) throw new Error(`Save Story Error: ${saveError.message}`);
 
-    // Marca post como usado
+    // Marcar post como usado
     await supabase.from('used_posts_for_stories').insert({
       automation_id: automation.id,
       post_id: post.id,
@@ -236,13 +198,22 @@ serve(async (req: Request) => {
 
     await logEvent(supabase, automationId, 'success', 'Story criada com sucesso!', { storyId: newStory.id }, newStory.id);
     
-    return new Response(JSON.stringify({ success: true, storyId: newStory.id }), { headers: corsHeaders });
+    return new Response(JSON.stringify({ success: true, storyId: newStory.id, debug: debugInfo }), { headers: corsHeaders });
 
   } catch (error) {
     console.error("FATAL ERROR:", error);
+    debugInfo.error = error.message;
+    debugInfo.stack = error.stack;
+    
     if (automationId) {
-      await logEvent(supabase, automationId, 'error', `Falha: ${error.message}`, { stack: error.stack });
+      await logEvent(supabase, automationId, 'error', `Falha Fatal: ${error.message}`);
     }
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: corsHeaders });
+    
+    // Retorna 200 com erro no corpo para garantir que o cliente veja a resposta JSON, 
+    // já que 500 às vezes é mascarado pelo gateway.
+    return new Response(JSON.stringify({ success: false, error: error.message, debug: debugInfo }), { 
+      status: 200, // Usando 200 para garantir que o corpo JSON seja entregue ao cliente para debug
+      headers: corsHeaders 
+    });
   }
 });
