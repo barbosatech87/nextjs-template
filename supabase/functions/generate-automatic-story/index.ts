@@ -103,7 +103,8 @@ async function generateImagePrompt(visualStyleGuide, pageText) {
     1.  Adhere strictly to the provided visual style guide.
     2.  Create a symbolic, artistic visual representation of the page text.
     3.  The final prompt must be in English.
-    4.  Return ONLY the final image prompt as a single string.`;
+    4.  The prompt MUST explicitly state to avoid any kind of text, letters, or numbers.
+    5.  Return ONLY the final image prompt as a single string.`;
 
     const userPrompt = `Visual Style Guide: "${visualStyleGuide}"\n\nPage Text: "${pageText}"`;
 
@@ -144,9 +145,9 @@ async function generateAndUploadImage(prompt, supabase) {
         body: JSON.stringify({
             input: {
                 prompt: prompt,
-                negative_prompt: "text, words, letters, numbers, signature, watermark",
+                negative_prompt: "text, words, letters, numbers, signature, watermark, typography, font, writing, script",
                 aspect_ratio: "9:16",
-                num_inference_steps: 4, // Corrigido para o valor máximo permitido
+                num_inference_steps: 4,
                 output_format: "png",
             },
         }),
