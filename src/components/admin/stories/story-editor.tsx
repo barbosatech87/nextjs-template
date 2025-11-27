@@ -228,9 +228,11 @@ export function StoryEditor({ lang, initialData }: StoryEditorProps) {
 
       {/* Elements */}
       {page.elements.map(el => (
-        <div key={el.id} style={{ position: 'absolute', ...el.style }}>
-          {el.content}
-        </div>
+        <div 
+          key={el.id} 
+          style={{ position: 'absolute', ...el.style }}
+          dangerouslySetInnerHTML={{ __html: el.content || '' }}
+        />
       ))}
 
       {/* Simulação do Link Externo */}
