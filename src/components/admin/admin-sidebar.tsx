@@ -13,7 +13,7 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { BookCopy, BotMessageSquare, Image, LayoutDashboard, Users, Bell, FileText, Clock, History, Share2, Library } from 'lucide-react';
+import { BookCopy, BotMessageSquare, Image, LayoutDashboard, Users, Bell, FileText, Clock, History, Share2, Library, GalleryThumbnails } from 'lucide-react';
 import Link from 'next/link';
 import { Locale } from '@/lib/i18n/config';
 import { useProfile } from '@/hooks/use-profile';
@@ -23,6 +23,7 @@ const texts = {
   pt: {
     dashboard: "Painel",
     blogPosts: "Posts do Blog",
+    stories: "Web Stories",
     pages: "Páginas",
     readingPlans: "Planos de Leitura",
     aiPost: "Post com IA",
@@ -38,6 +39,7 @@ const texts = {
   en: {
     dashboard: "Dashboard",
     blogPosts: "Blog Posts",
+    stories: "Web Stories",
     pages: "Pages",
     readingPlans: "Reading Plans",
     aiPost: "AI Post",
@@ -53,6 +55,7 @@ const texts = {
   es: {
     dashboard: "Panel",
     blogPosts: "Entradas del Blog",
+    stories: "Web Stories",
     pages: "Páginas",
     readingPlans: "Planes de Lectura",
     aiPost: "Entrada con IA",
@@ -80,6 +83,7 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
   const adminMenuItems = [
     { href: `/${lang}/admin`, label: t.dashboard, icon: <LayoutDashboard /> },
     { href: `/${lang}/admin/blog`, label: t.blogPosts, icon: <BookCopy /> },
+    { href: `/${lang}/admin/stories`, label: t.stories, icon: <GalleryThumbnails /> },
     { href: `/${lang}/admin/ai-writer`, label: t.aiPost, icon: <BotMessageSquare /> },
     { href: `/${lang}/admin/ai-image-generator`, label: t.aiImage, icon: <Image /> },
     { href: `/${lang}/admin/pages`, label: t.pages, icon: <FileText /> },
@@ -95,6 +99,7 @@ export function AdminSidebar({ lang, children }: AdminSidebarProps) {
   const writerMenuItems = [
     { href: `/${lang}/admin`, label: t.dashboard, icon: <LayoutDashboard /> },
     { href: `/${lang}/admin/blog`, label: t.blogPosts, icon: <BookCopy /> },
+    { href: `/${lang}/admin/stories`, label: t.stories, icon: <GalleryThumbnails /> },
     { href: `/${lang}/admin/ai-writer`, label: t.aiPost, icon: <BotMessageSquare /> },
     { href: `/${lang}/admin/ai-image-generator`, label: t.aiImage, icon: <Image /> },
   ];
