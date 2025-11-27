@@ -47,15 +47,15 @@ export default async function WebStoryPage({ params }: WebStoryPageProps) {
   return (
     <>
       {/* Scripts Obrigatórios do AMP */}
-      <Script src="https://cdn.ampproject.org/v0.js" strategy="beforeInteractive" />
+      <Script src="https://cdn.ampproject.org/v0.js" strategy="afterInteractive" />
       <Script 
         src="https://cdn.ampproject.org/v0/amp-story-1.0.js" 
-        strategy="beforeInteractive" 
+        strategy="afterInteractive" 
         custom-element="amp-story" 
       />
       <Script 
         src="https://cdn.ampproject.org/v0/amp-video-0.1.js" 
-        strategy="beforeInteractive" 
+        strategy="afterInteractive" 
         custom-element="amp-video" 
       />
 
