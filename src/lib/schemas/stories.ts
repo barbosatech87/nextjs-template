@@ -3,10 +3,12 @@ import { z } from "zod";
 export const storyAutomationSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(3, "O nome é obrigatório."),
+  platform: z.enum(['pinterest']), // Campo de plataforma restaurado
   is_active: z.boolean(),
+  pinterest_board_id: z.string().min(5, "O ID do Board é obrigatório.").nullable().optional(), // Validação ajustada
   
   // Campos específicos para a automação de criação
-  source_category_id: z.string().uuid("A categoria de origem é obrigatória.").nullable().optional(),
+  source_category_id: z.string().uuid().nullable().optional(),
   number_of_pages: z.coerce.number().min(3, "Mínimo de 3 páginas.").max(15, "Máximo de 15 páginas."),
   add_post_link_on_last_page: z.boolean(),
   publish_automatically: z.boolean(),
@@ -20,6 +22,15 @@ export const storyAutomationSchema = z.object({
 }).refine(data => {
     if (data.frequencyType !== 'custom') return !!data.time;
     return true;
-}, { message: "A hora é obrigatória.", path: ['time'] });
+}, { message: "A hora é obrigatória.", path: ['time'] })
+.refine(data => {
+    if (data.platform === 'pinterest') {
+        return !!data.pinterest_board_id;
+    }
+    return true;
+}, {
+    message: "O ID do Board do Pinterest é obrigatório.",
+    path: ['pinterest_board_id'],
+});
 
 export type StoryAutomationFormData = z.infer<typeof storyAutomationSchema>;

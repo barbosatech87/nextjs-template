@@ -40,8 +40,11 @@ export function AutomationFormDialog({ lang, initialData, children }: Automation
   const form = useForm<StoryAutomationFormData>({
     resolver: zodResolver(storyAutomationSchema),
     defaultValues: {
-      name: '', is_active: true,
+      name: '', 
+      platform: 'pinterest',
+      is_active: true,
       source_category_id: null,
+      pinterest_board_id: '',
       number_of_pages: 5,
       add_post_link_on_last_page: true,
       publish_automatically: false,
@@ -51,12 +54,16 @@ export function AutomationFormDialog({ lang, initialData, children }: Automation
   });
 
   const frequencyType = form.watch('frequencyType');
+  const platform = form.watch('platform');
 
   useEffect(() => {
     if (isOpen) {
       let defaultVals: Partial<StoryAutomationFormData> = {
-        name: '', is_active: true,
+        name: '', 
+        platform: 'pinterest',
+        is_active: true,
         source_category_id: null,
+        pinterest_board_id: '',
         number_of_pages: 5,
         add_post_link_on_last_page: true,
         publish_automatically: false,
@@ -98,6 +105,16 @@ export function AutomationFormDialog({ lang, initialData, children }: Automation
               <FormItem><FormLabel>Nome</FormLabel><FormControl><Input placeholder="Stories de Devocionais" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             
+            <FormField control={form.control} name="platform" render={({ field }) => (
+              <FormItem><FormLabel>Plataforma</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent><SelectItem value="pinterest">Pinterest</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+            )} />
+
+            {platform === 'pinterest' && (
+              <FormField control={form.control} name="pinterest_board_id" render={({ field }) => (
+                <FormItem><FormLabel>ID do Board do Pinterest</FormLabel><FormControl><Input placeholder="123456789012345678" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+              )} />
+            )}
+
             <FormField control={form.control} name="source_category_id" render={({ field }) => (
               <FormItem><FormLabel>Categoria de Origem</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value ?? ''}><FormControl><SelectTrigger><SelectValue placeholder="Selecione uma categoria" /></SelectTrigger></FormControl><SelectContent>{categories.map(cat => (<SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>))}</SelectContent></Select><FormDescription>A automação usará posts desta categoria.</FormDescription><FormMessage /></FormItem>
             )} />
