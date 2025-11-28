@@ -24,13 +24,18 @@ export async function generateMetadata(
     };
   }
 
+  const canonicalUrl = `https://www.paxword.com/${lang}/p/${slug}`;
+
   return {
     title: page.title,
     description: page.summary,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title: page.title,
       description: page.summary || '',
-      url: `/${lang}/p/${slug}`,
+      url: canonicalUrl,
       siteName: 'PaxWord',
       locale: lang,
       type: 'website',

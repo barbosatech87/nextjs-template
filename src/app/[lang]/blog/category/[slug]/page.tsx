@@ -59,9 +59,14 @@ export async function generateMetadata({ params }: BlogCategoryPageProps): Promi
     return { title: "Categoria não encontrada" };
   }
 
+  const canonicalUrl = `https://www.paxword.com/${lang}/blog/category/${slug}`;
+
   return {
     title: `${t.title} ${category.name}`,
     description: `${t.description} ${category.name}.`,
+    alternates: {
+      canonical: canonicalUrl,
+    },
   };
 }
 

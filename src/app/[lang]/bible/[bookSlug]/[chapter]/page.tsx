@@ -62,14 +62,18 @@ export async function generateMetadata(
   const translatedBookName = getTranslatedBookName(bookName, lang);
   const title = `Leitura de ${translatedBookName} ${chapter} - PaxWord`;
   const description = `Leia o capítulo ${chapter} do livro de ${translatedBookName} na íntegra. Explore a Palavra de Deus no PaxWord.`;
+  const canonicalUrl = `https://www.paxword.com/${lang}/bible/${bookSlug}/${chapter}`;
 
   return {
     title,
     description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title,
       description,
-      url: `/${lang}/bible/${bookSlug}/${chapter}`,
+      url: canonicalUrl,
       images: [
         {
           url: '/social-share.png',

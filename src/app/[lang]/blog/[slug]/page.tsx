@@ -78,14 +78,18 @@ export async function generateMetadata(
 
   const imageUrl = post.image_url || '/social-share.png';
   const imageAlt = post.image_alt_text || post.title;
+  const canonicalUrl = `https://www.paxword.com/${lang}/blog/${slug}`;
 
   return {
     title: post.title,
     description: post.summary,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title: post.title,
       description: post.summary || '',
-      url: `/${lang}/blog/${slug}`,
+      url: canonicalUrl,
       siteName: 'PaxWord',
       images: [
         {
@@ -145,12 +149,17 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     ? new Date(post.published_at).toLocaleDateString(lang, { year: 'numeric', month: 'long', day: 'numeric' })
     : 'N/A';
 
-  const jsonLd = {
+  const primaryCategory = post.categories.length > 0 ? post.categories[0] : null;
+  const baseUrl = 'https://www.paxword.com';
+  const postUrl = `${baseUrl}/${lang}/blog/${slug}`;
+
+  // Schema de Artigo (BlogPosting)
+  const articleSchema = {
     '@context': 'https://schema.org',
     '@type': 'BlogPosting',
     'mainEntityOfPage': {
       '@type': 'WebPage',
-      '@id': `https://www.paxword.com/${lang}/blog/${slug}`,
+      '@id': postUrl,
     },
     'headline': post.title,
     'description': post.summary,
@@ -168,13 +177,55 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     'articleSection': post.categories.map(c => c.name).join(', '),
   };
 
-  const primaryCategory = post.categories.length > 0 ? post.categories[0] : null;
+  // Schema de Breadcrumb (Trilha de Navegação)
+  const breadcrumbListItems = [
+    {
+      '@type': 'ListItem',
+      'position': 1,
+      'name': t.home,
+      'item': `${baseUrl}/${lang}`
+    },
+    {
+      '@type': 'ListItem',
+      'position': 2,
+      'name': t.blog,
+      'item': `${baseUrl}/${lang}/blog`
+    }
+  ];
+
+  if (primaryCategory) {
+    breadcrumbListItems.push({
+      '@type': 'ListItem',
+      'position': 3,
+      'name': primaryCategory.name,
+      'item': `${baseUrl}/${lang}/blog/category/${primaryCategory.slug}`
+    });
+    breadcrumbListItems.push({
+      '@type': 'ListItem',
+      'position': 4,
+      'name': post.title,
+      'item': postUrl
+    });
+  } else {
+    breadcrumbListItems.push({
+      '@type': 'ListItem',
+      'position': 3,
+      'name': post.title,
+      'item': postUrl
+    });
+  }
+
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    'itemListElement': breadcrumbListItems
+  };
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify([articleSchema, breadcrumbSchema]) }}
       />
       <div className="container px-4 md:px-8 py-12">
         <article className="max-w-3xl mx-auto">
