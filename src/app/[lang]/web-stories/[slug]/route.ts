@@ -24,7 +24,7 @@ export async function GET(
     return new Response('Story not found', { status: 404 });
   }
 
-  // 2. Lógica de Tradução (Manual, já que não estamos usando os hooks do React)
+  // 2. Lógica de Tradução
   let title = story.title;
   let storyData = story.story_data;
 
@@ -44,23 +44,56 @@ export async function GET(
 
   const pages = storyData?.pages || [];
   const poster = story.poster_image_src || 'https://www.paxword.com/icon-512x512.svg';
+  const url = `https://www.paxword.com/${lang}/web-stories/${slug}`;
+  const datePublished = story.published_at || new Date().toISOString();
+  const dateModified = story.updated_at || datePublished;
 
-  // 3. Construção do HTML AMP Puro (String Template)
-  // Isso evita qualquer processamento do React
+  // 3. Dados Estruturados (JSON-LD) para SEO no Google
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Article", // Ou "BlogPosting"
+    "mainEntityOfPage": {
+      "@type": "WebPage",
+      "@id": url
+    },
+    "headline": title,
+    "image": [poster],
+    "datePublished": datePublished,
+    "dateModified": dateModified,
+    "author": {
+      "@type": "Organization",
+      "name": "PaxWord"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "PaxWord",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.paxword.com/icon-512x512.svg"
+      }
+    }
+  };
+
+  // 4. Construção do HTML AMP Puro
   const html = `
     <!doctype html>
     <html amp lang="${lang}">
       <head>
         <meta charset="utf-8">
         <title>${title}</title>
-        <link rel="canonical" href="https://www.paxword.com/${lang}/web-stories/${slug}">
+        <link rel="canonical" href="${url}">
         <meta name="viewport" content="width=device-width,minimum-scale=1,initial-scale=1">
+        
+        <!-- Dados Estruturados -->
+        <script type="application/ld+json">
+          ${JSON.stringify(schema)}
+        </script>
+
         <style amp-boilerplate>body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style><noscript><style amp-boilerplate>body{-webkit-animation:none;-moz-animation:none;-ms-animation:none;animation:none}</style></noscript>
         <script async src="https://cdn.ampproject.org/v0.js"></script>
         <script async custom-element="amp-story" src="https://cdn.ampproject.org/v0/amp-story-1.0.js"></script>
         <style amp-custom>
           amp-story { font-family: 'Inter', sans-serif; }
-          /* Garante que o texto seja legível */
           .story-text-wrapper { pointer-events: none; }
         </style>
       </head>
@@ -74,7 +107,6 @@ export async function GET(
             ${pages.map((page: any) => `
               <amp-story-page id="${page.id}">
                 
-                ${/* Camada de Fundo */''}
                 <amp-story-grid-layer template="fill">
                   ${page.backgroundSrc ? 
                     `<amp-img src="${page.backgroundSrc}" width="720" height="1280" layout="responsive" class="object-cover" alt="Background"></amp-img>` : 
@@ -82,12 +114,9 @@ export async function GET(
                   }
                 </amp-story-grid-layer>
 
-                ${/* Camada de Elementos (Texto) */''}
                 <amp-story-grid-layer template="vertical">
                   ${page.elements.map((element: any) => {
                     if (element.type === 'text') {
-                      // Converte estilos React (camelCase) para CSS string (kebab-case) manualmente para o básico
-                      // Nota: AMP permite style inline em descendentes de grid-layer
                       return `
                         <div style="
                           position: absolute;
@@ -110,7 +139,6 @@ export async function GET(
                   }).join('')}
                 </amp-story-grid-layer>
 
-                ${/* Link Externo (Swipe Up) - Atributo cta-text removido */''}
                 ${page.outlink?.href ? `
                   <amp-story-page-outlink layout="nodisplay">
                     <a href="${page.outlink.href}"></a>
@@ -129,7 +157,7 @@ export async function GET(
   return new Response(html, {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' // Cache agressivo para performance
+      'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300'
     },
   });
 }
