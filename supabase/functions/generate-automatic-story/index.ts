@@ -111,7 +111,7 @@ async function generateImagePrompt(visualStyleGuide, pageText) {
     const userPrompt = `Visual Style Guide: "${visualStyleGuide}"\n\nPage Text: "${pageText}"`;
 
     try {
-        // Prioridade: Claude 3.5 Sonnet via Replicate
+        // Prioridade: claude-4.5-sonnet via Replicate
         const output = await runReplicatePrediction("anthropic/claude-4.5-sonnet", {
             prompt: `${systemPrompt}\n\n${userPrompt}`,
             prompt_template: "<s>[INST] {prompt} [/INST] ",
