@@ -2,12 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { i18n } from '@/lib/i18n/config';
 
 // Define o tempo de revalidação do cache para 24 horas (em segundos)
-// Isso significa que o sitemap será gerado no máximo uma vez por dia
 export const revalidate = 86400;
 
 export async function GET() {
-  // Usamos um cliente simples aqui pois não precisamos de cookies/sessão de usuário
-  // para gerar o sitemap público. Isso evita que a rota se torne dinâmica por request.
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -32,20 +29,48 @@ export async function GET() {
     }
   }
 
-  // 2. Posts do blog (apenas publicados)
+  // 2. Posts do blog (Originais e Traduções)
   const { data: posts } = await supabase
     .from('blog_posts')
-    .select('slug, updated_at, language_code')
+    .select('id, slug, updated_at, language_code')
     .eq('status', 'published');
   
   if (posts) {
+    const postIds = posts.map(p => p.id);
+    const { data: postTranslations } = await supabase
+      .from('blog_post_translations')
+      .select('post_id, language_code')
+      .in('post_id', postIds);
+
+    const postTransMap = new Map();
+    if (postTranslations) {
+      postTranslations.forEach(t => {
+        if (!postTransMap.has(t.post_id)) postTransMap.set(t.post_id, []);
+        postTransMap.get(t.post_id).push(t);
+      });
+    }
+
     for (const post of posts) {
+      // Original
       urls.push({
         loc: `${baseUrl}/${post.language_code}/blog/${post.slug}`,
         lastmod: post.updated_at ? new Date(post.updated_at).toISOString() : new Date().toISOString(),
         changefreq: 'monthly',
         priority: '0.7'
       });
+
+      // Traduções
+      const translations = postTransMap.get(post.id);
+      if (translations) {
+        for (const t of translations) {
+          urls.push({
+            loc: `${baseUrl}/${t.language_code}/blog/${post.slug}`,
+            lastmod: post.updated_at ? new Date(post.updated_at).toISOString() : new Date().toISOString(),
+            changefreq: 'monthly',
+            priority: '0.7'
+          });
+        }
+      }
     }
   }
 
@@ -66,34 +91,60 @@ export async function GET() {
     }
   }
 
-  // 4. Web Stories (apenas publicadas)
+  // 4. Web Stories (Originais e Traduções)
   const { data: stories } = await supabase
     .from('web_stories')
-    .select('slug, updated_at, language_code')
+    .select('id, slug, updated_at, language_code')
     .eq('status', 'published');
 
   if (stories) {
+    const storyIds = stories.map(s => s.id);
+    const { data: storyTranslations } = await supabase
+        .from('web_story_translations')
+        .select('story_id, language_code, updated_at')
+        .in('story_id', storyIds);
+
+    const storyTransMap = new Map();
+    if (storyTranslations) {
+        storyTranslations.forEach(t => {
+            if (!storyTransMap.has(t.story_id)) storyTransMap.set(t.story_id, []);
+            storyTransMap.get(t.story_id).push(t);
+        });
+    }
+
     for (const story of stories) {
+      // URL Original
       urls.push({
         loc: `${baseUrl}/${story.language_code}/web-stories/${story.slug}`,
         lastmod: story.updated_at ? new Date(story.updated_at).toISOString() : new Date().toISOString(),
         changefreq: 'weekly',
         priority: '0.7'
       });
+
+      // URLs das Traduções
+      const translations = storyTransMap.get(story.id);
+      if (translations) {
+          for (const t of translations) {
+              urls.push({
+                  loc: `${baseUrl}/${t.language_code}/web-stories/${story.slug}`,
+                  lastmod: t.updated_at ? new Date(t.updated_at).toISOString() : new Date().toISOString(),
+                  changefreq: 'weekly',
+                  priority: '0.7'
+              });
+          }
+      }
     }
   }
   
   // 5. Livros e capítulos da Bíblia
-  // Como são muitos dados, fazemos isso para cada idioma
   for (const locale of i18n.locales) {
     const { data: bibleMetadata } = await supabase.rpc('get_bible_metadata', { lang_code: locale });
     
     if (bibleMetadata) {
-      // @ts-ignore - O tipo retornado pelo RPC pode não estar inferido corretamente aqui
+      // @ts-ignore
       for (const book of bibleMetadata) {
         const bookSlug = book.book.toLowerCase().replace(/\s+/g, '-');
         
-        // URL do livro
         urls.push({
           loc: `${baseUrl}/${locale}/bible/${bookSlug}`,
           lastmod: new Date().toISOString(),
@@ -101,7 +152,6 @@ export async function GET() {
           priority: '0.6'
         });
 
-        // URLs dos capítulos
         for (let i = 1; i <= book.total_chapters; i++) {
           urls.push({
             loc: `${baseUrl}/${locale}/bible/${bookSlug}/${i}`,
@@ -129,7 +179,6 @@ export async function GET() {
   return new Response(sitemap, {
     headers: {
       'Content-Type': 'application/xml',
-      // Cache control headers adicionais para navegadores/CDNs
       'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=3600',
     },
   });
