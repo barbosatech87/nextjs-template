@@ -51,7 +51,7 @@ export async function GET(
   // 3. Dados Estruturados (JSON-LD) para SEO no Google
   const schema = {
     "@context": "https://schema.org",
-    "@type": "Article", // Ou "BlogPosting"
+    "@type": "Article",
     "mainEntityOfPage": {
       "@type": "WebPage",
       "@id": url
@@ -60,6 +60,7 @@ export async function GET(
     "image": [poster],
     "datePublished": datePublished,
     "dateModified": dateModified,
+    "inLanguage": lang, // Adicionado explicitamente o idioma
     "author": {
       "@type": "Organization",
       "name": "PaxWord"
