@@ -26,7 +26,8 @@ declare module 'react' {
       };
       'amp-story-page-outlink': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
         layout?: string;
-        'cta-text'?: string;
+        'cta-image'?: string; // Substituindo cta-text por cta-image (opcional válido)
+        theme?: 'light' | 'dark' | 'custom';
       };
     }
   }

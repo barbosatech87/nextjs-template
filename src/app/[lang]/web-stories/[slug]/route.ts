@@ -110,9 +110,9 @@ export async function GET(
                   }).join('')}
                 </amp-story-grid-layer>
 
-                ${/* Link Externo (Swipe Up) */''}
+                ${/* Link Externo (Swipe Up) - Atributo cta-text removido */''}
                 ${page.outlink?.href ? `
-                  <amp-story-page-outlink layout="nodisplay" cta-text="${page.outlink.ctaText || 'Saiba Mais'}">
+                  <amp-story-page-outlink layout="nodisplay">
                     <a href="${page.outlink.href}"></a>
                   </amp-story-page-outlink>
                 ` : ''}
