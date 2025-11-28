@@ -246,7 +246,8 @@ serve(async (req) => {
           id: crypto.randomUUID(),
           type: 'text',
           content: pageContent.text,
-          style: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '26px', color: '#ffffff', backgroundColor: 'rgba(0,0,0,0.5)', padding: '12px', borderRadius: '8px', textAlign: 'center', width: '85%' }
+          // Atualizado para 22px
+          style: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)', fontSize: '22px', color: '#ffffff', backgroundColor: 'rgba(0,0,0,0.5)', padding: '12px', borderRadius: '8px', textAlign: 'center', width: '85%' }
         }]
       };
       
