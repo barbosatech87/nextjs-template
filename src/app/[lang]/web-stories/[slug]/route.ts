@@ -148,7 +148,7 @@ export async function GET(
                 </amp-story-grid-layer>
 
                 ${outlinkHref ? `
-                  <amp-story-page-outlink layout="nodisplay">
+                  <amp-story-page-outlink layout="nodisplay" cta-image="/arrow-up.svg">
                     <a href="${outlinkHref}"></a>
                   </amp-story-page-outlink>
                 ` : ''}
