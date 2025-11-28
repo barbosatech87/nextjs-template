@@ -111,16 +111,16 @@ async function generateImagePrompt(visualStyleGuide, pageText) {
     const userPrompt = `Visual Style Guide: "${visualStyleGuide}"\n\nPage Text: "${pageText}"`;
 
     try {
-        // Prioridade: GPT-4o-mini via Replicate
-        const output = await runReplicatePrediction("openai/gpt-4o-mini", {
+        // Prioridade: Claude 3.5 Sonnet via Replicate
+        const output = await runReplicatePrediction("anthropic/claude-3.5-sonnet", {
             prompt: `${systemPrompt}\n\n${userPrompt}`,
             prompt_template: "<s>[INST] {prompt} [/INST] ",
         });
         return output.join('').trim();
     } catch (replicateError) {
-        console.warn(`Replicate/GPT-4o-mini failed for image prompt: ${replicateError.message}. Falling back to Claude.`);
+        console.warn(`Replicate/Claude failed for image prompt: ${replicateError.message}. Falling back to Claude (Direct API).`);
         
-        // Fallback: Claude
+        // Fallback: Claude (API Direta)
         const response = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-api-key": Deno.env.get("CLAUDE_API_KEY"), "anthropic-version": "2023-06-01" },
