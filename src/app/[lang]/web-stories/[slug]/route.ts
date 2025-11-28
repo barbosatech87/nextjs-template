@@ -105,7 +105,14 @@ export async function GET(
             publisher-logo-src="https://www.paxword.com/icon-512x512.svg"
             poster-portrait-src="${poster}">
             
-            ${pages.map((page: any) => `
+            ${pages.map((page: any) => {
+              // Lógica de correção do link: substitui /pt/ pelo idioma atual (/en/, /es/, etc.)
+              let outlinkHref = page.outlink?.href;
+              if (outlinkHref && typeof outlinkHref === 'string') {
+                outlinkHref = outlinkHref.replace('/pt/', `/${lang}/`);
+              }
+
+              return `
               <amp-story-page id="${page.id}">
                 
                 <amp-story-grid-layer template="fill">
@@ -140,14 +147,14 @@ export async function GET(
                   }).join('')}
                 </amp-story-grid-layer>
 
-                ${page.outlink?.href ? `
+                ${outlinkHref ? `
                   <amp-story-page-outlink layout="nodisplay">
-                    <a href="${page.outlink.href}"></a>
+                    <a href="${outlinkHref}"></a>
                   </amp-story-page-outlink>
                 ` : ''}
 
               </amp-story-page>
-            `).join('')}
+            `}).join('')}
 
             <amp-story-bookend src="/api/stories/bookend?lang=${lang}" layout="nodisplay"></amp-story-bookend>
         </amp-story>
