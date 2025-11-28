@@ -143,7 +143,12 @@ export async function GET() {
     if (bibleMetadata) {
       // @ts-ignore
       for (const book of bibleMetadata) {
-        const bookSlug = book.book.toLowerCase().replace(/\s+/g, '-');
+        // Normalização: remove acentos e caracteres especiais para URL (ex: Gênesis -> genesis)
+        const bookSlug = book.book
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .replace(/\s+/g, '-');
         
         urls.push({
           loc: `${baseUrl}/${locale}/bible/${bookSlug}`,
