@@ -151,7 +151,7 @@ export function StoryEditor({ lang, initialData }: StoryEditorProps) {
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
-        fontSize: '24px',
+        fontSize: '22px',
         color: '#ffffff',
         backgroundColor: 'rgba(0,0,0,0.5)',
         padding: '10px',
