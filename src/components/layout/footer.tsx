@@ -23,6 +23,21 @@ const Pinterest = ({ className }: { className?: string }) => (
   </svg>
 );
 
+// Ícone RSS Feed SVG
+const RssIcon = ({ className }: { className?: string }) => (
+  <svg
+    role="img"
+    viewBox="0 0 24 24"
+    xmlns="http://www.w3.org/2000/svg"
+    fill="currentColor"
+    stroke="none"
+    className={className}
+  >
+    <title>RSS Feed</title>
+    <path d="M19.199 24C19.199 13.439 10.561 4.8 0 4.8V0c13.253 0 24 10.747 24 24h-4.801zM3.291 17.415c1.814 0 3.293 1.479 3.293 3.295 0 1.813-1.485 3.29-3.301 3.29C1.47 24 0 22.526 0 20.71s1.475-3.294 3.291-3.295zM15.909 24h-4.63c0-6.226-5.043-11.271-11.279-11.271V8.099c8.783 0 15.909 7.124 15.909 15.901z" />
+  </svg>
+);
+
 // Textos do rodapé atualizados
 const footerTexts = {
   pt: {
@@ -82,6 +97,9 @@ const Footer: React.FC<FooterProps> = ({ lang }) => {
           <a href="https://pinterest.com/paxwordofficial/" target="_blank" rel="noopener noreferrer" aria-label="Pinterest">
             <Pinterest className="h-5 w-5 hover:text-primary transition-colors" />
           </a>
+          <Link href={`/${lang}/p/rss-feed`} aria-label="RSS Feed">
+            <RssIcon className="h-5 w-5 hover:text-primary transition-colors" />
+          </Link>
         </div>
       </div>
     </footer>
