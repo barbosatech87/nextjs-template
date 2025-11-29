@@ -9,6 +9,7 @@ import { LogOut } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 
 interface UserDataTabProps {
   lang: Locale;
@@ -19,16 +20,22 @@ const texts = {
     logout: "Sair da Conta",
     logoutSuccess: "Você foi desconectado com sucesso.",
     logoutError: "Erro ao sair da conta.",
+    notificationsTitle: "Notificações Push",
+    notificationsDesc: "Receba notificações sobre novos posts e atualizações importantes diretamente no seu dispositivo. Clique no sino para ativar ou desativar.",
   },
   en: {
     logout: "Log Out",
     logoutSuccess: "You have been successfully logged out.",
     logoutError: "Error logging out.",
+    notificationsTitle: "Push Notifications",
+    notificationsDesc: "Receive notifications about new posts and important updates directly on your device. Click the bell to enable or disable.",
   },
   es: {
     logout: "Cerrar Sesión",
     logoutSuccess: "Has cerrado sesión con éxito.",
     logoutError: "Error al cerrar sesión.",
+    notificationsTitle: "Notificaciones Push",
+    notificationsDesc: "Recibe notificaciones sobre nuevas publicaciones y actualizaciones importantes directamente en tu dispositivo. Haz clic en la campana para activar o desactivar.",
   },
 };
 
@@ -56,6 +63,16 @@ export const UserDataTab: React.FC<UserDataTabProps> = ({ lang }) => {
       
       <div className="border-t pt-6">
         <PasswordChangeForm lang={lang} />
+      </div>
+
+      <div className="border-t pt-6 space-y-4">
+        <h2 className="text-xl font-semibold">{t.notificationsTitle}</h2>
+        <div className="flex items-center justify-between rounded-lg border p-4">
+          <p className="text-sm text-muted-foreground max-w-md">
+            {t.notificationsDesc}
+          </p>
+          <NotificationBell />
+        </div>
       </div>
 
       <div className="border-t pt-6">
