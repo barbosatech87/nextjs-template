@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Locale } from '@/lib/i18n/config';
-import { Facebook, Instagram, Pinterest } from 'lucide-react';
+import { Facebook, Pinterest } from 'lucide-react';
 
 interface FooterProps {
   lang: Locale;
