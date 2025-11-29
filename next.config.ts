@@ -6,7 +6,7 @@ const pwaConfig = withPWA({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
-  importScripts: ['/custom-worker.js'], // Injeta nosso worker customizado
+  customWorkerDir: 'src/worker', // Processa o worker customizado a partir do diretório src
   runtimeCaching: [
     // Cache para imagens otimizadas pelo Next.js
     {
