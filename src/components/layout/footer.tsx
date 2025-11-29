@@ -46,7 +46,7 @@ const Footer: React.FC<FooterProps> = ({ lang }) => {
         <p className="text-center md:text-left mb-2 md:mb-0">
           {texts.copyright}
         </p>
-        <div className="flex space-x-4">
+        <div className="flex flex-wrap justify-center gap-4">
           <Link href={`/${lang}/p/politica-de-privacidade`} className="hover:text-primary transition-colors">
             {texts.links.privacy}
           </Link>
@@ -56,9 +56,9 @@ const Footer: React.FC<FooterProps> = ({ lang }) => {
           <Link href={`/${lang}/p/sobre-nos`} className="hover:text-primary transition-colors">
             {texts.links.about}
           </Link>
-          <a href="mailto:pax@paxword.com" className="hover:text-primary transition-colors">
+          <Link href={`/${lang}/p/contato`} className="hover:text-primary transition-colors">
             {texts.links.contact}
-          </a>
+          </Link>
         </div>
       </div>
     </footer>
