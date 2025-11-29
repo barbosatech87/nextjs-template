@@ -34,8 +34,8 @@ const texts = {
     text1: "Utilizamos cookies para mejorar tu experiencia y mostrar anuncios personalizados. Al continuar, aceptas nuestra ",
     privacyPolicy: "política de privacidad",
     text2: ".",
-    acceptAll: "Aceptar Todo",
-    rejectNonEssential: "Rechazar Opcionales",
+    acceptAll: "Aceptar todo",
+    rejectNonEssential: "Rechazar opcionales",
     customize: "Personalizar",
   },
 };

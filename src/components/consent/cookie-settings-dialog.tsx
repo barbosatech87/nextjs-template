@@ -69,7 +69,7 @@ const texts = {
       title: "Publicidad",
       desc: "Utilizados para mostrar anuncios relevantes para ti. Si se desactiva, seguirás viendo anuncios, pero no se basarán en tus intereses (NPA).",
     },
-    save: "Guardar Preferencias",
+    save: "Guardar preferencias",
     cancel: "Cancelar"
   }
 };
