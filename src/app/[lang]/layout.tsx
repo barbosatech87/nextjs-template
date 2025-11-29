@@ -5,6 +5,7 @@ import { MainLayout } from '@/components/layout/main-layout';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import '@/app/globals.css'; // Moved from RootLayout to here
+import { CookieBanner } from '@/components/consent/cookie-banner';
 
 interface LangLayoutProps {
   children: ReactNode;
@@ -84,6 +85,7 @@ export default async function LangLayout({ children, params }: LangLayoutProps) 
       <MainLayout lang={lang}>
         {children}
       </MainLayout>
+      <CookieBanner lang={lang} />
     </>
   );
 }

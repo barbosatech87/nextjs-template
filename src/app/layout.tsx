@@ -8,7 +8,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Inter } from 'next/font/google';
 import { headers } from 'next/headers';
 import { i18n } from '@/lib/i18n/config';
-import { CookieBanner } from '@/components/consent/cookie-banner';
+// A importação do CookieBanner será removida daqui
 
 // NOTE: globals.css removed from here to prevent loading on AMP pages.
 // It is now imported in src/app/[lang]/layout.tsx
@@ -103,7 +103,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
           {children}
           <SpeedInsights />
           <Toaster />
-          <CookieBanner lang={lang} />
+          {/* O CookieBanner foi removido daqui */}
         </SessionContextProvider>
       </body>
     </html>
