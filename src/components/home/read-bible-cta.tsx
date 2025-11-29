@@ -16,7 +16,7 @@ interface ReadBibleCtaProps {
 
 export const ReadBibleCta: React.FC<ReadBibleCtaProps> = ({ lang, texts }) => {
   return (
-    <section className="w-full py-12 md:py-16">
+    <section className="w-full">
       <div className="container mx-auto px-4">
         <Card className="w-full max-w-4xl mx-auto text-center bg-sky-50 dark:bg-sky-950/30 shadow-lg">
           <CardHeader className="items-center">

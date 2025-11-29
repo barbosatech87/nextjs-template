@@ -20,7 +20,7 @@ export const PostSection: React.FC<PostSectionProps> = ({ title, posts, lang, vi
   }
 
   return (
-    <section className="py-12 md:py-16">
+    <section>
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-3xl font-bold tracking-tight">{title}</h2>
         {viewAllLink && viewAllText && (

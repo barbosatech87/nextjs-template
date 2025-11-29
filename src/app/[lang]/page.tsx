@@ -96,7 +96,7 @@ export default async function HomePage({ params }: HomePageProps) {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col items-center text-center gap-12 md:gap-16">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+        <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
           {t.hero.heading}
         </h1>
         <HeroSearch lang={lang} texts={t.hero} />
@@ -105,11 +105,11 @@ export default async function HomePage({ params }: HomePageProps) {
         </FadeInOnScroll>
       </div>
 
-      <FadeInOnScroll delay={100}>
-        <ReadBibleCta lang={lang} texts={t.readBible} />
-      </FadeInOnScroll>
+      <div className="space-y-16 md:space-y-24 mt-16 md:mt-24">
+        <FadeInOnScroll delay={100}>
+          <ReadBibleCta lang={lang} texts={t.readBible} />
+        </FadeInOnScroll>
 
-      <div>
         <FadeInOnScroll delay={200}>
           <PostSection 
             lang={lang} 
@@ -119,6 +119,7 @@ export default async function HomePage({ params }: HomePageProps) {
             viewAllText={t.postSection.devotional.viewAll}
           />
         </FadeInOnScroll>
+        
         <FadeInOnScroll delay={300}>
           <PostSection 
             lang={lang} 
