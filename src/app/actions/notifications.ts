@@ -25,7 +25,7 @@ function assert(condition: any, message: string): asserts condition {
  * Dispara o envio de notificações push para um novo post.
  * Não bloqueia a execução principal (roda em segundo plano).
  */
-export function triggerNewPostNotification(postId: string, postTitle: string, postSlug: string, lang: string) {
+export async function triggerNewPostNotification(postId: string, postTitle: string, postSlug: string, lang: string) {
   // Executa sem await para não bloquear a resposta da Server Action
   Promise.resolve().then(async () => {
     try {
