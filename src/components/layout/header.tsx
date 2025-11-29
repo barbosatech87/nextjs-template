@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useInstallPrompt } from '@/hooks/use-install-prompt';
+import { NotificationBell } from '@/components/notifications/notification-bell';
 
 interface HeaderProps {
   lang: Locale;
@@ -132,42 +133,45 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
           {isLoading ? (
             <div className="h-8 w-24 animate-pulse bg-muted rounded-md" />
           ) : user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label={texts.profile} className="relative">
-                  <User className="h-5 w-5" />
-                  {unreadCount > 0 && (
-                    <span
-                      aria-label={`${unreadCount} unread notifications`}
-                      className="absolute -right-1 -top-1 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-medium h-4 min-w-4 px-1"
-                    >
-                      {unreadCount > 9 ? "9+" : unreadCount}
-                    </span>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem asChild>
-                  <Link href={`/${lang}/profile`}>
-                    <User className="mr-2 h-4 w-4" />
-                    {texts.profile}
-                  </Link>
-                </DropdownMenuItem>
-                {(profile?.role === 'admin' || profile?.role === 'writer') && (
+            <>
+              <NotificationBell />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label={texts.profile} className="relative">
+                    <User className="h-5 w-5" />
+                    {unreadCount > 0 && (
+                      <span
+                        aria-label={`${unreadCount} unread notifications`}
+                        className="absolute -right-1 -top-1 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-medium h-4 min-w-4 px-1"
+                      >
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <Link href={`/${lang}/admin`}>
-                      <Shield className="mr-2 h-4 w-4" />
-                      {texts.admin}
+                    <Link href={`/${lang}/profile`}>
+                      <User className="mr-2 h-4 w-4" />
+                      {texts.profile}
                     </Link>
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  {texts.logout}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                  {(profile?.role === 'admin' || profile?.role === 'writer') && (
+                    <DropdownMenuItem asChild>
+                      <Link href={`/${lang}/admin`}>
+                        <Shield className="mr-2 h-4 w-4" />
+                        {texts.admin}
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                    <LogOut className="mr-2 h-4 w-4" />
+                    {texts.logout}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
           ) : (
             <Link href={`/${lang}/auth`}>
               <Button variant="default" size="sm">
