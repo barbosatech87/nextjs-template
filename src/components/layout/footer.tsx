@@ -7,38 +7,19 @@ interface FooterProps {
   lang: Locale;
 }
 
-// Componente local para o ícone do Pinterest (não disponível no lucide-react)
+// Ícone oficial do Pinterest (Brand Logo)
+// Usamos fill="currentColor" e stroke="none" para renderizar a forma sólida correta
 const Pinterest = ({ className }: { className?: string }) => (
   <svg
-    xmlns="http://www.w3.org/2000/svg"
+    role="img"
     viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
+    xmlns="http://www.w3.org/2000/svg"
+    fill="currentColor"
+    stroke="none"
     className={className}
   >
-    <path d="M8 12a4 4 0 1 0 8 0 4 4 0 1 0-8 0" />
-    <path d="M12 2v2" />
-    <path d="M12 20v2" />
-    <path d="m4.93 4.93 1.41 1.41" />
-    <path d="m17.66 17.66 1.41 1.41" />
-    <path d="M2 12h2" />
-    <path d="M20 12h2" />
-    <path d="m6.34 17.66-1.41 1.41" />
-    <path d="m19.07 4.93-1.41 1.41" />
-    {/* Substituindo por um path genérico de rede social para evitar SVG muito complexo inline,
-        ou usando o path real se preferir. Aqui uso um path simplificado que lembra o 'P' 
-        mas dentro do estilo outline do Lucide para manter consistência visual. 
-        Para um logo de marca exato, seria melhor um path preenchido, mas o Lucide usa outline.
-        Vou usar um SVG de Path que se assemelha ao logo do Pinterest.
-    */}
-    <path d="M12 2a10 10 0 1 0 0 20c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" style={{display: 'none'}} /> 
-    <path d="M8 12a4 4 0 1 0 8 0 4 4 0 1 0-8 0" style={{display: 'none'}} />
-    
-    {/* Path real aproximado do Pinterest no estilo Lucide */}
-    <path d="M12 2C6.5 2 2 6.5 2 12c0 4.1 2.6 7.6 6.4 9.1-.1-.8-.2-2 .04-2.9.2-.8 1.4-6 1.4-6s-.3-.7-.3-1.7c0-1.6.9-2.8 2.1-2.8 1 0 1.5.7 1.5 1.6 0 1-.6 2.5-1 3.9-.3 1.2.6 2.2 1.8 2.2 2.1 0 3.8-2.2 3.8-5.4 0-2.8-2-4.9-4.9-4.9-3.4 0-5.4 2.6-5.4 5.2 0 1 .4 2.1.9 2.7.1.1.1.2.1.3-.1.4-.3 1.2-.3 1.4-.1.2-.2.3-.4.2-1.5-.7-2.4-2.9-2.4-4.6 0-3.8 2.8-7.3 8-7.3 4.2 0 7.4 3 7.4 6.9 0 4.1-2.6 7.5-6.2 7.5-1.2 0-2.4-.6-2.8-1.4l-.8 2.8c-.3 1.1-1.1 2.5-1.6 3.4 1.2.4 2.4.5 3.7.5 5.5 0 10-4.5 10-10S17.5 2 12 2z" />
+    <title>Pinterest</title>
+    <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.162-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.651 0-5.789 2.722-5.789 5.563 0 1.103.425 2.278.953 2.92.106.133.122.247.09.44-.096.412-.325 1.305-.369 1.483-.06.25-.197.299-.452.185-1.678-.775-2.724-3.212-2.724-5.163 0-3.847 2.793-7.387 8.053-7.387 4.232 0 7.518 3.018 7.518 7.054 0 4.212-2.654 7.601-6.338 7.601-1.238 0-2.4-.643-2.797-1.402l-.762 2.9c-.273 1.047-1.01 2.358-1.503 3.161 1.134.336 2.339.52 3.583.52 6.61 0 11.968-5.361 11.968-11.974 0-6.62-5.358-11.987-11.968-11.987z" />
   </svg>
 );
 
