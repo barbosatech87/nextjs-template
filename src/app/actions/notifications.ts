@@ -1,41 +1,96 @@
 "use server";
 
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
+import { createSupabaseAdminClient } from "@/integrations/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from 'uuid';
+import webpush from 'web-push';
+
+// Configura o web-push com as chaves VAPID
+if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    'mailto:seu-email-de-contato@exemplo.com', // Substitua por um e-mail de contato
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+} else {
+  console.warn("VAPID keys not configured. Push notifications will not work.");
+}
 
 function assert(condition: any, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
-// --- Funções para Notificações Individuais (se necessário no futuro) ---
-export async function createNotificationForUser(
-  userId: string,
-  title: string,
-  body: string,
-  metadata?: Record<string, unknown>
-) {
-  const supabase = await createSupabaseServerClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  assert(user, "Not authenticated");
+/**
+ * Dispara o envio de notificações push para um novo post.
+ * Não bloqueia a execução principal (roda em segundo plano).
+ */
+export function triggerNewPostNotification(postId: string, postTitle: string, postSlug: string, lang: string) {
+  // Executa sem await para não bloquear a resposta da Server Action
+  Promise.resolve().then(async () => {
+    try {
+      const supabaseAdmin = createSupabaseAdminClient();
+      
+      // 1. Busca todas as inscrições ativas
+      const { data: subscriptions, error: subsError } = await supabaseAdmin
+        .from('push_subscriptions')
+        .select('subscription_data');
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
-  assert(profile?.role === "admin" || user.id === userId, "Not authorized");
+      if (subsError || !subscriptions || subscriptions.length === 0) {
+        console.log("Nenhuma inscrição para notificar sobre o novo post.");
+        return;
+      }
 
-  const { data, error } = await supabase
-    .from("notifications")
-    .insert({ user_id: userId, title, body, metadata: metadata ?? null })
-    .select("id")
-    .single();
+      // 2. Cria um registro de broadcast para rastreamento
+      const broadcastId = uuidv4();
+      const notificationTitle = "Novo Post no PaxWord!";
+      const notificationBody = postTitle;
+      const postUrl = `/${lang}/blog/${postSlug}`;
 
-  if (error) throw new Error(error.message);
-  return { id: data.id as string };
+      await supabaseAdmin.from("notification_broadcasts").insert({
+        id: broadcastId,
+        title: notificationTitle,
+        body: notificationBody,
+        sent_to_count: subscriptions.length,
+        type: 'automatic', // Novo tipo
+      });
+
+      // 3. Prepara o payload da notificação
+      const payload = JSON.stringify({
+        title: notificationTitle,
+        body: notificationBody,
+        url: postUrl,
+      });
+
+      // 4. Envia as notificações
+      const sendPromises = subscriptions.map(async (sub) => {
+        try {
+          await webpush.sendNotification(sub.subscription_data as any, payload);
+        } catch (error) {
+          console.error("Erro ao enviar notificação:", error);
+          // Se a inscrição expirou (erro 410), remove do banco
+          if (error.statusCode === 410) {
+            console.log("Removendo inscrição expirada:", sub.subscription_data.endpoint);
+            await supabaseAdmin
+              .from('push_subscriptions')
+              .delete()
+              .eq('subscription_data->>endpoint', sub.subscription_data.endpoint);
+          }
+        }
+      });
+
+      await Promise.all(sendPromises);
+      console.log(`Notificações para o post "${postTitle}" enviadas para ${subscriptions.length} usuários.`);
+
+    } catch (e) {
+      console.error("Falha crítica no envio de notificações automáticas:", e);
+    }
+  });
 }
 
-// --- Funções para Envios em Massa (Broadcasts) ---
 
 /**
- * Envia uma notificação para todos os usuários e registra o envio.
+ * Envia uma notificação manual para todos os usuários.
  */
 export async function sendNotificationToAll(title: string, body: string) {
   const supabase = await createSupabaseServerClient();
@@ -51,17 +106,16 @@ export async function sendNotificationToAll(title: string, body: string) {
 
   const broadcastId = uuidv4();
   
-  // 1. Insere o registro do envio
   const { error: broadcastError } = await supabase.from("notification_broadcasts").insert({
     id: broadcastId,
     author_id: user.id,
     title,
     body,
     sent_to_count: profiles.length,
+    type: 'manual', // Tipo manual
   });
   if (broadcastError) throw new Error(`Failed to create broadcast record: ${broadcastError.message}`);
 
-  // 2. Insere as notificações individuais
   const notificationRows = profiles.map((p) => ({
     user_id: p.id,
     title,
@@ -71,7 +125,6 @@ export async function sendNotificationToAll(title: string, body: string) {
 
   const { error: insertError } = await supabase.from("notifications").insert(notificationRows);
   if (insertError) {
-    // Tenta reverter o registro do broadcast em caso de falha
     await supabase.from("notification_broadcasts").delete().eq("id", broadcastId);
     throw new Error(`Failed to insert notifications: ${insertError.message}`);
   }

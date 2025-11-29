@@ -23,9 +23,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { Locale } from "@/lib/i18n/config";
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2, Bot, Send } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { deleteNotificationBroadcast } from "@/app/actions/notifications";
+import { Badge } from "@/components/ui/badge";
 
 type Broadcast = {
   id: string;
@@ -33,6 +34,7 @@ type Broadcast = {
   body: string;
   sent_to_count: number;
   created_at: string;
+  type: 'manual' | 'automatic';
 };
 
 interface NotificationsTableProps {
@@ -43,6 +45,7 @@ interface NotificationsTableProps {
 const texts = {
   pt: {
     title: "Título",
+    type: "Tipo",
     recipients: "Destinatários",
     sentAt: "Enviado em",
     actions: "Ações",
@@ -53,6 +56,8 @@ const texts = {
     continue: "Continuar",
     deleteSuccess: "Notificação deletada com sucesso.",
     deleteError: "Erro ao deletar a notificação.",
+    manual: "Manual",
+    automatic: "Automático",
   },
 };
 
@@ -77,8 +82,9 @@ export function NotificationsTable({ broadcasts, lang }: NotificationsTableProps
         <TableHeader>
           <TableRow>
             <TableHead>{t.title}</TableHead>
-            <TableHead className="hidden sm:table-cell">{t.recipients}</TableHead>
-            <TableHead className="hidden md:table-cell">{t.sentAt}</TableHead>
+            <TableHead className="hidden sm:table-cell">{t.type}</TableHead>
+            <TableHead className="hidden md:table-cell">{t.recipients}</TableHead>
+            <TableHead className="hidden lg:table-cell">{t.sentAt}</TableHead>
             <TableHead className="text-right">{t.actions}</TableHead>
           </TableRow>
         </TableHeader>
@@ -86,8 +92,18 @@ export function NotificationsTable({ broadcasts, lang }: NotificationsTableProps
           {broadcasts.map((broadcast) => (
             <TableRow key={broadcast.id}>
               <TableCell className="font-medium">{broadcast.title}</TableCell>
-              <TableCell className="hidden sm:table-cell">{broadcast.sent_to_count}</TableCell>
-              <TableCell className="hidden md:table-cell">
+              <TableCell className="hidden sm:table-cell">
+                <Badge variant={broadcast.type === 'automatic' ? 'secondary' : 'default'}>
+                  {broadcast.type === 'automatic' ? (
+                    <Bot className="mr-1 h-3 w-3" />
+                  ) : (
+                    <Send className="mr-1 h-3 w-3" />
+                  )}
+                  {broadcast.type === 'automatic' ? t.automatic : t.manual}
+                </Badge>
+              </TableCell>
+              <TableCell className="hidden md:table-cell">{broadcast.sent_to_count}</TableCell>
+              <TableCell className="hidden lg:table-cell">
                 {new Date(broadcast.created_at).toLocaleString()}
               </TableCell>
               <TableCell className="text-right">

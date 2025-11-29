@@ -5,6 +5,7 @@ import { revalidatePath, unstable_cache } from "next/cache";
 import { BlogPost } from "@/types/supabase";
 import { marked } from 'marked';
 import { createClient } from "@supabase/supabase-js";
+import { triggerNewPostNotification } from './notifications'; // Importa a nova função
 
 const POSTS_PER_PAGE = 9;
 
@@ -82,7 +83,7 @@ export async function createPost(postData: NewPostData, lang: string): Promise<A
         author_id: user.id,
         language_code: lang,
       })
-      .select('id, title, summary, content')
+      .select('id, title, summary, content, slug') // Adicionado slug
       .single();
 
     if (postError) {
@@ -103,6 +104,11 @@ export async function createPost(postData: NewPostData, lang: string): Promise<A
       if (categoryError) {
         console.error("Error inserting post categories:", categoryError);
       }
+    }
+
+    // Dispara notificação se o post for publicado
+    if (postDetails.status === 'published') {
+      triggerNewPostNotification(newPost.id, newPost.title, newPost.slug, lang);
     }
 
     revalidatePath(`/${lang}/admin/blog`);
@@ -132,23 +138,25 @@ export async function updatePost(postId: string, postData: NewPostData, lang: st
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return { success: false, message: "Usuário não autenticado." };
 
+    const { data: postBeforeUpdate, error: fetchError } = await supabase
+      .from('blog_posts')
+      .select('author_id, status')
+      .eq('id', postId)
+      .single();
+
+    if (fetchError || !postBeforeUpdate) {
+      return { success: false, message: "Post não encontrado." };
+    }
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('role')
       .eq('id', user.id)
       .single();
 
-    if (profile?.role === 'writer') {
-      const { data: post, error: fetchError } = await supabase
-        .from('blog_posts')
-        .select('author_id')
-        .eq('id', postId)
-        .single();
-        
-      if (fetchError || post?.author_id !== user.id) {
-        return { success: false, message: "Acesso negado ou post não encontrado." };
-      }
-    } else if (profile?.role !== 'admin') {
+    if (profile?.role === 'writer' && postBeforeUpdate.author_id !== user.id) {
+      return { success: false, message: "Acesso negado. Você não é o autor deste post." };
+    } else if (profile?.role !== 'admin' && profile?.role !== 'writer') {
       return { success: false, message: "Acesso negado." };
     }
 
@@ -165,6 +173,11 @@ export async function updatePost(postId: string, postData: NewPostData, lang: st
     if (postError) {
       console.error("Error updating post:", postError);
       return { success: false, message: `Falha ao atualizar o post principal: ${postError.message}` };
+    }
+
+    // Dispara notificação se o post mudou de status para 'published'
+    if (postDetails.status === 'published' && postBeforeUpdate.status !== 'published') {
+      triggerNewPostNotification(postId, postDetails.title, postDetails.slug, lang);
     }
 
     const { error: deleteError } = await supabase
