@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -51,7 +51,11 @@ export const SessionContextProvider: React.FC<{ children: React.ReactNode }> = (
     return () => subscription.unsubscribe();
   }, []);
 
-  const value = { session, user, isLoading };
+  const value = useMemo(() => ({
+    session,
+    user,
+    isLoading,
+  }), [session, user, isLoading]);
 
   return (
     <SessionContext.Provider value={value}>
