@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Locale } from '@/lib/i18n/config';
-import { Facebook } from 'lucide-react';
+import { Facebook, Instagram, Pinterest } from 'lucide-react';
 
 interface FooterProps {
   lang: Locale;
@@ -28,7 +28,7 @@ const footerTexts = {
     }
   },
   es: {
-    copyright: "© 2024 PaxWord. Todos los derechos reservados.",
+    copyright: "© 2024 PaxWord. Todos os direitos reservados.",
     links: {
       privacy: "Política de Privacidad",
       terms: "Términos de Servicio",
@@ -62,6 +62,9 @@ const Footer: React.FC<FooterProps> = ({ lang }) => {
           </Link>
           <a href="https://www.facebook.com/paxwordofficial" target="_blank" rel="noopener noreferrer" aria-label="Facebook">
             <Facebook className="h-5 w-5 hover:text-primary transition-colors" />
+          </a>
+          <a href="https://pinterest.com/paxwordofficial/" target="_blank" rel="noopener noreferrer" aria-label="Pinterest">
+            <Pinterest className="h-5 w-5 hover:text-primary transition-colors" />
           </a>
         </div>
       </div>
