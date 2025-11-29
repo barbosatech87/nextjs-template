@@ -2,6 +2,7 @@
 
 import Script from "next/script";
 import { useProfile } from "@/hooks/use-profile";
+import { useCookieConsent } from "@/hooks/use-cookie-consent";
 import { useEffect, useState } from "react";
 
 interface AdsenseScriptProps {
@@ -10,16 +11,16 @@ interface AdsenseScriptProps {
 
 const AdsenseScript = ({ adsenseClientId }: AdsenseScriptProps) => {
   const { profile, isLoading } = useProfile();
+  const { consent, hasReplied } = useCookieConsent();
   const [shouldLoadAds, setShouldLoadAds] = useState(false);
 
   useEffect(() => {
-    // 1. Verificação inicial: Se não estiver carregando e não for premium
-    if (!isLoading) {
+    // 1. Verificações preliminares: carregamento perfil e resposta do cookie
+    if (!isLoading && hasReplied) {
       const isPremium = profile?.subscription_status === 'premium';
       
       if (!isPremium) {
-        // 2. Atraso estratégico: Espera 3.5 segundos após o carregamento inicial
-        // Isso garante que o Lighthouse já tenha medido o LCP antes do script pesado entrar.
+        // 2. Atraso estratégico para performance (Core Web Vitals)
         const timer = setTimeout(() => {
           setShouldLoadAds(true);
         }, 3500);
@@ -27,10 +28,14 @@ const AdsenseScript = ({ adsenseClientId }: AdsenseScriptProps) => {
         return () => clearTimeout(timer);
       }
     }
-  }, [profile, isLoading]);
+  }, [profile, isLoading, hasReplied]);
 
   if (!adsenseClientId) return null;
   if (!shouldLoadAds) return null;
+
+  // Lógica NPA (Non-Personalized Ads)
+  // Se o usuário NÃO deu consentimento de marketing, ativamos o NPA.
+  const isNpa = !consent.marketing;
 
   return (
     <Script
@@ -38,7 +43,9 @@ const AdsenseScript = ({ adsenseClientId }: AdsenseScriptProps) => {
       async
       src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`}
       crossOrigin="anonymous"
-      strategy="afterInteractive" 
+      strategy="afterInteractive"
+      // Atributos condicionais para o script tag
+      {...(isNpa ? { "data-npa-on-ads": "1" } : {})}
     />
   );
 };
