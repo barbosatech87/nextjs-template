@@ -9,15 +9,20 @@ import { Locale } from '@/lib/i18n/config';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
-// Helper para aguardar o Service Worker ficar pronto, com timeout
-const waitForServiceWorker = async (maxAttempts = 15, interval = 300): Promise<ServiceWorkerRegistration | null> => {
-  if (!('serviceWorker' in navigator)) return null;
-  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-    const registration = await navigator.serviceWorker.getRegistration();
-    if (registration) return registration;
-    await new Promise((resolve) => setTimeout(resolve, interval));
+// Helper para aguardar o Service Worker ficar pronto usando a API nativa .ready
+const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
+  if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+    return null;
   }
-  return null;
+  
+  try {
+    // Esta Promise só resolve quando há um SW ativo.
+    // É muito mais confiável que tentar buscar o registro manualmente repetidas vezes.
+    return await navigator.serviceWorker.ready;
+  } catch (error) {
+    console.error('Erro ao aguardar Service Worker:', error);
+    return null;
+  }
 };
 
 export function usePushNotifications(lang: Locale) {
@@ -49,7 +54,8 @@ export function usePushNotifications(lang: Locale) {
     try {
       const registration = await waitForServiceWorker();
       if (!registration) {
-        setError("Service Worker não está pronto. Tente recarregar a página.");
+        // Se .ready falhar (raro) ou navegador não suportar
+        setError("Service Worker não disponível.");
         setIsSubscribing(false);
         isCheckingRef.current = false;
         return;
@@ -68,6 +74,7 @@ export function usePushNotifications(lang: Locale) {
           setIsSubscribed(true);
           setSubscription(sub);
         } else {
+          // Inscrição existe no browser mas não no banco (limpeza ou inconsistência)
           await sub.unsubscribe();
           setIsSubscribed(false);
           setSubscription(null);
@@ -147,7 +154,7 @@ export function usePushNotifications(lang: Locale) {
       let message = "Falha ao ativar as notificações.";
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError') {
-          message = "Permissão para notificações foi negada.";
+          message = "Permissão para notificações foi negada pelo navegador.";
         } else {
           message = err.message;
         }
