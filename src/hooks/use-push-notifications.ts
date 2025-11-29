@@ -9,42 +9,55 @@ import { Locale } from '@/lib/i18n/config';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
+// Helper para aguardar o Service Worker ficar pronto, com timeout
+const waitForServiceWorker = async (maxAttempts = 15, interval = 300): Promise<ServiceWorkerRegistration | null> => {
+  if (!('serviceWorker' in navigator)) return null;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (registration) return registration;
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+  return null;
+};
+
 export function usePushNotifications(lang: Locale) {
   const { user } = useSession();
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [isSubscribing, setIsSubscribing] = useState(true); // Começa true para checar status inicial
+  const [isSubscribing, setIsSubscribing] = useState(true);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Trava para evitar verificações duplicadas ou em loop
   const isCheckingRef = useRef(false);
   const lastCheckedUserId = useRef<string | undefined>(undefined);
   
   const userId = user?.id;
 
   const checkSubscription = useCallback(async () => {
-    // Se não há suporte, usuário ou chave, aborta imediatamente
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      setError("Push notifications are not supported by this browser.");
+      setError("Notificações não são suportadas neste navegador.");
       setIsSubscribing(false);
       return;
     }
 
-    // Previne execução se já estiver rodando ou se já checou este usuário
     if (isCheckingRef.current || (userId && lastCheckedUserId.current === userId)) {
         setIsSubscribing(false);
         return;
     }
 
     isCheckingRef.current = true;
-    // Mantemos isSubscribing true enquanto verificamos
 
     try {
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await waitForServiceWorker();
+      if (!registration) {
+        setError("Service Worker não está pronto. Tente recarregar a página.");
+        setIsSubscribing(false);
+        isCheckingRef.current = false;
+        return;
+      }
+
       const sub = await registration.pushManager.getSubscription();
       
       if (sub) {
-        // Verifica com o backend se essa inscrição ainda é válida
         const { data, error } = await supabase
           .from('push_subscriptions')
           .select('id')
@@ -55,7 +68,6 @@ export function usePushNotifications(lang: Locale) {
           setIsSubscribed(true);
           setSubscription(sub);
         } else {
-          // Inscrição existe no navegador mas não no banco (limpeza)
           await sub.unsubscribe();
           setIsSubscribed(false);
           setSubscription(null);
@@ -65,17 +77,16 @@ export function usePushNotifications(lang: Locale) {
         setSubscription(null);
       }
       
-      // Marca sucesso para este ID
       if (userId) lastCheckedUserId.current = userId;
 
     } catch (err) {
       console.error("Error checking push subscription:", err);
-      setError("Failed to check subscription status.");
+      setError("Falha ao verificar o status da inscrição.");
     } finally {
       setIsSubscribing(false);
       isCheckingRef.current = false;
     }
-  }, [userId]); // Dependência estável (apenas ID)
+  }, [userId]);
 
   useEffect(() => {
     if (userId) {
@@ -83,7 +94,7 @@ export function usePushNotifications(lang: Locale) {
     } else {
       setIsSubscribing(false);
       setIsSubscribed(false);
-      lastCheckedUserId.current = undefined; // Reseta cache se deslogar
+      lastCheckedUserId.current = undefined;
     }
   }, [userId, checkSubscription]);
 
@@ -102,7 +113,11 @@ export function usePushNotifications(lang: Locale) {
     setError(null);
 
     try {
-      const registration = await navigator.serviceWorker.ready;
+      const registration = await waitForServiceWorker();
+      if (!registration) {
+        throw new Error("Service Worker não está pronto. Tente recarregar a página.");
+      }
+
       const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
       const sub = await registration.pushManager.subscribe({
         userVisibleOnly: true,
@@ -116,7 +131,7 @@ export function usePushNotifications(lang: Locale) {
       });
 
       if (dbError) {
-        if (dbError.code === '23505') { // unique_violation
+        if (dbError.code === '23505') {
           console.log("Subscription already exists on the server.");
         } else {
           throw new Error(dbError.message);
@@ -126,13 +141,16 @@ export function usePushNotifications(lang: Locale) {
       setSubscription(sub);
       setIsSubscribed(true);
       toast.success("Notificações ativadas!");
-      // Atualiza o cache para evitar re-check desnecessário
       lastCheckedUserId.current = user.id;
     } catch (err) {
       console.error("Failed to subscribe user:", err);
       let message = "Falha ao ativar as notificações.";
-      if (err instanceof Error && err.name === 'NotAllowedError') {
-        message = "Permissão para notificações foi negada.";
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError') {
+          message = "Permissão para notificações foi negada.";
+        } else {
+          message = err.message;
+        }
       }
       setError(message);
       toast.error(message);
