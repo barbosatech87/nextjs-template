@@ -9,16 +9,27 @@ import { Locale } from '@/lib/i18n/config';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
-// Helper para aguardar o Service Worker ficar pronto usando a API nativa .ready
+// Helper para aguardar o Service Worker com um timeout de segurança
 const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null> => {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
     return null;
   }
   
   try {
-    // Esta Promise só resolve quando há um SW ativo.
-    // É muito mais confiável que tentar buscar o registro manualmente repetidas vezes.
-    return await navigator.serviceWorker.ready;
+    // Cria uma promessa que resolve como null após 3 segundos
+    // Isso evita que a UI fique travada se o SW não estiver ativo (comum em dev)
+    const timeoutPromise = new Promise<null>((resolve) => {
+      setTimeout(() => {
+        console.warn('Service Worker check timed out (likely in development mode or SW disabled).');
+        resolve(null);
+      }, 3000);
+    });
+
+    // Corrida entre o SW ficar pronto e o timeout
+    return await Promise.race([
+      navigator.serviceWorker.ready,
+      timeoutPromise
+    ]);
   } catch (error) {
     console.error('Erro ao aguardar Service Worker:', error);
     return null;
@@ -28,7 +39,7 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
 export function usePushNotifications(lang: Locale) {
   const { user } = useSession();
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [isSubscribing, setIsSubscribing] = useState(true);
+  const [isSubscribing, setIsSubscribing] = useState(true); // Inicia carregando para verificar estado
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -39,7 +50,8 @@ export function usePushNotifications(lang: Locale) {
 
   const checkSubscription = useCallback(async () => {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      setError("Notificações não são suportadas neste navegador.");
+      // Falha silenciosa ou aviso discreto, não bloqueante
+      // setError("Notificações não suportadas."); 
       setIsSubscribing(false);
       return;
     }
@@ -53,9 +65,9 @@ export function usePushNotifications(lang: Locale) {
 
     try {
       const registration = await waitForServiceWorker();
+      
       if (!registration) {
-        // Se .ready falhar (raro) ou navegador não suportar
-        setError("Service Worker não disponível.");
+        // Se retornou null (timeout ou erro), paramos o loading
         setIsSubscribing(false);
         isCheckingRef.current = false;
         return;
@@ -74,8 +86,9 @@ export function usePushNotifications(lang: Locale) {
           setIsSubscribed(true);
           setSubscription(sub);
         } else {
-          // Inscrição existe no browser mas não no banco (limpeza ou inconsistência)
-          await sub.unsubscribe();
+          // Inscrição existe no browser mas não no banco
+          // Tentamos remover do browser para limpar estado
+          await sub.unsubscribe().catch(console.error);
           setIsSubscribed(false);
           setSubscription(null);
         }
@@ -88,7 +101,7 @@ export function usePushNotifications(lang: Locale) {
 
     } catch (err) {
       console.error("Error checking push subscription:", err);
-      setError("Falha ao verificar o status da inscrição.");
+      // Não definimos erro fatal aqui para não quebrar a UI, apenas logamos
     } finally {
       setIsSubscribing(false);
       isCheckingRef.current = false;
@@ -122,7 +135,7 @@ export function usePushNotifications(lang: Locale) {
     try {
       const registration = await waitForServiceWorker();
       if (!registration) {
-        throw new Error("Service Worker não está pronto. Tente recarregar a página.");
+        throw new Error("Service Worker não disponível. Tente recarregar a página.");
       }
 
       const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
