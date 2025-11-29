@@ -6,10 +6,11 @@ import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useSession } from '@/components/auth/session-context-provider';
+import { Locale } from '@/lib/i18n/config';
 
-export function NotificationBell() {
+export function NotificationBell({ lang }: { lang: Locale }) {
   const { user } = useSession();
-  const { isSubscribed, isSubscribing, subscribeUser, unsubscribeUser, error } = usePushNotifications();
+  const { isSubscribed, isSubscribing, subscribeUser, unsubscribeUser, error } = usePushNotifications(lang);
 
   if (!user) {
     return null; // Don't show the bell if the user is not logged in

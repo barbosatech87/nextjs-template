@@ -134,7 +134,7 @@ const Header: React.FC<HeaderProps> = ({ lang }) => {
             <div className="h-8 w-24 animate-pulse bg-muted rounded-md" />
           ) : user ? (
             <>
-              <NotificationBell />
+              <NotificationBell lang={lang} />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" aria-label={texts.profile} className="relative">

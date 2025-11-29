@@ -5,11 +5,12 @@ import { createSupabaseAdminClient } from "@/integrations/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from 'uuid';
 import webpush from 'web-push';
+import { i18n } from "@/lib/i18n/config";
 
 // Configura o web-push com as chaves VAPID
 if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
   webpush.setVapidDetails(
-    'mailto:seu-email-de-contato@exemplo.com', // Substitua por um e-mail de contato
+    'mailto:contato@paxword.com',
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
     process.env.VAPID_PRIVATE_KEY
   );
@@ -21,69 +22,87 @@ function assert(condition: any, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
 
+const notificationTitles = {
+  pt: "Novo Post no PaxWord!",
+  en: "New Post on PaxWord!",
+  es: "¡Nuevo Post en PaxWord!",
+};
+
 /**
- * Dispara o envio de notificações push para um novo post.
- * Não bloqueia a execução principal (roda em segundo plano).
+ * Dispara o envio de notificações push para um novo post, respeitando o idioma.
  */
-export async function triggerNewPostNotification(postId: string, postTitle: string, postSlug: string, lang: string) {
-  // Executa sem await para não bloquear a resposta da Server Action
+export async function triggerNewPostNotification(postId: string, postTitle: string, postSlug: string, originalLang: string) {
   Promise.resolve().then(async () => {
     try {
       const supabaseAdmin = createSupabaseAdminClient();
       
-      // 1. Busca todas as inscrições ativas
+      // 1. Busca todas as inscrições ativas com seu idioma
       const { data: subscriptions, error: subsError } = await supabaseAdmin
         .from('push_subscriptions')
-        .select('subscription_data');
+        .select('subscription_data, language_code');
 
       if (subsError || !subscriptions || subscriptions.length === 0) {
-        console.log("Nenhuma inscrição para notificar sobre o novo post.");
+        console.log("Nenhuma inscrição para notificar.");
         return;
       }
 
-      // 2. Cria um registro de broadcast para rastreamento
-      const broadcastId = uuidv4();
-      const notificationTitle = "Novo Post no PaxWord!";
-      const notificationBody = postTitle;
-      const postUrl = `/${lang}/blog/${postSlug}`;
+      // 2. Busca todas as traduções disponíveis para o post
+      const { data: translations } = await supabaseAdmin
+        .from('blog_post_translations')
+        .select('language_code, translated_title')
+        .eq('post_id', postId);
 
+      const translationsMap = new Map(translations?.map(t => [t.language_code, t]));
+
+      // 3. Agrupa as inscrições por idioma
+      const subsByLang: Record<string, any[]> = {};
+      for (const sub of subscriptions) {
+        const lang = sub.language_code || i18n.defaultLocale;
+        if (!subsByLang[lang]) subsByLang[lang] = [];
+        subsByLang[lang].push(sub.subscription_data);
+      }
+
+      // 4. Cria um único registro de broadcast
+      const broadcastId = uuidv4();
       await supabaseAdmin.from("notification_broadcasts").insert({
         id: broadcastId,
-        title: notificationTitle,
-        body: notificationBody,
+        title: notificationTitles[originalLang as keyof typeof notificationTitles] || notificationTitles.pt,
+        body: postTitle,
         sent_to_count: subscriptions.length,
-        type: 'automatic', // Novo tipo
+        type: 'automatic',
       });
 
-      // 3. Prepara o payload da notificação
-      const payload = JSON.stringify({
-        title: notificationTitle,
-        body: notificationBody,
-        url: postUrl,
-      });
+      // 5. Envia notificações para cada grupo de idioma
+      for (const langCode of Object.keys(subsByLang)) {
+        const translation = translationsMap.get(langCode);
+        const notificationBody = translation ? translation.translated_title : postTitle;
+        const notificationTitle = notificationTitles[langCode as keyof typeof notificationTitles] || notificationTitles.pt;
+        const url = `/${langCode}/blog/${postSlug}`;
 
-      // 4. Envia as notificações
-      const sendPromises = subscriptions.map(async (sub) => {
-        try {
-          await webpush.sendNotification(sub.subscription_data as any, payload);
-        } catch (error) {
-          console.error("Erro ao enviar notificação:", error);
-          // Se a inscrição expirou (erro 410), remove do banco
-          if (error && typeof error === 'object' && 'statusCode' in error && (error as { statusCode: number }).statusCode === 410) {
-            const endpoint = (sub.subscription_data as any)?.endpoint;
-            if (endpoint) {
-              console.log("Removendo inscrição expirada:", endpoint);
-              await supabaseAdmin
-                .from('push_subscriptions')
-                .delete()
-                .eq('subscription_data->>endpoint', endpoint);
+        const payload = JSON.stringify({
+          title: notificationTitle,
+          body: notificationBody,
+          url: url,
+        });
+
+        const subs = subsByLang[langCode];
+        const sendPromises = subs.map(async (sub) => {
+          try {
+            await webpush.sendNotification(sub, payload);
+          } catch (error) {
+            console.error(`Erro ao enviar notificação para ${sub.endpoint}:`, error);
+            if (error && typeof error === 'object' && 'statusCode' in error && (error as { statusCode: number }).statusCode === 410) {
+              const endpoint = sub?.endpoint;
+              if (endpoint) {
+                console.log("Removendo inscrição expirada:", endpoint);
+                await supabaseAdmin.from('push_subscriptions').delete().eq('subscription_data->>endpoint', endpoint);
+              }
             }
           }
-        }
-      });
-
-      await Promise.all(sendPromises);
-      console.log(`Notificações para o post "${postTitle}" enviadas para ${subscriptions.length} usuários.`);
+        });
+        await Promise.all(sendPromises);
+        console.log(`Notificações enviadas para ${subs.length} usuários em '${langCode}'.`);
+      }
 
     } catch (e) {
       console.error("Falha crítica no envio de notificações automáticas:", e);

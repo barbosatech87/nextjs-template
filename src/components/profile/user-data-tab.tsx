@@ -71,7 +71,7 @@ export const UserDataTab: React.FC<UserDataTabProps> = ({ lang }) => {
           <p className="text-sm text-muted-foreground max-w-md">
             {t.notificationsDesc}
           </p>
-          <NotificationBell />
+          <NotificationBell lang={lang} />
         </div>
       </div>
 

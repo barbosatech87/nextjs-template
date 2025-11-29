@@ -5,10 +5,11 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { urlBase64ToUint8Array } from '@/lib/utils';
 import { useSession } from '@/components/auth/session-context-provider';
+import { Locale } from '@/lib/i18n/config';
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
-export function usePushNotifications() {
+export function usePushNotifications(lang: Locale) {
   const { user } = useSession();
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(true); // Start as true to check status
@@ -89,6 +90,7 @@ export function usePushNotifications() {
       const { error: dbError } = await supabase.from('push_subscriptions').insert({
         user_id: user.id,
         subscription_data: sub.toJSON(),
+        language_code: lang, // Salva o idioma do usuário
       });
 
       if (dbError) {
