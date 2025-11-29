@@ -69,12 +69,15 @@ export async function triggerNewPostNotification(postId: string, postTitle: stri
         } catch (error) {
           console.error("Erro ao enviar notificação:", error);
           // Se a inscrição expirou (erro 410), remove do banco
-          if (error.statusCode === 410) {
-            console.log("Removendo inscrição expirada:", sub.subscription_data.endpoint);
-            await supabaseAdmin
-              .from('push_subscriptions')
-              .delete()
-              .eq('subscription_data->>endpoint', sub.subscription_data.endpoint);
+          if (error && typeof error === 'object' && 'statusCode' in error && (error as { statusCode: number }).statusCode === 410) {
+            const endpoint = (sub.subscription_data as any)?.endpoint;
+            if (endpoint) {
+              console.log("Removendo inscrição expirada:", endpoint);
+              await supabaseAdmin
+                .from('push_subscriptions')
+                .delete()
+                .eq('subscription_data->>endpoint', endpoint);
+            }
           }
         }
       });
