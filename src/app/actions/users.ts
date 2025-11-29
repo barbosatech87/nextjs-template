@@ -1,6 +1,7 @@
 "use server";
 
 import { createSupabaseAdminClient } from '@/integrations/supabase/admin';
+import { createSupabaseServerClient } from '@/integrations/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { Locale } from '@/lib/i18n/config';
@@ -130,4 +131,28 @@ export async function inviteUserByEmail(formData: { email: string, firstName: st
 
   revalidatePath(`/${lang}/admin/users`);
   return { success: true, message: 'Convite enviado com sucesso.' };
+}
+
+// Nova ação para marcar o prompt de notificação como visto
+export async function markNotificationPromptAsSeen() {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { success: false, message: "Usuário não autenticado." };
+  }
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ has_seen_notification_prompt: true })
+    .eq('id', user.id);
+
+  if (error) {
+    console.error("Erro ao marcar prompt como visto:", error);
+    return { success: false, message: "Falha ao atualizar o perfil." };
+  }
+
+  // Revalida o layout principal para que o header seja atualizado na próxima navegação
+  revalidatePath('/', 'layout');
+  return { success: true };
 }

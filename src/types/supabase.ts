@@ -9,6 +9,7 @@ export type Profile = {
   role: 'user' | 'writer' | 'admin';
   subscription_status: 'free' | 'premium'; // Novo campo adicionado
   updated_at: string | null;
+  has_seen_notification_prompt: boolean; // Novo campo
 };
 
 export type Page = {
