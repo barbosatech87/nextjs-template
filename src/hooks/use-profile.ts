@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSession } from '@/components/auth/session-context-provider';
 import { Profile } from '@/types/supabase';
@@ -12,20 +12,34 @@ export function useProfile() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Usamos o ID do usuário como dependência principal para evitar re-renderizações
-  // causadas pela instabilidade referencial do objeto 'user' completo.
+  // Refs para controlar o estado da requisição sem causar re-renderizações
+  const lastFetchedUserId = useRef<string | undefined>(undefined);
+  const isFetching = useRef(false);
+
+  // Usamos o ID do usuário como dependência
   const userId = user?.id;
 
-  const fetchProfile = useCallback(async () => {
-    // Se não houver ID de usuário, limpa o perfil e para o carregamento.
+  const fetchProfile = useCallback(async (force = false) => {
+    // Se não houver usuário, reseta e para.
     if (!userId) {
       setProfile(null);
       setIsLoading(false);
+      lastFetchedUserId.current = undefined;
       return;
     }
 
+    // TRAVA DE SEGURANÇA:
+    // Se já buscamos este usuário (e não é forçado) ou se já estamos buscando, aborta.
+    if (!force && (lastFetchedUserId.current === userId || isFetching.current)) {
+      // Se já temos o perfil carregado, garante que loading é falso
+      if (lastFetchedUserId.current === userId) setIsLoading(false);
+      return;
+    }
+
+    isFetching.current = true;
     setIsLoading(true);
     setError(null);
+
     try {
       const { data, error: dbError } = await supabase
         .from('profiles')
@@ -33,22 +47,25 @@ export function useProfile() {
         .eq('id', userId)
         .single();
 
-      if (dbError && dbError.code !== 'PGRST116') { // PGRST116 = No rows found
+      if (dbError && dbError.code !== 'PGRST116') {
         throw new Error(dbError.message);
       }
 
       setProfile(data || null);
+      lastFetchedUserId.current = userId; // Marca este ID como "sucesso"
     } catch (err) {
       console.error('Error fetching profile:', err);
       setError('Falha ao carregar o perfil.');
-      setProfile(null);
+      // Em caso de erro, não salvamos o ID no ref para permitir nova tentativa futura se necessário,
+      // mas o isFetching será liberado abaixo.
     } finally {
+      isFetching.current = false;
       setIsLoading(false);
     }
-  }, [userId]); // Dependência apenas no ID (string primitive)
+  }, [userId]);
 
   useEffect(() => {
-    // Só buscamos se a sessão terminou de carregar
+    // Só tenta buscar se a sessão já carregou
     if (!isSessionLoading) {
       fetchProfile();
     }
@@ -70,7 +87,6 @@ export function useProfile() {
         throw new Error(error.message);
       }
 
-      // Atualiza o estado local após o sucesso
       setProfile((prev: Profile | null) => prev ? { ...prev, ...updates } as Profile : null);
       toast.success('Perfil atualizado com sucesso!');
       return true;
@@ -81,5 +97,11 @@ export function useProfile() {
     }
   };
 
-  return { profile, isLoading: isLoading || isSessionLoading, error, updateProfile, refetchProfile: fetchProfile };
+  return { 
+    profile, 
+    isLoading: isLoading || isSessionLoading, 
+    error, 
+    updateProfile, 
+    refetchProfile: () => fetchProfile(true) // Permite forçar atualização
+  };
 }
