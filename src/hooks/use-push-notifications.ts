@@ -16,16 +16,22 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
   }
   
   try {
-    // Cria uma promessa que resolve como null após 3 segundos
-    // Isso evita que a UI fique travada se o SW não estiver ativo (comum em dev)
+    // 1. Tenta obter um registro já existente imediatamente
+    // Isso evita esperar pela promessa 'ready' se o SW já estiver registrado
+    const existingRegistration = await navigator.serviceWorker.getRegistration();
+    if (existingRegistration && existingRegistration.active) {
+      return existingRegistration;
+    }
+
+    // 2. Se não houver ativo, aguarda a promessa 'ready' com timeout
     const timeoutPromise = new Promise<null>((resolve) => {
       setTimeout(() => {
-        console.warn('Service Worker check timed out (likely in development mode or SW disabled).');
+        // Em produção, isso pode significar que o SW falhou ao registrar ou o navegador bloqueou
+        console.warn('Service Worker check timed out.');
         resolve(null);
-      }, 3000);
+      }, 4000); // Aumentei um pouco para conexões lentas
     });
 
-    // Corrida entre o SW ficar pronto e o timeout
     return await Promise.race([
       navigator.serviceWorker.ready,
       timeoutPromise
@@ -39,7 +45,7 @@ const waitForServiceWorker = async (): Promise<ServiceWorkerRegistration | null>
 export function usePushNotifications(lang: Locale) {
   const { user } = useSession();
   const [isSubscribed, setIsSubscribed] = useState(false);
-  const [isSubscribing, setIsSubscribing] = useState(true); // Inicia carregando para verificar estado
+  const [isSubscribing, setIsSubscribing] = useState(true);
   const [subscription, setSubscription] = useState<PushSubscription | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,13 +55,13 @@ export function usePushNotifications(lang: Locale) {
   const userId = user?.id;
 
   const checkSubscription = useCallback(async () => {
+    // Validação inicial de ambiente
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-      // Falha silenciosa ou aviso discreto, não bloqueante
-      // setError("Notificações não suportadas."); 
       setIsSubscribing(false);
       return;
     }
 
+    // Evita verificações duplicadas
     if (isCheckingRef.current || (userId && lastCheckedUserId.current === userId)) {
         setIsSubscribing(false);
         return;
@@ -67,7 +73,8 @@ export function usePushNotifications(lang: Locale) {
       const registration = await waitForServiceWorker();
       
       if (!registration) {
-        // Se retornou null (timeout ou erro), paramos o loading
+        // Se falhar ao obter o SW, apenas paramos o loading sem erro fatal
+        // Isso permite que o site funcione mesmo se o PWA falhar
         setIsSubscribing(false);
         isCheckingRef.current = false;
         return;
@@ -76,6 +83,7 @@ export function usePushNotifications(lang: Locale) {
       const sub = await registration.pushManager.getSubscription();
       
       if (sub) {
+        // Verifica se a subscrição também existe no banco de dados
         const { data, error } = await supabase
           .from('push_subscriptions')
           .select('id')
@@ -86,8 +94,7 @@ export function usePushNotifications(lang: Locale) {
           setIsSubscribed(true);
           setSubscription(sub);
         } else {
-          // Inscrição existe no browser mas não no banco
-          // Tentamos remover do browser para limpar estado
+          // Inconsistência: Existe no navegador mas não no DB. Remove do navegador.
           await sub.unsubscribe().catch(console.error);
           setIsSubscribed(false);
           setSubscription(null);
@@ -101,7 +108,6 @@ export function usePushNotifications(lang: Locale) {
 
     } catch (err) {
       console.error("Error checking push subscription:", err);
-      // Não definimos erro fatal aqui para não quebrar a UI, apenas logamos
     } finally {
       setIsSubscribing(false);
       isCheckingRef.current = false;
@@ -123,9 +129,11 @@ export function usePushNotifications(lang: Locale) {
       toast.error("Você precisa estar logado para ativar as notificações.");
       return;
     }
+    
+    // Verificação crítica da chave VAPID
     if (!VAPID_PUBLIC_KEY) {
-      console.error("VAPID public key not found.");
-      toast.error("Erro de configuração: Chave de notificação ausente.");
+      console.error("VAPID public key not found in environment variables.");
+      toast.error("Configuração ausente: Chave de notificação não encontrada.");
       return;
     }
 
@@ -135,15 +143,18 @@ export function usePushNotifications(lang: Locale) {
     try {
       const registration = await waitForServiceWorker();
       if (!registration) {
-        throw new Error("Service Worker não disponível. Tente recarregar a página.");
+        throw new Error("Service Worker não está pronto. Recarregue a página e tente novamente.");
       }
 
       const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      
+      // Tenta inscrever
       const sub = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey,
       });
 
+      // Salva no Supabase
       const { error: dbError } = await supabase.from('push_subscriptions').insert({
         user_id: user.id,
         subscription_data: sub.toJSON(),
@@ -152,6 +163,7 @@ export function usePushNotifications(lang: Locale) {
 
       if (dbError) {
         if (dbError.code === '23505') {
+          // Ignora erro de duplicidade (já inscrito)
           console.log("Subscription already exists on the server.");
         } else {
           throw new Error(dbError.message);
@@ -160,16 +172,16 @@ export function usePushNotifications(lang: Locale) {
 
       setSubscription(sub);
       setIsSubscribed(true);
-      toast.success("Notificações ativadas!");
+      toast.success("Notificações ativadas com sucesso!");
       lastCheckedUserId.current = user.id;
     } catch (err) {
       console.error("Failed to subscribe user:", err);
       let message = "Falha ao ativar as notificações.";
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError') {
-          message = "Permissão para notificações foi negada pelo navegador.";
+          message = "Você bloqueou as notificações. Ative-as nas configurações do navegador.";
         } else {
-          message = err.message;
+          message = `Erro: ${err.message}`;
         }
       }
       setError(message);
@@ -195,7 +207,7 @@ export function usePushNotifications(lang: Locale) {
         .eq('subscription_data->>endpoint', subscription.endpoint);
 
       if (dbError) {
-        console.warn("Failed to delete subscription from DB, but unsubscribed from browser:", dbError);
+        console.warn("Failed to delete from DB, but browser unsubscribed:", dbError);
       }
 
       setSubscription(null);
@@ -203,7 +215,6 @@ export function usePushNotifications(lang: Locale) {
       toast.success("Notificações desativadas.");
     } catch (err) {
       console.error("Failed to unsubscribe user:", err);
-      setError("Falha ao desativar as notificações.");
       toast.error("Falha ao desativar as notificações.");
     } finally {
       setIsSubscribing(false);
