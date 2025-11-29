@@ -12,9 +12,13 @@ export function useProfile() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Usamos o ID do usuário como dependência principal para evitar re-renderizações
+  // causadas pela instabilidade referencial do objeto 'user' completo.
+  const userId = user?.id;
+
   const fetchProfile = useCallback(async () => {
-    // Se não houver usuário, limpa o perfil e para o carregamento.
-    if (!user) {
+    // Se não houver ID de usuário, limpa o perfil e para o carregamento.
+    if (!userId) {
       setProfile(null);
       setIsLoading(false);
       return;
@@ -26,7 +30,7 @@ export function useProfile() {
       const { data, error: dbError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single();
 
       if (dbError && dbError.code !== 'PGRST116') { // PGRST116 = No rows found
@@ -41,18 +45,17 @@ export function useProfile() {
     } finally {
       setIsLoading(false);
     }
-  }, [user]); // A função de busca agora depende apenas do objeto 'user'.
+  }, [userId]); // Dependência apenas no ID (string primitive)
 
   useEffect(() => {
-    // O efeito agora só roda quando o status da sessão muda.
-    // Ele chama a função 'fetchProfile' que é estável.
+    // Só buscamos se a sessão terminou de carregar
     if (!isSessionLoading) {
       fetchProfile();
     }
   }, [isSessionLoading, fetchProfile]);
 
   const updateProfile = async (updates: Partial<Omit<Profile, 'id' | 'role' | 'updated_at'>>) => {
-    if (!user) {
+    if (!userId) {
       toast.error('Você precisa estar logado para atualizar o perfil.');
       return false;
     }
@@ -61,7 +64,7 @@ export function useProfile() {
       const { error } = await supabase
         .from('profiles')
         .update(updates)
-        .eq('id', user.id);
+        .eq('id', userId);
 
       if (error) {
         throw new Error(error.message);
