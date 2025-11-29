@@ -6,17 +6,17 @@ import { Metadata } from "next";
 
 const pageTexts = {
   pt: {
-    title: "Blog - Artigos e Devocionais Cristãos",
+    title: "Blog - Todos Artigos e Devocionais",
     description: "Leia nossos últimos artigos, estudos bíblicos e devocionais para fortalecer sua fé e aprofundar seu conhecimento da Palavra.",
     noPosts: "Nenhuma postagem encontrada.",
   },
   en: {
-    title: "Blog - Christian Articles and Devotionals",
+    title: "Blog - All Articles and Devotionals",
     description: "Read our latest articles, Bible studies, and devotionals to strengthen your faith and deepen your knowledge of the Word.",
     noPosts: "No posts found.",
   },
   es: {
-    title: "Blog - Artículos y Devocionales Cristianos",
+    title: "Blog - Todos los Artículos y Devocionales",
     description: "Lee nuestros últimos artículos, estudios bíblicos y devocionales para fortalecer tu fe y profundizar tu conocimiento de la Palabra.",
     noPosts: "No se encontraron entradas.",
   },
