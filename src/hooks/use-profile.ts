@@ -12,18 +12,25 @@ export function useProfile() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  const fetchProfile = useCallback(async () => {
+    // Se não houver usuário, limpa o perfil e para o carregamento.
+    if (!user) {
+      setProfile(null);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase
+      const { data, error: dbError } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', user.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
-        throw new Error(error.message);
+      if (dbError && dbError.code !== 'PGRST116') { // PGRST116 = No rows found
+        throw new Error(dbError.message);
       }
 
       setProfile(data || null);
@@ -34,16 +41,15 @@ export function useProfile() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [user]); // A função de busca agora depende apenas do objeto 'user'.
 
   useEffect(() => {
-    if (!isSessionLoading && user) {
-      fetchProfile(user.id);
-    } else if (!isSessionLoading && !user) {
-      setProfile(null);
-      setIsLoading(false);
+    // O efeito agora só roda quando o status da sessão muda.
+    // Ele chama a função 'fetchProfile' que é estável.
+    if (!isSessionLoading) {
+      fetchProfile();
     }
-  }, [user, isSessionLoading, fetchProfile]);
+  }, [isSessionLoading, fetchProfile]);
 
   const updateProfile = async (updates: Partial<Omit<Profile, 'id' | 'role' | 'updated_at'>>) => {
     if (!user) {
@@ -72,5 +78,5 @@ export function useProfile() {
     }
   };
 
-  return { profile, isLoading: isLoading || isSessionLoading, error, updateProfile, refetchProfile: () => user && fetchProfile(user.id) };
+  return { profile, isLoading: isLoading || isSessionLoading, error, updateProfile, refetchProfile: fetchProfile };
 }
