@@ -5,6 +5,7 @@ import { PostSection } from '@/components/home/post-section';
 import { getDailyVerse, getRecentPosts } from '@/app/actions/blog';
 import { ReadBibleCta } from '@/components/home/read-bible-cta';
 import { Metadata } from 'next';
+import { FadeInOnScroll } from '@/components/animations/fade-in-on-scroll';
 
 interface HomePageProps {
   params: Promise<{ lang: Locale }>;
@@ -99,26 +100,34 @@ export default async function HomePage({ params }: HomePageProps) {
           {t.hero.heading}
         </h1>
         <HeroSearch lang={lang} texts={t.hero} />
-        <DailyVerse lang={lang} verse={dailyVerse} texts={t.dailyVerse} />
+        <FadeInOnScroll>
+          <DailyVerse lang={lang} verse={dailyVerse} texts={t.dailyVerse} />
+        </FadeInOnScroll>
       </div>
 
-      <ReadBibleCta lang={lang} texts={t.readBible} />
+      <FadeInOnScroll delay={100}>
+        <ReadBibleCta lang={lang} texts={t.readBible} />
+      </FadeInOnScroll>
 
       <div>
-        <PostSection 
-          lang={lang} 
-          posts={devotionalPosts} 
-          title={t.postSection.devotional.title} 
-          viewAllLink={`/${lang}/blog/category/devocional`}
-          viewAllText={t.postSection.devotional.viewAll}
-        />
-        <PostSection 
-          lang={lang} 
-          posts={recentPosts} 
-          title={t.postSection.latest.title} 
-          viewAllLink={`/${lang}/blog`}
-          viewAllText={t.postSection.latest.viewAll}
-        />
+        <FadeInOnScroll delay={200}>
+          <PostSection 
+            lang={lang} 
+            posts={devotionalPosts} 
+            title={t.postSection.devotional.title} 
+            viewAllLink={`/${lang}/blog/category/devocional`}
+            viewAllText={t.postSection.devotional.viewAll}
+          />
+        </FadeInOnScroll>
+        <FadeInOnScroll delay={300}>
+          <PostSection 
+            lang={lang} 
+            posts={recentPosts} 
+            title={t.postSection.latest.title} 
+            viewAllLink={`/${lang}/blog`}
+            viewAllText={t.postSection.latest.viewAll}
+          />
+        </FadeInOnScroll>
       </div>
     </div>
   );

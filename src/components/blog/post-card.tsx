@@ -18,8 +18,8 @@ const PostCard: React.FC<PostCardProps> = ({ post, lang }) => {
     : 'N/A';
 
   return (
-    <Link href={`/${lang}/blog/${post.slug}`} className="block h-full">
-      <Card className="h-full flex flex-col overflow-hidden transition-shadow hover:shadow-lg">
+    <Link href={`/${lang}/blog/${post.slug}`} className="block h-full group">
+      <Card className="h-full flex flex-col overflow-hidden transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-2">
         {post.image_url && (
           <div className="relative h-48 w-full overflow-hidden">
             <Image 
@@ -27,7 +27,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, lang }) => {
               alt={post.image_alt_text || post.title} 
               fill
               quality={65}
-              className="object-cover transition-transform duration-300 hover:scale-105"
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             />
           </div>
@@ -53,7 +53,7 @@ const PostCard: React.FC<PostCardProps> = ({ post, lang }) => {
           </div>
         </CardContent>
         <CardFooter>
-          <span className="text-sm font-medium text-primary hover:underline">
+          <span className="text-sm font-medium text-primary group-hover:underline">
             {lang === 'pt' ? 'Ler mais' : lang === 'en' ? 'Read more' : 'Leer más'}
           </span>
         </CardFooter>
