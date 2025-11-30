@@ -6,6 +6,7 @@ import { BlogPost } from "@/types/supabase";
 import { marked } from 'marked';
 import { createClient } from "@supabase/supabase-js";
 import { triggerNewPostNotification } from './notifications'; // Importa a nova função
+import DOMPurify from 'isomorphic-dompurify';
 
 const POSTS_PER_PAGE = 9;
 
@@ -451,6 +452,10 @@ export const getPostBySlug = unstable_cache(
     }
     
     const parsedContent = await marked.parse(contentToParse);
+    const sanitizedContent = DOMPurify.sanitize(parsedContent, {
+      ADD_TAGS: ['iframe'],
+      ADD_ATTR: ['class', 'target', 'rel', 'frameborder', 'allow', 'allowfullscreen'],
+    });
 
     const finalPost = {
       id: post.id,
@@ -464,7 +469,7 @@ export const getPostBySlug = unstable_cache(
       author_last_name: authorProfile?.last_name || null,
       title: finalTitle,
       summary: finalSummary,
-      content: parsedContent,
+      content: sanitizedContent,
       language_code: finalLanguageCode,
       categories,
     };

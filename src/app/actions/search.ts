@@ -3,6 +3,7 @@
 import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { getTranslatedBookName, getEnglishBookName } from "@/lib/bible-translations";
 import { Locale } from "@/lib/i18n/config";
+import DOMPurify from 'isomorphic-dompurify';
 
 export type SearchResult = {
   type: 'verse' | 'blog' | 'book';
@@ -50,7 +51,8 @@ function createSnippet(text: string, query: string): string {
   const regex = new RegExp(`(${query.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
   snippet = snippet.replace(regex, '<mark>$1</mark>');
 
-  return snippet;
+  // Sanitize the final snippet, allowing only the <mark> tag
+  return DOMPurify.sanitize(snippet, { ALLOWED_TAGS: ['mark'] });
 }
 
 export async function searchAll(query: string, lang: Locale): Promise<SearchResult[]> {
