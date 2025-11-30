@@ -55,24 +55,17 @@ export async function getAiChatResponse(
     return { error: 'Autenticação necessária.' };
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
+  // A verificação de função de admin agora é tratada dentro da função RPC.
+  // Chamamos para todos os usuários, e ela irá ignorar o limite para admins.
+  const { data: allowed, error: rpcError } = await supabase.rpc('increment_chat_message_count');
 
-  // Apenas usuários não-admin têm limite
-  if (profile?.role !== 'admin') {
-    const { data: allowed, error: rpcError } = await supabase.rpc('increment_chat_message_count');
+  if (rpcError) {
+    console.error('Erro ao verificar limite de mensagens:', rpcError);
+    return { error: 'Não foi possível verificar seu limite de uso. Tente novamente.' };
+  }
 
-    if (rpcError) {
-      console.error('Erro ao verificar limite de mensagens:', rpcError);
-      return { error: 'Não foi possível verificar seu limite de uso. Tente novamente.' };
-    }
-
-    if (!allowed) {
-      return { error: 'Você atingiu seu limite diário de 5 mensagens. Por favor, volte amanhã para continuar a conversa.' };
-    }
+  if (!allowed) {
+    return { error: 'Você atingiu seu limite diário de 5 mensagens. Por favor, volte amanhã para continuar a conversa.' };
   }
 
   try {
