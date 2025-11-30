@@ -5,10 +5,22 @@ import { revalidatePath, unstable_cache } from "next/cache";
 import { BlogPost } from "@/types/supabase";
 import { marked } from 'marked';
 import { createClient } from "@supabase/supabase-js";
-import { triggerNewPostNotification } from './notifications'; // Importa a nova função
-import DOMPurify from 'isomorphic-dompurify';
+import { triggerNewPostNotification } from './notifications';
+import sanitizeHtml from 'sanitize-html';
 
 const POSTS_PER_PAGE = 9;
+
+// Configuração do sanitizador
+const sanitizeConfig = {
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat(['iframe', 'img']),
+  allowedAttributes: {
+    ...sanitizeHtml.defaults.allowedAttributes,
+    '*': ['class'], // Permite classes para o Tailwind Typography
+    iframe: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title'],
+    a: [...sanitizeHtml.defaults.allowedAttributes.a, 'rel'],
+  },
+  allowedIframeHostnames: ['www.youtube.com', 'player.vimeo.com'],
+};
 
 // Cliente Supabase para dados públicos (dentro do cache)
 const getPublicClient = () => {
@@ -452,10 +464,7 @@ export const getPostBySlug = unstable_cache(
     }
     
     const parsedContent = await marked.parse(contentToParse);
-    const sanitizedContent = DOMPurify.sanitize(parsedContent, {
-      ADD_TAGS: ['iframe'],
-      ADD_ATTR: ['class', 'target', 'rel', 'frameborder', 'allow', 'allowfullscreen'],
-    });
+    const sanitizedContent = sanitizeHtml(parsedContent, sanitizeConfig);
 
     const finalPost = {
       id: post.id,

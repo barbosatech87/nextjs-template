@@ -4,7 +4,19 @@ import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { revalidatePath } from "next/cache";
 import { Page } from "@/types/supabase";
 import { marked } from 'marked';
-import DOMPurify from 'isomorphic-dompurify';
+import sanitizeHtml from 'sanitize-html';
+
+// Configuração do sanitizador
+const sanitizeConfig = {
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat(['iframe', 'img']),
+  allowedAttributes: {
+    ...sanitizeHtml.defaults.allowedAttributes,
+    '*': ['class'], // Permite classes para o Tailwind Typography
+    iframe: ['src', 'width', 'height', 'frameborder', 'allow', 'allowfullscreen', 'title'],
+    a: [...sanitizeHtml.defaults.allowedAttributes.a, 'rel'],
+  },
+  allowedIframeHostnames: ['www.youtube.com', 'player.vimeo.com'],
+};
 
 export type PageData = Omit<Page, 'id' | 'author_id' | 'created_at' | 'updated_at' | 'language_code'>;
 
@@ -153,10 +165,7 @@ export async function getPageBySlug(slug: string, lang: string): Promise<(Page &
   }
 
   const parsedContent = await marked.parse(contentToParse);
-  const sanitizedContent = DOMPurify.sanitize(parsedContent, {
-    ADD_TAGS: ['iframe'],
-    ADD_ATTR: ['class', 'target', 'rel', 'frameborder', 'allow', 'allowfullscreen'],
-  });
+  const sanitizedContent = sanitizeHtml(parsedContent, sanitizeConfig);
   
   const finalPage: Page & { content: string } = {
     ...page,
