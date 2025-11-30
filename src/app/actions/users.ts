@@ -21,85 +21,125 @@ export type Author = {
   full_name: string;
 }
 
+// Helper function to verify admin access
+async function checkAdmin() {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error("Usuário não autenticado.");
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin') {
+    throw new Error("Acesso negado: Apenas administradores podem realizar esta ação.");
+  }
+}
+
 // Ação para buscar todos os usuários com suas informações de perfil
 export async function getAdminUsers(): Promise<AdminUser[]> {
-  const supabaseAdmin = createSupabaseAdminClient();
+  try {
+    await checkAdmin();
+    
+    const supabaseAdmin = createSupabaseAdminClient();
 
-  // 1. Busca todos os usuários de auth.users
-  const { data: { users }, error: authError } = await supabaseAdmin.auth.admin.listUsers();
-  if (authError) {
-    console.error("Erro ao buscar usuários da autenticação:", authError);
+    // 1. Busca todos os usuários de auth.users
+    const { data: { users }, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+    if (authError) {
+      console.error("Erro ao buscar usuários da autenticação:", authError);
+      return [];
+    }
+
+    // 2. Busca todos os perfis de public.profiles
+    const { data: profiles, error: profilesError } = await supabaseAdmin
+      .from('profiles')
+      .select('*');
+    if (profilesError) {
+      console.error("Erro ao buscar perfis:", profilesError);
+      return [];
+    }
+
+    // 3. Combina os dados
+    const profilesMap = new Map(profiles.map(p => [p.id, p]));
+    
+    const combinedUsers: AdminUser[] = users.map(user => {
+      const profile = profilesMap.get(user.id);
+      return {
+        id: user.id,
+        email: user.email,
+        created_at: user.created_at,
+        first_name: profile?.first_name || null,
+        last_name: profile?.last_name || null,
+        role: profile?.role || 'user',
+      };
+    });
+
+    return combinedUsers;
+  } catch (error) {
+    console.error("Unauthorized access or error in getAdminUsers:", error);
     return [];
   }
-
-  // 2. Busca todos os perfis de public.profiles
-  const { data: profiles, error: profilesError } = await supabaseAdmin
-    .from('profiles')
-    .select('*');
-  if (profilesError) {
-    console.error("Erro ao buscar perfis:", profilesError);
-    return [];
-  }
-
-  // 3. Combina os dados
-  const profilesMap = new Map(profiles.map(p => [p.id, p]));
-  
-  const combinedUsers: AdminUser[] = users.map(user => {
-    const profile = profilesMap.get(user.id);
-    return {
-      id: user.id,
-      email: user.email,
-      created_at: user.created_at,
-      first_name: profile?.first_name || null,
-      last_name: profile?.last_name || null,
-      role: profile?.role || 'user',
-    };
-  });
-
-  return combinedUsers;
 }
 
 // Nova função para buscar apenas autores
 export async function getAuthors(): Promise<Author[]> {
-  const supabaseAdmin = createSupabaseAdminClient();
-  const { data: profiles, error } = await supabaseAdmin
-    .from('profiles')
-    .select('id, first_name, last_name')
-    .in('role', ['admin', 'writer']);
+  try {
+    await checkAdmin();
 
-  if (error) {
-    console.error("Erro ao buscar autores:", error);
+    const supabaseAdmin = createSupabaseAdminClient();
+    const { data: profiles, error } = await supabaseAdmin
+      .from('profiles')
+      .select('id, first_name, last_name')
+      .in('role', ['admin', 'writer']);
+
+    if (error) {
+      console.error("Erro ao buscar autores:", error);
+      return [];
+    }
+
+    return profiles.map(p => ({
+      id: p.id,
+      full_name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Autor Desconhecido',
+    }));
+  } catch (error) {
+    console.error("Unauthorized access or error in getAuthors:", error);
     return [];
   }
-
-  return profiles.map(p => ({
-    id: p.id,
-    full_name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Autor Desconhecido',
-  }));
 }
 
 
 // Ação para atualizar a função de um usuário
 const roleSchema = z.enum(['user', 'writer', 'admin']);
 export async function updateUserRole(userId: string, role: 'user' | 'writer' | 'admin', lang: Locale) {
-  const validatedRole = roleSchema.safeParse(role);
-  if (!validatedRole.success) {
-    return { success: false, message: 'Função inválida especificada.' };
+  try {
+    await checkAdmin();
+
+    const validatedRole = roleSchema.safeParse(role);
+    if (!validatedRole.success) {
+      return { success: false, message: 'Função inválida especificada.' };
+    }
+
+    const supabaseAdmin = createSupabaseAdminClient();
+    const { error } = await supabaseAdmin
+      .from('profiles')
+      .update({ role: validatedRole.data })
+      .eq('id', userId);
+
+    if (error) {
+      console.error("Erro ao atualizar a função do usuário:", error);
+      return { success: false, message: 'Falha ao atualizar a função do usuário.' };
+    }
+
+    revalidatePath(`/${lang}/admin/users`);
+    return { success: true, message: 'Função do usuário atualizada com sucesso.' };
+  } catch (e) {
+    return { success: false, message: (e as Error).message };
   }
-
-  const supabaseAdmin = createSupabaseAdminClient();
-  const { error } = await supabaseAdmin
-    .from('profiles')
-    .update({ role: validatedRole.data })
-    .eq('id', userId);
-
-  if (error) {
-    console.error("Erro ao atualizar a função do usuário:", error);
-    return { success: false, message: 'Falha ao atualizar a função do usuário.' };
-  }
-
-  revalidatePath(`/${lang}/admin/users`);
-  return { success: true, message: 'Função do usuário atualizada com sucesso.' };
 }
 
 // Ação para convidar um novo usuário
@@ -109,28 +149,34 @@ const inviteSchema = z.object({
   lastName: z.string().optional(),
 });
 export async function inviteUserByEmail(formData: { email: string, firstName: string, lastName?: string }, lang: Locale) {
-  const validation = inviteSchema.safeParse(formData);
-  if (!validation.success) {
-    return { success: false, message: 'Dados inválidos fornecidos.' };
+  try {
+    await checkAdmin();
+
+    const validation = inviteSchema.safeParse(formData);
+    if (!validation.success) {
+      return { success: false, message: 'Dados inválidos fornecidos.' };
+    }
+
+    const { email, firstName, lastName } = validation.data;
+    const supabaseAdmin = createSupabaseAdminClient();
+
+    const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+      data: {
+        first_name: firstName,
+        last_name: lastName || null,
+      },
+    });
+
+    if (error) {
+      console.error("Erro ao convidar usuário:", error);
+      return { success: false, message: `Falha ao convidar usuário: ${error.message}` };
+    }
+
+    revalidatePath(`/${lang}/admin/users`);
+    return { success: true, message: 'Convite enviado com sucesso.' };
+  } catch (e) {
+    return { success: false, message: (e as Error).message };
   }
-
-  const { email, firstName, lastName } = validation.data;
-  const supabaseAdmin = createSupabaseAdminClient();
-
-  const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
-    data: {
-      first_name: firstName,
-      last_name: lastName || null,
-    },
-  });
-
-  if (error) {
-    console.error("Erro ao convidar usuário:", error);
-    return { success: false, message: `Falha ao convidar usuário: ${error.message}` };
-  }
-
-  revalidatePath(`/${lang}/admin/users`);
-  return { success: true, message: 'Convite enviado com sucesso.' };
 }
 
 // Nova ação para marcar o prompt de notificação como visto
