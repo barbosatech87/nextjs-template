@@ -413,13 +413,14 @@ export const getPostBySlug = unstable_cache(
   async (slug: string, lang: string): Promise<PostDetail> => {
     const supabase = getPublicClient();
 
-    const { data: post, error: rpcError } = await supabase
+    const { data, error: rpcError } = await supabase
       .rpc('get_public_post_details', { p_slug: slug })
       .single();
 
-    if (rpcError || !post) {
+    if (rpcError || !data) {
       throw new Error(`Post not found: ${slug}`);
     }
+    const post = data as PostDetail;
 
     let contentToParse = removeFirstH1(post.content || '');
     let finalLanguageCode = post.language_code;
