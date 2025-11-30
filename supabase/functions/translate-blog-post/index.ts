@@ -87,18 +87,31 @@ serve(async (req: Request) => {
   if (internalSecret && expectedSecret && internalSecret === expectedSecret) {
     isAuthorized = true; // Chamada interna autorizada
   } 
-  // Verifica Token de Usuário (Correção de Segurança)
+  // Verifica Token de Usuário
   else if (authHeader) {
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error } = await supabase.auth.getUser(token);
     
     if (user && !error) {
-      isAuthorized = true;
+      // --- SECURITY CHECK: VERIFY ROLE ---
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.role === 'admin' || profile?.role === 'writer') {
+        isAuthorized = true;
+      }
+      // -----------------------------------
     }
   }
 
   if (!isAuthorized) {
-    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+    return new Response(JSON.stringify({ error: "Unauthorized: Insufficient permissions." }), { 
+      status: 403, 
+      headers: { ...corsHeaders, "Content-Type": "application/json" } 
+    });
   }
   
   try {

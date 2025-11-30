@@ -22,6 +22,24 @@ const postOutputSchema = z.object({
 
 export type AIResponse = z.infer<typeof postOutputSchema>;
 
+// Helper para verificar permissões (Admin ou Writer)
+async function checkPermissions() {
+  const supabase = await createSupabaseServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) throw new Error("Usuário não autenticado.");
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin' && profile?.role !== 'writer') {
+    throw new Error("Acesso negado. Apenas administradores e escritores podem usar recursos de IA.");
+  }
+}
+
 // --- Função de finalização com Claude e fallback para OpenAI ---
 async function refineAndFinalizeContent(content: string): Promise<AIResponse> {
   // 1. Tentar com o modelo principal (Claude 3.5 Sonnet)
@@ -159,6 +177,12 @@ export type GenerationRequest = z.infer<typeof generationRequestSchema>;
 export async function generatePostWithAI(
   request: GenerationRequest
 ): Promise<{ success: boolean; data?: AIResponse; message?: string }> {
+  try {
+    await checkPermissions();
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : "Acesso negado." };
+  }
+
   const validation = generationRequestSchema.safeParse(request);
   if (!validation.success) {
     return { success: false, message: "Dados de entrada inválidos." };
@@ -228,6 +252,12 @@ export async function generatePostWithAI(
  * Gera uma imagem chamando a Edge Function.
  */
 export async function generateImageAction(prompt: string): Promise<{ success: boolean; url?: string; message?: string }> {
+  try {
+    await checkPermissions();
+  } catch (e) {
+    return { success: false, message: e instanceof Error ? e.message : "Acesso negado." };
+  }
+
   const supabase = await createSupabaseServerClient();
   const { data: { session } } = await supabase.auth.getSession();
 
@@ -279,6 +309,17 @@ export async function saveGeneratedImage(prompt: string, imageUrl: string): Prom
 
     if (!user) {
       return { success: false, message: "Usuário não autenticado." };
+    }
+
+    // Também verificamos permissão ao salvar
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (profile?.role !== 'admin' && profile?.role !== 'writer') {
+      return { success: false, message: "Acesso negado. Você não tem permissão para salvar imagens geradas." };
     }
 
     const { error: dbError } = await supabase

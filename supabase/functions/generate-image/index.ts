@@ -29,6 +29,39 @@ serve(async (req: Request) => {
     return new Response("Unauthorized", { status: 401, headers: corsHeaders })
   }
 
+  // Autenticação do usuário via token
+  const token = authHeader.replace("Bearer ", "")
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  })
+
+  const { data: userData, error: userError } = await supabase.auth.getUser(token)
+  if (userError || !userData?.user) {
+    console.error("Auth getUser error:", userError)
+    return new Response(JSON.stringify({ error: "Invalid user token." }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
+  }
+  const userId = userData.user.id
+
+  // --- SECURITY CHECK: VERIFY ROLE ---
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', userId)
+    .single();
+
+  if (profile?.role !== 'admin' && profile?.role !== 'writer') {
+    return new Response(JSON.stringify({ error: "Unauthorized: Insufficient permissions." }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    })
+  }
+  // -----------------------------------
+
   try {
     const { prompt } = (await req.json()) as ImageGenerationRequest
     if (!prompt) {
@@ -75,24 +108,6 @@ serve(async (req: Request) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       })
     }
-
-    // Autenticação do usuário via token
-    const token = authHeader.replace("Bearer ", "")
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
-      auth: { persistSession: false },
-    })
-
-    const { data: userData, error: userError } = await supabase.auth.getUser(token)
-    if (userError || !userData?.user) {
-      console.error("Auth getUser error:", userError)
-      return new Response(JSON.stringify({ error: "Invalid user token." }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      })
-    }
-    const userId = userData.user.id
 
     // Baixa a imagem temporária
     const imageRes = await fetch(temporaryUrl)

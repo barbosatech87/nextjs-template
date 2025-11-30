@@ -72,13 +72,28 @@ serve(async (req: Request) => {
     { auth: { persistSession: false } }
   );
 
-  // Verification Check (Fixing Authentication Bypass)
+  // Verification Check
   const token = authHeader.replace('Bearer ', '');
   const { data: { user }, error } = await supabase.auth.getUser(token);
 
   if (error || !user) {
     return new Response('Unauthorized', { status: 401, headers: corsHeaders });
   }
+
+  // --- SECURITY CHECK: VERIFY ROLE ---
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+
+  if (profile?.role !== 'admin' && profile?.role !== 'writer') {
+    return new Response(JSON.stringify({ error: "Unauthorized: Insufficient permissions." }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+  // -----------------------------------
 
   try {
     const { pageId, title, summary, content } = await req.json() as TranslationRequest;
