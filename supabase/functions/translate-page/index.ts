@@ -56,6 +56,29 @@ async function getTranslation(text: string, targetLang: string, type: 'title' | 
   return data.choices[0].message.content.trim();
 }
 
+async function submitUrlToIndexNow(url: string) {
+  const apiKey = Deno.env.get('INDEXNOW_API_KEY');
+  if (!apiKey) {
+    console.warn("IndexNow (translation): API key not configured.");
+    return;
+  }
+  try {
+    const payload = {
+      host: "www.paxword.com",
+      key: apiKey,
+      keyLocation: `https://www.paxword.com/${apiKey}.txt`,
+      urlList: [url],
+    };
+    await fetch("https://api.indexnow.org/indexnow", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    console.error("IndexNow (translation): Failed to submit URL.", e);
+  }
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -105,6 +128,9 @@ serve(async (req: Request) => {
       });
     }
 
+    const { data: page } = await supabase.from('pages').select('slug').eq('id', pageId).single();
+    if (!page) throw new Error("Original page not found.");
+
     const translationPromises = TARGET_LANGUAGES.map(async (targetLang) => {
       const [translatedTitle, translatedSummary, translatedContent] = await Promise.all([
         getTranslation(title, targetLang, 'title'),
@@ -127,6 +153,9 @@ serve(async (req: Request) => {
         throw new Error(`Database error for ${targetLang}`);
       }
       
+      const translatedUrl = `https://www.paxword.com/${targetLang}/p/${page.slug}`;
+      await submitUrlToIndexNow(translatedUrl);
+
       return { language: targetLang, success: true };
     });
 

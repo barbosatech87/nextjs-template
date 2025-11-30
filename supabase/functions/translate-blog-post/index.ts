@@ -59,6 +59,29 @@ async function getTranslation(text: string, targetLang: string, type: 'title' | 
   return data.choices[0].message.content.trim();
 }
 
+async function submitUrlToIndexNow(url: string) {
+  const apiKey = Deno.env.get('INDEXNOW_API_KEY');
+  if (!apiKey) {
+    console.warn("IndexNow (translation): API key not configured.");
+    return;
+  }
+  try {
+    const payload = {
+      host: "www.paxword.com",
+      key: apiKey,
+      keyLocation: `https://www.paxword.com/${apiKey}.txt`,
+      urlList: [url],
+    };
+    await fetch("https://api.indexnow.org/indexnow", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    console.error("IndexNow (translation): Failed to submit URL.", e);
+  }
+}
+
 serve(async (req: Request) => {
   // Lida com requisições OPTIONS (CORS preflight)
   if (req.method === 'OPTIONS') {
@@ -124,6 +147,9 @@ serve(async (req: Request) => {
       });
     }
 
+    const { data: post } = await supabase.from('blog_posts').select('slug').eq('id', postId).single();
+    if (!post) throw new Error("Original post not found.");
+
     const translationPromises = TARGET_LANGUAGES.map(async (targetLang) => {
       // Traduzir todos os campos em paralelo
       const [translatedTitle, translatedSummary, translatedContent] = await Promise.all([
@@ -147,6 +173,10 @@ serve(async (req: Request) => {
         console.error(`Error saving ${targetLang} translation for post ${postId}:`, error);
         throw new Error(`Database error for ${targetLang}`);
       }
+      
+      // Submete a nova URL ao IndexNow
+      const translatedUrl = `https://www.paxword.com/${targetLang}/blog/${post.slug}`;
+      await submitUrlToIndexNow(translatedUrl);
       
       return { language: targetLang, success: true };
     });

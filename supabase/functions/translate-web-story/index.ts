@@ -104,6 +104,29 @@ async function translateString(text: string, targetLang: string) {
   return data.choices[0].message.content.trim();
 }
 
+async function submitUrlToIndexNow(url: string) {
+  const apiKey = Deno.env.get('INDEXNOW_API_KEY');
+  if (!apiKey) {
+    console.warn("IndexNow (translation): API key not configured.");
+    return;
+  }
+  try {
+    const payload = {
+      host: "www.paxword.com",
+      key: apiKey,
+      keyLocation: `https://www.paxword.com/${apiKey}.txt`,
+      urlList: [url],
+    };
+    await fetch("https://api.indexnow.org/indexnow", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    console.error("IndexNow (translation): Failed to submit URL.", e);
+  }
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -159,6 +182,9 @@ serve(async (req: Request) => {
       throw new Error("Missing required fields.");
     }
 
+    const { data: story } = await supabase.from('web_stories').select('slug').eq('id', storyId).single();
+    if (!story) throw new Error("Original story not found.");
+
     // 1. Extrair textos do JSON complexo
     const extractedTexts = extractTexts(storyData);
     const hasTexts = Object.keys(extractedTexts).length > 0;
@@ -190,6 +216,10 @@ serve(async (req: Request) => {
           }, { onConflict: 'story_id, language_code' });
 
         if (error) throw error;
+        
+        const translatedUrl = `https://www.paxword.com/${targetLang}/web-stories/${story.slug}`;
+        await submitUrlToIndexNow(translatedUrl);
+
         results.push(targetLang);
 
       } catch (err) {
