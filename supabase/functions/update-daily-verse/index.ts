@@ -9,7 +9,7 @@ declare const Response: any;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-internal-secret',
 };
 
 const SOURCE_LANGUAGE_CODE = 'pt';
@@ -57,6 +57,18 @@ serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  // --- VERIFICAÇÃO DE SEGURANÇA ---
+  const internalSecret = req.headers.get('X-Internal-Secret');
+  const expectedSecret = Deno.env.get('INTERNAL_SECRET_KEY');
+
+  if (!internalSecret || internalSecret !== expectedSecret) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { 
+      status: 401, 
+      headers: { ...corsHeaders, "Content-Type": "application/json" } 
+    });
+  }
+  // --------------------------------
 
   // Usamos a Service Role Key para garantir que podemos escrever no DB sem RLS
   const supabase = createClient(
