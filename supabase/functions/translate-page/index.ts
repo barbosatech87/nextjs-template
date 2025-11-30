@@ -72,6 +72,14 @@ serve(async (req: Request) => {
     { auth: { persistSession: false } }
   );
 
+  // Verification Check (Fixing Authentication Bypass)
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+
+  if (error || !user) {
+    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+  }
+
   try {
     const { pageId, title, summary, content } = await req.json() as TranslationRequest;
 

@@ -65,23 +65,7 @@ serve(async (req: Request) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // 1. Autenticação
-  const internalSecret = req.headers.get('X-Internal-Secret');
-  const expectedSecret = Deno.env.get('INTERNAL_SECRET_KEY');
-  const authHeader = req.headers.get('Authorization');
-
-  let isAuthorized = false;
-  if (internalSecret && expectedSecret && internalSecret === expectedSecret) {
-    isAuthorized = true; // Chamada interna autorizada
-  } else if (authHeader) {
-    isAuthorized = true; // Chamada de usuário (assume que o token é válido, como antes)
-  }
-
-  if (!isAuthorized) {
-    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
-  }
-  
-  // Cria o cliente Supabase com a Service Role Key para acesso irrestrito ao DB
+  // Inicializa o cliente Supabase
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -92,6 +76,31 @@ serve(async (req: Request) => {
     }
   );
 
+  // 1. Autenticação
+  const internalSecret = req.headers.get('X-Internal-Secret');
+  const expectedSecret = Deno.env.get('INTERNAL_SECRET_KEY');
+  const authHeader = req.headers.get('Authorization');
+
+  let isAuthorized = false;
+  
+  // Verifica Segredo Interno
+  if (internalSecret && expectedSecret && internalSecret === expectedSecret) {
+    isAuthorized = true; // Chamada interna autorizada
+  } 
+  // Verifica Token de Usuário (Correção de Segurança)
+  else if (authHeader) {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (user && !error) {
+      isAuthorized = true;
+    }
+  }
+
+  if (!isAuthorized) {
+    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+  }
+  
   try {
     const { postId, title, summary, content } = await req.json() as TranslationRequest;
 
