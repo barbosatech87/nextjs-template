@@ -413,36 +413,15 @@ export const getPostBySlug = unstable_cache(
   async (slug: string, lang: string): Promise<PostDetail> => {
     const supabase = getPublicClient();
 
-    const { data: post, error: postError } = await supabase
-      .from('blog_posts')
-      .select('id, slug, title, summary, content, image_url, image_alt_text, published_at, updated_at, language_code, author_id')
-      .eq('slug', slug)
-      .eq('status', 'published')
+    const { data: post, error: rpcError } = await supabase
+      .rpc('get_public_post_details', { p_slug: slug })
       .single();
 
-    if (postError || !post) {
+    if (rpcError || !post) {
       throw new Error(`Post not found: ${slug}`);
     }
 
-    let authorProfile: { first_name: string | null, last_name: string | null } | null = null;
-    if (post.author_id) {
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('first_name, last_name')
-        .eq('id', post.author_id)
-        .single();
-      authorProfile = profileData;
-    }
-
-    const { data: postCategoriesData } = await supabase
-      .from('blog_post_categories')
-      .select('blog_categories(id, name, slug)')
-      .eq('post_id', post.id);
-
-    const categories = postCategoriesData ? postCategoriesData.map(pc => pc.blog_categories).filter(Boolean) as unknown as { id: string; name: string; slug: string }[] : [];
-
-    const contentWithoutTitle = removeFirstH1(post.content || '');
-    let contentToParse = contentWithoutTitle;
+    let contentToParse = removeFirstH1(post.content || '');
     let finalLanguageCode = post.language_code;
     let finalTitle = post.title;
     let finalSummary = post.summary;
@@ -466,7 +445,7 @@ export const getPostBySlug = unstable_cache(
     const parsedContent = await marked.parse(contentToParse);
     const sanitizedContent = sanitizeHtml(parsedContent, sanitizeConfig);
 
-    const finalPost = {
+    const finalPost: PostDetail = {
       id: post.id,
       slug: post.slug,
       image_url: post.image_url,
@@ -474,13 +453,13 @@ export const getPostBySlug = unstable_cache(
       published_at: post.published_at,
       updated_at: post.updated_at,
       author_id: post.author_id,
-      author_first_name: authorProfile?.first_name || null,
-      author_last_name: authorProfile?.last_name || null,
+      author_first_name: post.author_first_name,
+      author_last_name: post.author_last_name,
       title: finalTitle,
       summary: finalSummary,
       content: sanitizedContent,
       language_code: finalLanguageCode,
-      categories,
+      categories: (post.categories as unknown as any[]) || [],
     };
 
     if (!finalPost) {

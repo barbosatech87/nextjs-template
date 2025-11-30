@@ -143,7 +143,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   const authorName = post.author_first_name || post.author_last_name 
     ? `${post.author_first_name || ''} ${post.author_last_name || ''}`.trim()
-    : 'Autor Desconhecido';
+    : 'PaxWord';
 
   const formattedDate = post.published_at 
     ? new Date(post.published_at).toLocaleDateString(lang, { year: 'numeric', month: 'long', day: 'numeric' })
