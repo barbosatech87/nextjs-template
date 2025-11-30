@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from "@/integrations/supabase/server";
 import { revalidatePath } from "next/cache";
 import { Page } from "@/types/supabase";
 import { marked } from 'marked';
+import DOMPurify from 'isomorphic-dompurify';
 
 export type PageData = Omit<Page, 'id' | 'author_id' | 'created_at' | 'updated_at' | 'language_code'>;
 
@@ -152,12 +153,13 @@ export async function getPageBySlug(slug: string, lang: string): Promise<(Page &
   }
 
   const parsedContent = await marked.parse(contentToParse);
+  const cleanContent = DOMPurify.sanitize(parsedContent);
   
   const finalPage: Page & { content: string } = {
     ...page,
     title: finalTitle,
     summary: finalSummary,
-    content: parsedContent,
+    content: cleanContent,
     language_code: finalLanguageCode,
   };
 

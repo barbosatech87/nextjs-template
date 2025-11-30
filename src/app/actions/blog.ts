@@ -5,7 +5,8 @@ import { revalidatePath, unstable_cache } from "next/cache";
 import { BlogPost } from "@/types/supabase";
 import { marked } from 'marked';
 import { createClient } from "@supabase/supabase-js";
-import { triggerNewPostNotification } from './notifications'; // Importa a nova função
+import { triggerNewPostNotification } from './notifications';
+import DOMPurify from 'isomorphic-dompurify';
 
 const POSTS_PER_PAGE = 9;
 
@@ -451,6 +452,7 @@ export const getPostBySlug = unstable_cache(
     }
     
     const parsedContent = await marked.parse(contentToParse);
+    const cleanContent = DOMPurify.sanitize(parsedContent);
 
     const finalPost = {
       id: post.id,
@@ -464,7 +466,7 @@ export const getPostBySlug = unstable_cache(
       author_last_name: authorProfile?.last_name || null,
       title: finalTitle,
       summary: finalSummary,
-      content: parsedContent,
+      content: cleanContent,
       language_code: finalLanguageCode,
       categories,
     };
