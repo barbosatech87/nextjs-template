@@ -88,7 +88,10 @@ export async function searchAll(query: string, lang: Locale): Promise<SearchResu
   }
 
   // 2. Continua com a busca por texto completo
-  const searchPattern = `%${query}%`;
+  
+  // Sanitiza a query removendo aspas duplas para evitar injeção de filtro no PostgREST
+  const safeQuery = query.replace(/"/g, '');
+  const searchPattern = `%${safeQuery}%`;
 
   const verseSearch = supabase
     .from('verses')
@@ -101,14 +104,16 @@ export async function searchAll(query: string, lang: Locale): Promise<SearchResu
     .from('blog_posts')
     .select('slug, title, summary, language_code')
     .eq('status', 'published')
-    .or(`title.ilike.${searchPattern},summary.ilike.${searchPattern}`)
+    // Envolve o padrão em aspas duplas para tratar caracteres especiais (como vírgula) corretamente
+    .or(`title.ilike."${searchPattern}",summary.ilike."${searchPattern}"`)
     .limit(5);
 
   const translatedPostSearch = supabase
     .from('blog_post_translations')
     .select('post_id, translated_title, translated_summary, language_code, blog_posts(slug)')
     .eq('language_code', lang)
-    .or(`translated_title.ilike.${searchPattern},translated_summary.ilike.${searchPattern}`)
+    // Envolve o padrão em aspas duplas para tratar caracteres especiais corretamente
+    .or(`translated_title.ilike."${searchPattern}",translated_summary.ilike."${searchPattern}"`)
     .limit(5);
 
   const [
