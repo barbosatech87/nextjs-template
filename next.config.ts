@@ -7,16 +7,6 @@ const pwaConfig = withPWA({
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
   customWorkerDir: 'src/worker', // Processa o worker customizado a partir do diretório src
-  buildExcludes: [
-    /middleware-manifest\.json$/,
-    /_middleware\.js$/,
-    /_middleware\.js\.map$/,
-    /middleware-runtime\.js$/,
-    /server\/middleware\.js$/,
-    /default-stylesheet\.css$/,
-    /.*\.map$/, // Exclude all source maps
-    /.*\.tsbuildinfo$/,
-  ],
   runtimeCaching: [
     // Cache para imagens otimizadas pelo Next.js
     {
