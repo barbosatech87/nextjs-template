@@ -14,6 +14,8 @@ const pwaConfig = withPWA({
     /middleware-runtime\.js$/,
     /server\/middleware\.js$/,
     /default-stylesheet\.css$/,
+    /.*\.map$/, // Exclude all source maps
+    /.*\.tsbuildinfo$/,
   ],
   runtimeCaching: [
     // Cache para imagens otimizadas pelo Next.js
